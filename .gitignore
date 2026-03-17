@@ -1,0 +1,21 @@
+# Flutter and Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Android
+**/android/**/GeneratedPluginRegistrant.java
+**/android/.gradle/
+**/android/captures/
+**/android/local.properties
+
+# Windows
+**/windows/flutter/ephemeral/

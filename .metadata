@@ -1,0 +1,5 @@
+version:
+  revision: manual-scaffold
+  channel: stable
+
+project_type: app
