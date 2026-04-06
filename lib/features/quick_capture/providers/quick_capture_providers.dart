@@ -121,6 +121,30 @@ class QuickCaptureActionController extends AsyncNotifier<void> {
     });
   }
 
+  Future<int> markProcessedBatch(
+    Iterable<String> ids, {
+    QuickCaptureProcessedEntityType? processedEntityType,
+  }) async {
+    _ensureIdle();
+    state = const AsyncLoading();
+    try {
+      final repository = await ref.read(quickCaptureRepositoryProvider.future);
+      var processedCount = 0;
+      for (final id in ids.toSet()) {
+        await repository.markProcessed(
+          id,
+          processedEntityType: processedEntityType,
+        );
+        processedCount++;
+      }
+      state = const AsyncData(null);
+      return processedCount;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
+  }
+
   void _ensureIdle() {
     if (state.isLoading) {
       throw StateError('Another quick capture action is already in progress.');

@@ -34,6 +34,7 @@ class _QuickCaptureInboxScreenState
   static const _uuid = Uuid();
   QuickCaptureInboxFilter _filter = QuickCaptureInboxFilter.unprocessed;
   String? _busyItemId;
+  bool _isBulkActionRunning = false;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +46,41 @@ class _QuickCaptureInboxScreenState
       appBar: AppBar(
         title: const Text('Quick Capture Inbox'),
         actions: [
+          PopupMenuButton<_BulkInboxAction>(
+            enabled:
+                !_isBulkActionRunning &&
+                _filter == QuickCaptureInboxFilter.unprocessed &&
+                _noteCaptureCount(capturesAsync.valueOrNull ?? const []) > 0,
+            tooltip: 'Bulk actions',
+            onSelected: (action) => _handleBulkAction(
+              capturesAsync.valueOrNull ?? const [],
+              action,
+            ),
+            itemBuilder: (context) {
+              final noteCount = _noteCaptureCount(
+                capturesAsync.valueOrNull ?? const [],
+              );
+              return [
+                PopupMenuItem(
+                  value: _BulkInboxAction.markAllNotesProcessed,
+                  child: Text(
+                    noteCount > 0
+                        ? 'Mark all notes as processed ($noteCount)'
+                        : 'Mark all notes as processed',
+                  ),
+                ),
+              ];
+            },
+            icon: _isBulkActionRunning
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : const Icon(Icons.done_all_rounded),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: SegmentedButton<QuickCaptureInboxFilter>(
@@ -272,6 +308,17 @@ class _QuickCaptureInboxScreenState
     }
   }
 
+  Future<void> _handleBulkAction(
+    List<QuickCaptureItem> captures,
+    _BulkInboxAction action,
+  ) async {
+    switch (action) {
+      case _BulkInboxAction.markAllNotesProcessed:
+        await _markAllNotesAsProcessed(captures);
+        break;
+    }
+  }
+
   Future<void> _convertToTask(QuickCaptureItem item) async {
     final parser = ref.read(quickCaptureParserServiceProvider);
     final draft =
@@ -494,6 +541,68 @@ class _QuickCaptureInboxScreenState
     );
   }
 
+  Future<void> _markAllNotesAsProcessed(List<QuickCaptureItem> captures) async {
+    final noteIds = captures
+        .where(
+          (item) =>
+              !item.isProcessed &&
+              !item.isArchived &&
+              item.suggestedType == QuickCaptureSuggestedType.note,
+        )
+        .map((item) => item.id)
+        .toList();
+
+    if (noteIds.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No note captures are waiting in Inbox.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isBulkActionRunning = true;
+    });
+    try {
+      final processedCount = await ref
+          .read(quickCaptureActionControllerProvider.notifier)
+          .markProcessedBatch(
+            noteIds,
+            processedEntityType: QuickCaptureProcessedEntityType.note,
+          );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            processedCount == 1
+                ? '1 note was marked as processed.'
+                : '$processedCount notes were marked as processed.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ErrorHandler.showSnackBar(
+        context,
+        error,
+        fallbackTitle: 'Bulk inbox update failed',
+        fallbackMessage: 'The note captures could not be marked as processed.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBulkActionRunning = false;
+        });
+      }
+    }
+  }
+
   Future<void> _editRawText(QuickCaptureItem item) async {
     final controller = TextEditingController(text: item.rawText);
     final updatedText = await showDialog<String>(
@@ -525,7 +634,9 @@ class _QuickCaptureInboxScreenState
         );
       },
     );
-    controller.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.dispose();
+    });
 
     if (updatedText == null || updatedText.isEmpty || !mounted) {
       return;
@@ -626,6 +737,17 @@ class _QuickCaptureInboxScreenState
         return GoalType.learning;
     }
   }
+
+  int _noteCaptureCount(List<QuickCaptureItem> captures) {
+    return captures
+        .where(
+          (item) =>
+              !item.isProcessed &&
+              !item.isArchived &&
+              item.suggestedType == QuickCaptureSuggestedType.note,
+        )
+        .length;
+  }
 }
 
 enum _CaptureMenuAction {
@@ -636,3 +758,5 @@ enum _CaptureMenuAction {
   markNote,
   delete,
 }
+
+enum _BulkInboxAction { markAllNotesProcessed }

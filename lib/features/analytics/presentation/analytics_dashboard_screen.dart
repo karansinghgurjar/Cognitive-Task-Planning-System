@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/errors/error_handler.dart';
 import '../../goals/models/learning_goal.dart';
+import '../../quick_capture/presentation/quick_capture_inbox_action_button.dart';
 import '../../recommendations/domain/recommendation_models.dart';
 import '../../recommendations/presentation/recommendations_dashboard.dart';
 import '../../settings/presentation/settings_home_screen.dart';
@@ -52,6 +53,9 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
                 },
                 icon: const Icon(Icons.insights_outlined),
                 tooltip: 'Recommendations',
+              ),
+              const QuickCaptureInboxActionButton(
+                tooltip: 'Open Quick Capture inbox from Analytics',
               ),
               IconButton(
                 onPressed: () {

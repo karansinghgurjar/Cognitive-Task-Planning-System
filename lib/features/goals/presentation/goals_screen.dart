@@ -10,6 +10,7 @@ import '../../../core/widgets/app_loading_indicator.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/app_status_chip.dart';
 import '../../ai_planning/presentation/ai_plan_generator_screen.dart';
+import '../../quick_capture/presentation/quick_capture_inbox_action_button.dart';
 import '../domain/goal_progress_service.dart';
 import '../models/learning_goal.dart';
 import '../providers/goal_providers.dart';
@@ -84,6 +85,9 @@ class GoalsScreen extends ConsumerWidget {
           },
           icon: const Icon(Icons.auto_awesome_rounded),
           label: const Text('Create Plan'),
+        ),
+        const QuickCaptureInboxActionButton(
+          tooltip: 'Open Quick Capture inbox from Goals',
         ),
         IconButton(
           onPressed: () => AppRouter.openSettings(context),

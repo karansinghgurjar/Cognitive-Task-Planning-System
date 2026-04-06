@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:study_flow/features/goals/models/learning_goal.dart';
 import 'package:study_flow/features/goals/presentation/goals_screen.dart';
 import 'package:study_flow/features/goals/providers/goal_providers.dart';
+import 'package:study_flow/features/quick_capture/providers/quick_capture_providers.dart';
 
 void main() {
   testWidgets('GoalsScreen shows first-use empty state when no goals exist', (
@@ -15,6 +16,9 @@ void main() {
           watchGoalsProvider.overrideWith(
             (ref) => Stream.value(const <LearningGoal>[]),
           ),
+          unprocessedCaptureCountProvider.overrideWith((ref) {
+            return const AsyncData(0);
+          }),
         ],
         child: const MaterialApp(home: Scaffold(body: GoalsScreen())),
       ),

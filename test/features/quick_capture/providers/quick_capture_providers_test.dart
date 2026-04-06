@@ -188,6 +188,51 @@ void main() {
     await container.read(watchUnprocessedCapturesProvider.future);
     expect(container.read(unprocessedCaptureCountProvider).value, 0);
   });
+
+  test('mark processed batch updates all requested captures', () async {
+    final repository = _FakeQuickCaptureRepository(
+      initialItems: [
+        QuickCaptureItem(
+          id: 'capture-1',
+          rawText: 'Note one',
+          createdAt: DateTime(2026, 4, 6, 9),
+          suggestedType: QuickCaptureSuggestedType.note,
+        ),
+        QuickCaptureItem(
+          id: 'capture-2',
+          rawText: 'Note two',
+          createdAt: DateTime(2026, 4, 6, 10),
+          suggestedType: QuickCaptureSuggestedType.note,
+        ),
+      ],
+    );
+    final container = ProviderContainer(
+      overrides: [
+        quickCaptureRepositoryProvider.overrideWith((ref) async => repository),
+      ],
+    );
+    addTearDown(() async {
+      await repository.dispose();
+      container.dispose();
+    });
+
+    final processedCount = await container
+        .read(quickCaptureActionControllerProvider.notifier)
+        .markProcessedBatch([
+          'capture-1',
+          'capture-2',
+        ], processedEntityType: QuickCaptureProcessedEntityType.note);
+
+    expect(processedCount, 2);
+    expect(repository.items.every((item) => item.isProcessed), isTrue);
+    expect(
+      repository.items.every(
+        (item) =>
+            item.processedEntityType == QuickCaptureProcessedEntityType.note,
+      ),
+      isTrue,
+    );
+  });
 }
 
 class _FakeQuickCaptureRepository implements QuickCaptureRepository {
