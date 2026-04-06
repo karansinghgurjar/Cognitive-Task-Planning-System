@@ -136,6 +136,27 @@ void main() {
       expect(block.end, DateTime(2026, 3, 16, 11, 0));
     });
 
+
+    test('archived tasks are excluded from recommendation candidates', () {
+      final recommendation = service.recommendNextTask(
+        tasks: [
+          _task('archived', priority: 1, minutes: 60).copyWith(
+            isArchived: true,
+          ),
+          _task('active', priority: 2, minutes: 60),
+        ],
+        goals: const [],
+        milestones: const [],
+        dependencies: const [],
+        plannedSessions: const [],
+        weeklyAvailability: weeklyAvailability,
+        now: now,
+      );
+
+      expect(recommendation, isNotNull);
+      expect(recommendation!.taskId, 'active');
+    });
+
     test('prefers an active planned session when one is happening now', () {
       final recommendation = service.recommendNextTask(
         tasks: [
@@ -195,3 +216,5 @@ Map<int, List<AvailabilityWindow>> _weeklyAvailability(
       weekday: data[weekday] ?? const [],
   };
 }
+
+

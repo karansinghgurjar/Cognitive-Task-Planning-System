@@ -45,7 +45,7 @@ class GoalProgressService {
 
     final totalCompletedMinutes = linkedTasks.fold<int>(0, (sum, task) {
       return sum +
-          taskProgressService.getCompletedMinutesForTask(task.id, sessions);
+          taskProgressService.getCompletedMinutesForTask(task, sessions);
     });
 
     final estimatedTaskMinutes = linkedTasks.fold<int>(
@@ -114,3 +114,4 @@ class GoalProgressService {
     return goal.status == GoalStatus.completed ? 1 : 0;
   }
 }
+

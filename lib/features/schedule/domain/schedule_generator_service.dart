@@ -46,6 +46,7 @@ class ScheduleGeneratorService {
     final incompleteTasks = tasks
         .where(
           (task) =>
+              !task.isArchived &&
               !task.isCompleted &&
               !_taskProgressService.isTaskSatisfied(task, existingSessions),
         )
@@ -404,3 +405,4 @@ class _MutableDateTimeRange {
 
   int get remainingMinutes => end.difference(start).inMinutes;
 }
+

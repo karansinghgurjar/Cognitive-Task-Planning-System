@@ -81,6 +81,29 @@ void main() {
       expect(stats.topGoalTitle, 'Learn Flutter');
     });
 
+
+    test('computeDailyStats handles sessions whose task was deleted', () {
+      final stats = service.computeDailyStats(
+        day: DateTime(2026, 3, 16, 20),
+        tasks: const [],
+        goals: const [],
+        sessions: [
+          PlannedSession(
+            id: 'orphan',
+            taskId: 'missing-task',
+            start: DateTime(2026, 3, 16, 9),
+            end: DateTime(2026, 3, 16, 10),
+            status: PlannedSessionStatus.completed,
+            completed: true,
+            actualMinutesFocused: 60,
+          ),
+        ],
+      );
+
+      expect(stats.completedMinutes, 60);
+      expect(stats.topTaskTitle, isNull);
+      expect(stats.topGoalTitle, isNull);
+    });
     test('computeWeeklyStats summarizes the local week', () {
       final sessions = [
         PlannedSession(
@@ -176,3 +199,4 @@ void main() {
     });
   });
 }
+

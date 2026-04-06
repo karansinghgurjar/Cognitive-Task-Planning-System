@@ -27,23 +27,6 @@ void main() {
         completedAt: DateTime(2026, 1, 2),
       );
       taskRepository.taskById[task.id] = task;
-      sessionRepository.sessions = [
-        PlannedSession(
-          id: 'done',
-          taskId: task.id,
-          start: DateTime(2026, 1, 1, 9),
-          end: DateTime(2026, 1, 1, 10),
-          status: PlannedSessionStatus.completed,
-          completed: true,
-          actualMinutesFocused: 60,
-        ),
-        PlannedSession(
-          id: 'future',
-          taskId: task.id,
-          start: DateTime(2026, 1, 3, 9),
-          end: DateTime(2026, 1, 3, 10),
-        ),
-      ];
 
       final service = TaskLifecycleService(
         taskRepository: taskRepository,
@@ -59,6 +42,10 @@ void main() {
       ]);
       expect(taskRepository.updatedTasks.single.isCompleted, isFalse);
       expect(taskRepository.updatedTasks.single.completedAt, isNull);
+      expect(
+        taskRepository.updatedTasks.single.progressResetAt,
+        DateTime(2026, 1, 2, 12),
+      );
     },
   );
 
@@ -86,6 +73,26 @@ void main() {
     await service.resetTaskProgress(task.id, mode: TaskResetMode.hard);
 
     expect(sessionRepository.deletedTaskIds, ['task-1']);
+    expect(
+      taskRepository.updatedTasks.single.progressResetAt,
+      DateTime(2026, 1, 2, 12),
+    );
+  });
+
+  test('unarchive delegates restore to the repository', () async {
+    final taskRepository = _FakeTaskRepository();
+    final sessionRepository = _FakePlannedSessionRepository();
+    final goalRepository = _FakeGoalRepository();
+
+    final service = TaskLifecycleService(
+      taskRepository: taskRepository,
+      plannedSessionRepository: sessionRepository,
+      goalRepository: goalRepository,
+    );
+
+    await service.unarchiveTask('task-1');
+
+    expect(taskRepository.restoredIds, ['task-1']);
   });
 
   test('archive clears only future non-completed sessions before archiving', () async {
@@ -125,6 +132,7 @@ class _FakeTaskRepository implements TaskRepository {
   final Map<String, Task> taskById = {};
   final List<Task> updatedTasks = [];
   final List<(String, DateTime)> archivedCalls = [];
+  final List<String> restoredIds = [];
 
   @override
   Future<void> addTask(Task task) async {}
@@ -159,7 +167,9 @@ class _FakeTaskRepository implements TaskRepository {
   Future<void> markTaskCompleted(String id, DateTime completedAt) async {}
 
   @override
-  Future<void> restoreTask(String id) async {}
+  Future<void> restoreTask(String id) async {
+    restoredIds.add(id);
+  }
 
   @override
   Future<void> updateTask(Task task) async {

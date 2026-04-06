@@ -138,3 +138,4 @@ PlannedSession _completedSession(String id, String taskId, int minutes) {
     actualMinutesFocused: minutes,
   );
 }
+

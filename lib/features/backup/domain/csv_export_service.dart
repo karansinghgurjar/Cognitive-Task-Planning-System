@@ -26,6 +26,7 @@ class CsvExportService {
         'updatedAt',
         'completedAt',
         'archivedAt',
+        'progressResetAt',
       ],
       for (final task in tasks)
         [
@@ -46,6 +47,7 @@ class CsvExportService {
           task.updatedAt?.toIso8601String() ?? '',
           task.completedAt?.toIso8601String() ?? '',
           task.archivedAt?.toIso8601String() ?? '',
+          task.progressResetAt?.toIso8601String() ?? '',
         ],
     ];
     return _encode(rows);
@@ -166,3 +168,5 @@ class CsvExportService {
     return '"${value.replaceAll('"', '""')}"';
   }
 }
+
+

@@ -36,7 +36,8 @@ class RecommendationEngineService {
     required Map<int, List<AvailabilityWindow>> weeklyAvailability,
     required DateTime now,
   }) {
-    final incompleteTasks = tasks.where((task) => !task.isCompleted).toList();
+    final activeTasks = tasks.where((task) => !task.isArchived).toList();
+    final incompleteTasks = activeTasks.where((task) => !task.isCompleted).toList();
     if (incompleteTasks.isEmpty) {
       return null;
     }
@@ -662,3 +663,5 @@ extension<E> on Iterable<E> {
     return first;
   }
 }
+
+

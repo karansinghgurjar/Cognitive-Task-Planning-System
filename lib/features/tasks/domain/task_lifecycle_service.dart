@@ -40,6 +40,7 @@ class TaskLifecycleService {
     if (task == null) {
       return;
     }
+    final resetAt = _clock();
 
     switch (mode) {
       case TaskResetMode.soft:
@@ -56,7 +57,8 @@ class TaskLifecycleService {
       task.copyWith(
         isCompleted: false,
         clearCompletedAt: true,
-        updatedAt: _clock(),
+        updatedAt: resetAt,
+        progressResetAt: resetAt,
       ),
     );
   }
@@ -78,4 +80,5 @@ class TaskLifecycleService {
     return _plannedSessionRepository.deleteSessionsByTaskId(taskId);
   }
 }
+
 

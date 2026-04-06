@@ -77,29 +77,34 @@ const TaskSchema = CollectionSchema(
       name: r'priority',
       type: IsarType.long,
     ),
-    r'resourceTag': PropertySchema(
+    r'progressResetAt': PropertySchema(
       id: 12,
+      name: r'progressResetAt',
+      type: IsarType.dateTime,
+    ),
+    r'resourceTag': PropertySchema(
+      id: 13,
       name: r'resourceTag',
       type: IsarType.string,
     ),
     r'resourceUrl': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'resourceUrl',
       type: IsarType.string,
     ),
     r'title': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'title',
       type: IsarType.string,
     ),
     r'type': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'type',
       type: IsarType.string,
       enumMap: _TasktypeEnumValueMap,
     ),
     r'updatedAt': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -192,11 +197,12 @@ void _taskSerialize(
   writer.writeBool(offsets[9], object.isCompleted);
   writer.writeString(offsets[10], object.milestoneId);
   writer.writeLong(offsets[11], object.priority);
-  writer.writeString(offsets[12], object.resourceTag);
-  writer.writeString(offsets[13], object.resourceUrl);
-  writer.writeString(offsets[14], object.title);
-  writer.writeString(offsets[15], object.type.name);
-  writer.writeDateTime(offsets[16], object.updatedAt);
+  writer.writeDateTime(offsets[12], object.progressResetAt);
+  writer.writeString(offsets[13], object.resourceTag);
+  writer.writeString(offsets[14], object.resourceUrl);
+  writer.writeString(offsets[15], object.title);
+  writer.writeString(offsets[16], object.type.name);
+  writer.writeDateTime(offsets[17], object.updatedAt);
 }
 
 Task _taskDeserialize(
@@ -218,12 +224,13 @@ Task _taskDeserialize(
     isCompleted: reader.readBoolOrNull(offsets[9]) ?? false,
     milestoneId: reader.readStringOrNull(offsets[10]),
     priority: reader.readLong(offsets[11]),
-    resourceTag: reader.readStringOrNull(offsets[12]),
-    resourceUrl: reader.readStringOrNull(offsets[13]),
-    title: reader.readString(offsets[14]),
-    type: _TasktypeValueEnumMap[reader.readStringOrNull(offsets[15])] ??
+    progressResetAt: reader.readDateTimeOrNull(offsets[12]),
+    resourceTag: reader.readStringOrNull(offsets[13]),
+    resourceUrl: reader.readStringOrNull(offsets[14]),
+    title: reader.readString(offsets[15]),
+    type: _TasktypeValueEnumMap[reader.readStringOrNull(offsets[16])] ??
         TaskType.study,
-    updatedAt: reader.readDateTimeOrNull(offsets[16]),
+    updatedAt: reader.readDateTimeOrNull(offsets[17]),
   );
   object.isarId = id;
   return object;
@@ -261,15 +268,17 @@ P _taskDeserializeProp<P>(
     case 11:
       return (reader.readLong(offset)) as P;
     case 12:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 13:
       return (reader.readStringOrNull(offset)) as P;
     case 14:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 15:
+      return (reader.readString(offset)) as P;
+    case 16:
       return (_TasktypeValueEnumMap[reader.readStringOrNull(offset)] ??
           TaskType.study) as P;
-    case 16:
+    case 17:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1480,6 +1489,75 @@ extension TaskQueryFilter on QueryBuilder<Task, Task, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterFilterCondition> progressResetAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'progressResetAt',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> progressResetAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'progressResetAt',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> progressResetAtEqualTo(
+      DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'progressResetAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> progressResetAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'progressResetAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> progressResetAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'progressResetAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> progressResetAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'progressResetAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterFilterCondition> resourceTagIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -2247,6 +2325,18 @@ extension TaskQuerySortBy on QueryBuilder<Task, Task, QSortBy> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterSortBy> sortByProgressResetAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'progressResetAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> sortByProgressResetAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'progressResetAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterSortBy> sortByResourceTag() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'resourceTag', Sort.asc);
@@ -2465,6 +2555,18 @@ extension TaskQuerySortThenBy on QueryBuilder<Task, Task, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterSortBy> thenByProgressResetAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'progressResetAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> thenByProgressResetAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'progressResetAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterSortBy> thenByResourceTag() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'resourceTag', Sort.asc);
@@ -2603,6 +2705,12 @@ extension TaskQueryWhereDistinct on QueryBuilder<Task, Task, QDistinct> {
     });
   }
 
+  QueryBuilder<Task, Task, QDistinct> distinctByProgressResetAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'progressResetAt');
+    });
+  }
+
   QueryBuilder<Task, Task, QDistinct> distinctByResourceTag(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -2714,6 +2822,12 @@ extension TaskQueryProperty on QueryBuilder<Task, Task, QQueryProperty> {
   QueryBuilder<Task, int, QQueryOperations> priorityProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'priority');
+    });
+  }
+
+  QueryBuilder<Task, DateTime?, QQueryOperations> progressResetAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'progressResetAt');
     });
   }
 

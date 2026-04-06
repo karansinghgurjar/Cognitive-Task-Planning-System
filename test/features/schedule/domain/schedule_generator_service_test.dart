@@ -259,6 +259,34 @@ void main() {
       expect(result.failures.first.unscheduledMinutes, 60);
     });
 
+
+    test('ignores archived tasks even if they are passed directly', () {
+      final service = ScheduleGeneratorService(idGenerator: _idGenerator());
+      final result = service.generateNext7DaysSchedule(
+        tasks: [
+          _task('archived', priority: 1, minutes: 60).copyWith(
+            isArchived: true,
+          ),
+          _task('active', priority: 2, minutes: 60),
+        ],
+        weeklyAvailability: _weeklyAvailability({
+          1: [
+            const AvailabilityWindow(
+              weekday: 1,
+              startHour: 9,
+              startMinute: 0,
+              endHour: 11,
+              endMinute: 0,
+            ),
+          ],
+        }),
+        existingSessions: const [],
+        now: now,
+      );
+
+      expect(result.generatedSessions.map((session) => session.taskId), ['active']);
+    });
+
     test('blocks dependent tasks until prerequisites are satisfied', () {
       final service = ScheduleGeneratorService(idGenerator: _idGenerator());
       final result = service.generateNext7DaysSchedule(
@@ -337,3 +365,5 @@ String _rangeString(DateTime start, DateTime end) {
   String two(int value) => value.toString().padLeft(2, '0');
   return '${two(start.hour)}:${two(start.minute)}-${two(end.hour)}:${two(end.minute)}';
 }
+
+

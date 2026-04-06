@@ -24,6 +24,7 @@ class Task {
     DateTime? updatedAt,
     this.completedAt,
     this.archivedAt,
+    this.progressResetAt,
   }) : updatedAt = updatedAt ?? createdAt;
 
   Id isarId = Isar.autoIncrement;
@@ -49,6 +50,7 @@ class Task {
   DateTime? updatedAt;
   DateTime? completedAt;
   DateTime? archivedAt;
+  DateTime? progressResetAt;
 
   Task copyWith({
     String? id,
@@ -75,6 +77,8 @@ class Task {
     bool clearCompletedAt = false,
     DateTime? archivedAt,
     bool clearArchivedAt = false,
+    DateTime? progressResetAt,
+    bool clearProgressResetAt = false,
   }) {
     final task = Task(
       id: id ?? this.id,
@@ -95,6 +99,9 @@ class Task {
       updatedAt: updatedAt ?? this.updatedAt,
       completedAt: clearCompletedAt ? null : completedAt ?? this.completedAt,
       archivedAt: clearArchivedAt ? null : archivedAt ?? this.archivedAt,
+      progressResetAt: clearProgressResetAt
+          ? null
+          : progressResetAt ?? this.progressResetAt,
     )..isarId = isarId;
 
     return task;

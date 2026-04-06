@@ -365,6 +365,7 @@ class BackupSerialization {
       'updatedAt': task.updatedAt?.toIso8601String(),
       'completedAt': task.completedAt?.toIso8601String(),
       'archivedAt': task.archivedAt?.toIso8601String(),
+      'progressResetAt': task.progressResetAt?.toIso8601String(),
     };
   }
 
@@ -404,8 +405,12 @@ class BackupSerialization {
       goalId: json['goalId']?.toString(),
       milestoneId: json['milestoneId']?.toString(),
       isCompleted: _asBool(json['isCompleted']) ?? false,
+      isArchived: _asBool(json['isArchived']) ?? false,
       createdAt: validCreatedAt,
+      updatedAt: _asDateTime(json['updatedAt']) ?? validCreatedAt,
       completedAt: _asDateTime(json['completedAt']),
+      archivedAt: _asDateTime(json['archivedAt']),
+      progressResetAt: _asDateTime(json['progressResetAt']),
     );
   }
 
@@ -823,3 +828,6 @@ class BackupSerialization {
     return null;
   }
 }
+
+
+

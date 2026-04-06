@@ -1,4 +1,4 @@
-﻿import '../../schedule/domain/task_progress_service.dart';
+import '../../schedule/domain/task_progress_service.dart';
 import '../domain/backup_models.dart';
 
 class DataIntegrityService {
@@ -55,7 +55,7 @@ class DataIntegrityService {
       }
       if (task.isCompleted &&
           taskProgressService.getCompletedMinutesForTask(
-                task.id,
+                task,
                 snapshot.plannedSessions,
               ) ==
               0) {
@@ -106,3 +106,6 @@ class DataIntegrityService {
     return DataIntegrityReport(scannedAt: DateTime.now(), issues: issues);
   }
 }
+
+
+

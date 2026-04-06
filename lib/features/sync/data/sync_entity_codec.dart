@@ -98,6 +98,7 @@ class SyncEntityCodec {
     'updatedAt': task.updatedAt?.toIso8601String(),
     'completedAt': task.completedAt?.toIso8601String(),
     'archivedAt': task.archivedAt?.toIso8601String(),
+    'progressResetAt': task.progressResetAt?.toIso8601String(),
   };
 
   Task _taskFromJson(Map<String, dynamic> json) {
@@ -114,8 +115,13 @@ class SyncEntityCodec {
       goalId: json['goalId'] as String?,
       milestoneId: json['milestoneId'] as String?,
       isCompleted: json['isCompleted'] as bool? ?? false,
+      isArchived: json['isArchived'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: _dateTimeOrNull(json['updatedAt']) ??
+          DateTime.parse(json['createdAt'] as String),
       completedAt: _dateTimeOrNull(json['completedAt']),
+      archivedAt: _dateTimeOrNull(json['archivedAt']),
+      progressResetAt: _dateTimeOrNull(json['progressResetAt']),
     );
   }
 
@@ -279,3 +285,6 @@ class SyncEntityCodec {
     return null;
   }
 }
+
+
+
