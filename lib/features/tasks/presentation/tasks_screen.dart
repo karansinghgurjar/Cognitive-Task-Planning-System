@@ -119,7 +119,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
               icon: Icons.archive_outlined,
               title: 'No archived tasks',
               message:
-                  'Archived tasks will appear here. Archive tasks when you want to hide them from active planning without deleting their history.',
+                  'Archived tasks appear only in this view. Restore them to make them active again, or delete them permanently if you no longer need the history.',
             ),
             actionsDisabled: actionsDisabled,
           ),
@@ -180,7 +180,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           icon: Icons.archive_outlined,
           title: 'No archived tasks',
           message:
-              'Archived tasks will appear here. Archive tasks when you want to hide them from active planning without deleting their history.',
+              'Archived tasks appear only in this combined view when they exist. Restore them to return them to normal planning.',
         ),
         actionsDisabled: actionsDisabled,
       ),
@@ -260,9 +260,8 @@ class _TaskFilterBar extends StatelessWidget {
           ],
           selected: {value},
           onSelectionChanged: (selection) {
-            final selectedValue = selection.firstOrNull;
-            if (selectedValue != null) {
-              onChanged(selectedValue);
+            if (selection.isNotEmpty) {
+              onChanged(selection.first);
             }
           },
         ),
@@ -481,10 +480,10 @@ class _TaskCard extends ConsumerWidget {
   Future<bool?> _confirmDelete(BuildContext context) {
     return AppConfirmationDialog.show(
       context,
-      title: 'Delete task?',
+      title: 'Delete this task permanently?',
       message:
-          'Remove "${task.title}" permanently? This also removes linked sessions and dependency edges.',
-      confirmLabel: 'Delete',
+          'This will remove linked sessions and dependency connections. This action cannot be undone.',
+      confirmLabel: 'Delete permanently',
       destructive: true,
     );
   }
@@ -630,7 +629,9 @@ class _ResetOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final borderColor = destructive ? colorScheme.errorContainer : colorScheme.outlineVariant;
+    final borderColor = destructive
+        ? colorScheme.errorContainer
+        : colorScheme.outlineVariant;
     final iconColor = destructive ? colorScheme.error : colorScheme.primary;
     return InkWell(
       onTap: onTap,
@@ -645,7 +646,9 @@ class _ResetOptionTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              destructive ? Icons.restart_alt_rounded : Icons.history_toggle_off_rounded,
+              destructive
+                  ? Icons.restart_alt_rounded
+                  : Icons.history_toggle_off_rounded,
               color: iconColor,
             ),
             const SizedBox(width: 12),
@@ -681,4 +684,3 @@ class _TaskMetaChip extends StatelessWidget {
     return AppStatusChip(label: label);
   }
 }
-
