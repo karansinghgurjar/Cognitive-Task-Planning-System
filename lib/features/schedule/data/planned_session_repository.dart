@@ -164,6 +164,37 @@ class PlannedSessionRepository implements SessionProgressSessionStore {
     }
   }
 
+  Future<void> deleteFutureNonCompletedSessionsByTaskId(
+    String taskId,
+    DateTime now,
+  ) async {
+    final sessions = await _isar.plannedSessions
+        .filter()
+        .taskIdEqualTo(taskId)
+        .findAll();
+    final deletableSessions = sessions.where((session) {
+      if (session.isCompleted) {
+        return false;
+      }
+      return !session.start.isBefore(now);
+    }).toList();
+    if (deletableSessions.isEmpty) {
+      return;
+    }
+
+    await _isar.writeTxn(() async {
+      await _isar.plannedSessions.deleteAll(
+        deletableSessions.map((session) => session.isarId).toList(),
+      );
+    });
+    for (final session in deletableSessions) {
+      await _syncMutationRecorder.recordDelete(
+        entityType: SyncEntityType.plannedSession,
+        entityId: session.id,
+      );
+    }
+  }
+
   Future<void> deleteSessionsInRange(DateTime start, DateTime end) async {
     final sessions = await getSessionsInRange(start, end);
     if (sessions.isEmpty) {
@@ -233,3 +264,4 @@ class PlannedSessionRepository implements SessionProgressSessionStore {
     return left.start.compareTo(right.start);
   }
 }
+

@@ -30,6 +30,27 @@ class TaskRepository implements SessionProgressTaskStore {
     });
   }
 
+  Future<List<Task>> getActiveTasks() {
+    return getAllTasks(includeArchived: false);
+  }
+
+  Stream<List<Task>> watchActiveTasks() {
+    return watchAllTasks(includeArchived: false);
+  }
+
+  Future<List<Task>> getArchivedTasks() async {
+    final tasks = await _isar.tasks.where().findAll();
+    final archivedTasks = tasks.where((task) => task.isArchived).toList();
+    archivedTasks.sort(_compareTasks);
+    return archivedTasks;
+  }
+
+  Stream<List<Task>> watchArchivedTasks() {
+    return _isar.tasks.watchLazy(fireImmediately: true).asyncMap((_) {
+      return getArchivedTasks();
+    });
+  }
+
   Future<void> addTask(Task task) async {
     final taskToStore = task.copyWith(
       updatedAt: task.updatedAt ?? task.createdAt,
@@ -183,3 +204,4 @@ class TaskRepository implements SessionProgressTaskStore {
     );
   }
 }
+

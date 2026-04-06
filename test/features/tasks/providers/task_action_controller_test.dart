@@ -102,7 +102,7 @@ void main() {
           .read(taskActionControllerProvider.notifier)
           .archiveTask(task);
 
-      expect(sessionRepository.deletedSessionIds, ['future-1']);
+      expect(sessionRepository.deletedNonCompletedTaskIds, ['task-1']);
       expect(taskRepository.archivedTaskIds, ['task-1']);
     },
   );
@@ -193,6 +193,12 @@ class _FakeTaskRepository implements TaskRepository {
       const [];
 
   @override
+  Future<List<Task>> getActiveTasks() async => const [];
+
+  @override
+  Future<List<Task>> getArchivedTasks() async => const [];
+
+  @override
   Future<Task?> getTaskById(String id) async => taskById[id];
 
   @override
@@ -214,6 +220,16 @@ class _FakeTaskRepository implements TaskRepository {
   Stream<List<Task>> watchAllTasks({bool includeArchived = true}) async* {
     yield const [];
     yield* _controller.stream;
+  }
+
+  @override
+  Stream<List<Task>> watchActiveTasks() async* {
+    yield const [];
+  }
+
+  @override
+  Stream<List<Task>> watchArchivedTasks() async* {
+    yield const [];
   }
 }
 
@@ -245,6 +261,15 @@ class _FakePlannedSessionRepository implements PlannedSessionRepository {
   @override
   Future<void> deleteNonCompletedSessionsByTaskId(String taskId) async {
     callLog.add('deleteNonCompletedSessionsByTaskId($taskId)');
+    deletedNonCompletedTaskIds.add(taskId);
+  }
+
+  @override
+  Future<void> deleteFutureNonCompletedSessionsByTaskId(
+    String taskId,
+    DateTime now,
+  ) async {
+    callLog.add('deleteFutureNonCompletedSessionsByTaskId($taskId)');
     deletedNonCompletedTaskIds.add(taskId);
   }
 
@@ -363,4 +388,3 @@ class _StubFocusController extends FocusSessionController {
   @override
   FocusSessionState? build() => _state;
 }
-

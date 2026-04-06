@@ -68,20 +68,14 @@ class TaskLifecycleService {
   }
 
   Future<void> clearFutureSessionsForTask(String taskId) async {
-    final now = _clock();
-    final sessions = await _plannedSessionRepository.getAllSessions();
-    final sessionsToDelete = sessions.where((session) {
-      if (session.taskId != taskId) return false;
-      if (session.isCompleted) return false;
-      return !session.start.isBefore(now);
-    }).toList();
-
-    for (final session in sessionsToDelete) {
-      await _plannedSessionRepository.deleteSession(session.id);
-    }
+    await _plannedSessionRepository.deleteFutureNonCompletedSessionsByTaskId(
+      taskId,
+      _clock(),
+    );
   }
 
   Future<void> clearAllSessionsForTask(String taskId) {
     return _plannedSessionRepository.deleteSessionsByTaskId(taskId);
   }
 }
+

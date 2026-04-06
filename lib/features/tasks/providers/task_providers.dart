@@ -39,7 +39,12 @@ final watchTasksProvider = StreamProvider<List<Task>>((ref) async* {
 
 final watchActiveTasksProvider = StreamProvider<List<Task>>((ref) async* {
   final repository = await ref.watch(taskRepositoryProvider.future);
-  yield* repository.watchAllTasks(includeArchived: false);
+  yield* repository.watchActiveTasks();
+});
+
+final watchArchivedTasksProvider = StreamProvider<List<Task>>((ref) async* {
+  final repository = await ref.watch(taskRepositoryProvider.future);
+  yield* repository.watchArchivedTasks();
 });
 
 final taskActionControllerProvider =
@@ -162,3 +167,4 @@ class TaskActionController extends AsyncNotifier<void> {
     }
   }
 }
+
