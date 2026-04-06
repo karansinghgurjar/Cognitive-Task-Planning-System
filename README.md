@@ -11,7 +11,7 @@ The app is designed for local-first usage with Isar as the primary datastore and
 - Timetable-driven schedule generation and missed-session recovery
 - Focus sessions with pause, resume, cancel, and completion flows
 - Recommendations and analytics dashboards for workload and progress visibility
-- JSON backup/restore, CSV export, and integrity checks
+- JSON backup/restore, CSV export, ICS calendar export, and integrity checks
 - Optional Supabase-based sync and account flows
 - Notification and reminder infrastructure with background-worker support
 
@@ -33,7 +33,7 @@ The app is designed for local-first usage with Isar as the primary datastore and
 
 ### Safety and operations
 
-- `Backup & Restore`: full JSON backups, import preview, CSV export, and integrity checks
+- `Backup & Restore`: full JSON backups, import preview, CSV export, ICS calendar export, and integrity checks
 - `Sync & Account`: sign-in, status, queue visibility, and bootstrap flows when Supabase is configured
 - `Notifications`: session reminders, daily summary preferences, deadline warnings, and backup reminder cadence
 - `Settings`: notification preferences, sync entry points, onboarding replay, and about/release context
@@ -69,7 +69,7 @@ High-level flow:
 2. `AppBootstrap` creates the Material app shell.
 3. `StartupGate` decides whether to show onboarding or the main application.
 4. `HomeShell` hosts the primary tabs: Today, Tasks, Goals, Insights, and Timetable.
-5. Settings provides access to notifications, backup/restore, sync, onboarding replay, and about details.
+5. Settings provides access to notifications, backup/restore, calendar export, sync, onboarding replay, and about details.
 
 The app is intentionally resilient to optional-service failures. If sync initialization fails at startup, the app can still continue in offline mode.
 
@@ -201,7 +201,7 @@ Typical workflow inside the app:
 5. Review the Today screen for sessions, recovery actions, and recommended next move.
 6. Run focus sessions while tracking completion and progress.
 7. Use analytics and recommendations to adjust workload.
-8. Export backups regularly and enable sync only after backend setup is verified.
+8. Export backups or calendar files regularly and enable sync only after backend setup is verified.
 
 ## Current Verification Status
 
@@ -227,6 +227,7 @@ Recent hardening work focused on:
 - Notification delivery and permission UX still require manual platform-level verification.
 - Android-specific background execution should be revalidated on a real device.
 - File-picker and save-dialog flows were hardened, but still need manual verification on Windows and Android.
+- Calendar export currently generates importable `.ics` files only; it does not provide live calendar sync.
 - The technical package/binary identifiers still use `study_flow` for compatibility, even though the user-facing app name is `Cognitive Task Planning System`.
 
 ## QA Coverage Areas

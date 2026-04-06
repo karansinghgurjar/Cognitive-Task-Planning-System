@@ -12,6 +12,7 @@ import '../../analytics/providers/analytics_providers.dart';
 import '../../focus_session/domain/focus_session_state.dart';
 import '../../focus_session/presentation/focus_session_screen.dart';
 import '../../focus_session/providers/focus_session_providers.dart';
+import '../../integrations/presentation/calendar_export_screen.dart';
 import '../../recommendations/domain/recommendation_models.dart';
 import '../../recommendations/providers/recommendation_providers.dart';
 import '../../tasks/models/task.dart';
@@ -572,6 +573,17 @@ class _TodayHeader extends ConsumerWidget {
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Recover & Reschedule'),
           ),
+        ),
+        IconButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const CalendarExportScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.event_available_rounded),
+          tooltip: 'Export to Calendar',
         ),
         IconButton(
           onPressed: () => AppRouter.openSettings(context),

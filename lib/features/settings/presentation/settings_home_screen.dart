@@ -24,9 +24,9 @@ class SettingsHomeScreen extends ConsumerWidget {
         children: [
           Text(
             'Settings & Tools',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
@@ -79,7 +79,7 @@ class SettingsHomeScreen extends ConsumerWidget {
             leading: const Icon(Icons.backup_outlined),
             title: const Text('Backup & restore'),
             subtitle: const Text(
-              'Create JSON backups, import data, export CSV, and run integrity checks.',
+              'Create JSON backups, import data, export CSV or calendar files, and run integrity checks.',
             ),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () {
@@ -99,7 +99,9 @@ class SettingsHomeScreen extends ConsumerWidget {
             ),
             trailing: const Icon(Icons.replay_rounded),
             onTap: () async {
-              await ref.read(onboardingActionControllerProvider.notifier).reset();
+              await ref
+                  .read(onboardingActionControllerProvider.notifier)
+                  .reset();
               if (!context.mounted) {
                 return;
               }

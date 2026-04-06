@@ -7,6 +7,7 @@ import '../../../core/errors/error_handler.dart';
 import '../../../core/layout/responsive_layout.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
 import '../../../core/widgets/app_section_header.dart';
+import '../../integrations/presentation/calendar_export_screen.dart';
 import '../../settings/models/notification_preferences.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../domain/backup_models.dart';
@@ -108,6 +109,27 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                           ? null
                           : _exportAnalyticsCsv,
                       child: const Text('Export Analytics Summary'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _ActionCard(
+                  title: 'Calendar Export',
+                  description:
+                      'Export planned sessions as a standard .ics calendar file for Google Calendar, Outlook, Apple Calendar, and similar tools.',
+                  actions: [
+                    FilledButton.tonalIcon(
+                      onPressed: actionState.isLoading
+                          ? null
+                          : () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const CalendarExportScreen(),
+                                ),
+                              );
+                            },
+                      icon: const Icon(Icons.event_available_rounded),
+                      label: const Text('Export to Calendar'),
                     ),
                   ],
                 ),
