@@ -439,7 +439,7 @@ class _AiPlanPreviewScreenState extends ConsumerState<AiPlanPreviewScreen> {
     );
 
     try {
-      await ref
+      final goalId = await ref
           .read(aiPlanningControllerProvider.notifier)
           .importPlan(result, existingGoalId: widget.existingGoalId);
       if (!mounted) {
@@ -454,7 +454,7 @@ class _AiPlanPreviewScreenState extends ConsumerState<AiPlanPreviewScreen> {
           ),
         ),
       );
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      Navigator.of(context).pop(goalId);
     } catch (error) {
       if (!mounted) {
         return;

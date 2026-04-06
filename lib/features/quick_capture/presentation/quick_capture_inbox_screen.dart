@@ -8,6 +8,7 @@ import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/app_status_chip.dart';
 import '../../ai_planning/domain/ai_planning_models.dart';
+import '../../ai_planning/presentation/ai_plan_generator_screen.dart';
 import '../../goals/models/learning_goal.dart';
 import '../../goals/presentation/add_goal_screen.dart';
 import '../../goals/providers/goal_providers.dart';
@@ -15,6 +16,7 @@ import '../../tasks/models/task.dart';
 import '../../tasks/presentation/add_task_screen.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../models/quick_capture_item.dart';
+import 'quick_capture_sheet.dart';
 import '../providers/quick_capture_providers.dart';
 
 enum QuickCaptureInboxFilter { unprocessed, all }
@@ -77,6 +79,11 @@ class _QuickCaptureInboxScreenState
               message: _filter == QuickCaptureInboxFilter.unprocessed
                   ? 'Use Quick Capture to dump ideas, tasks, and goals here for later processing.'
                   : 'Your captured items will appear here once you start using Quick Capture.',
+              action: FilledButton.icon(
+                onPressed: () => QuickCaptureSheet.show(context),
+                icon: const Icon(Icons.bolt_rounded),
+                label: const Text('Add first capture'),
+              ),
             );
           }
           return ListView.separated(
@@ -120,6 +127,11 @@ class _QuickCaptureInboxScreenState
                                 const PopupMenuItem(
                                   value: _CaptureMenuAction.instantGoal,
                                   child: Text('Create Goal Instantly'),
+                                ),
+                              if (!item.isProcessed)
+                                const PopupMenuItem(
+                                  value: _CaptureMenuAction.goalAndPlan,
+                                  child: Text('Convert to Goal + Plan'),
                                 ),
                               if (!item.isProcessed)
                                 const PopupMenuItem(
@@ -201,6 +213,13 @@ class _QuickCaptureInboxScreenState
                               icon: const Icon(Icons.track_changes_rounded),
                               label: const Text('Convert to Goal'),
                             ),
+                            OutlinedButton.icon(
+                              onPressed: isBusy
+                                  ? null
+                                  : () => _convertToGoalAndGeneratePlan(item),
+                              icon: const Icon(Icons.auto_awesome_rounded),
+                              label: const Text('Goal + Plan'),
+                            ),
                             TextButton.icon(
                               onPressed: isBusy
                                   ? null
@@ -240,6 +259,9 @@ class _QuickCaptureInboxScreenState
         break;
       case _CaptureMenuAction.instantGoal:
         await _createGoalInstantly(item);
+        break;
+      case _CaptureMenuAction.goalAndPlan:
+        await _convertToGoalAndGeneratePlan(item);
         break;
       case _CaptureMenuAction.markNote:
         await _markAsNote(item);
@@ -425,6 +447,37 @@ class _QuickCaptureInboxScreenState
     );
   }
 
+  Future<void> _convertToGoalAndGeneratePlan(QuickCaptureItem item) async {
+    final goalId = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => AiPlanGeneratorScreen(
+          initialPrompt: item.rawText,
+          title: 'Convert to Goal and Generate Plan',
+        ),
+      ),
+    );
+
+    if (goalId == null || !mounted) {
+      return;
+    }
+
+    await _runItemAction(
+      item.id,
+      () async {
+        await ref
+            .read(quickCaptureActionControllerProvider.notifier)
+            .markProcessed(
+              item.id,
+              linkedEntityId: goalId,
+              processedEntityType: QuickCaptureProcessedEntityType.goal,
+            );
+      },
+      fallbackTitle: 'Goal planning failed',
+      fallbackMessage:
+          'The capture could not be linked to the generated goal plan.',
+    );
+  }
+
   Future<void> _markAsNote(QuickCaptureItem item) async {
     await _runItemAction(
       item.id,
@@ -575,4 +628,11 @@ class _QuickCaptureInboxScreenState
   }
 }
 
-enum _CaptureMenuAction { edit, instantTask, instantGoal, markNote, delete }
+enum _CaptureMenuAction {
+  edit,
+  instantTask,
+  instantGoal,
+  goalAndPlan,
+  markNote,
+  delete,
+}

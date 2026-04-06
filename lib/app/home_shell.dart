@@ -53,6 +53,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             _ChangeTabIntent(4),
         SingleActivator(LogicalKeyboardKey.comma, control: true):
             _OpenSettingsIntent(),
+        SingleActivator(LogicalKeyboardKey.keyK, control: true):
+            _OpenQuickCaptureIntent(),
+        SingleActivator(LogicalKeyboardKey.keyK, meta: true):
+            _OpenQuickCaptureIntent(),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
@@ -65,6 +69,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           _OpenSettingsIntent: CallbackAction<_OpenSettingsIntent>(
             onInvoke: (_) {
               AppRouter.openSettings(context);
+              return null;
+            },
+          ),
+          _OpenQuickCaptureIntent: CallbackAction<_OpenQuickCaptureIntent>(
+            onInvoke: (_) {
+              QuickCaptureSheet.show(context);
               return null;
             },
           ),
@@ -194,4 +204,8 @@ class _ChangeTabIntent extends Intent {
 
 class _OpenSettingsIntent extends Intent {
   const _OpenSettingsIntent();
+}
+
+class _OpenQuickCaptureIntent extends Intent {
+  const _OpenQuickCaptureIntent();
 }

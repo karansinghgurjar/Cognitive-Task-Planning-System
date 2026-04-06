@@ -189,6 +189,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             _ActiveFocusBanner(session: activeFocusSession),
             const SizedBox(height: 16),
           ],
+          const _QuickCaptureTodayCard(),
+          const SizedBox(height: 16),
           _TodayRecommendationCard(
             summaryAsync: recommendationSummaryAsync,
             tasks: tasks,
@@ -228,6 +230,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           _ActiveFocusBanner(session: activeFocusSession),
           const SizedBox(height: 16),
         ],
+        const _QuickCaptureTodayCard(),
+        const SizedBox(height: 16),
         _TodayRecommendationCard(
           summaryAsync: recommendationSummaryAsync,
           tasks: tasks,
@@ -1270,6 +1274,62 @@ class _ActiveFocusBanner extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickCaptureTodayCard extends ConsumerWidget {
+  const _QuickCaptureTodayCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inboxCount =
+        ref.watch(unprocessedCaptureCountProvider).valueOrNull ?? 0;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Quick Capture',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    inboxCount == 0
+                        ? 'Capture ideas, tasks, and goals before they disappear.'
+                        : '$inboxCount item${inboxCount == 1 ? '' : 's'} waiting in your inbox.',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.tonalIcon(
+              onPressed: () => QuickCaptureSheet.show(context),
+              icon: const Icon(Icons.bolt_rounded),
+              label: const Text('Quick Capture'),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.tonalIcon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const QuickCaptureInboxScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.inbox_rounded),
+              label: Text('Inbox ($inboxCount)'),
+            ),
+          ],
         ),
       ),
     );

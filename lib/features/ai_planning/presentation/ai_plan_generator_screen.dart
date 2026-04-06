@@ -225,14 +225,17 @@ class _AiPlanGeneratorScreenState extends ConsumerState<AiPlanGeneratorScreen> {
       if (!mounted) {
         return;
       }
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
+      final importedGoalId = await Navigator.of(context).push<String>(
+        MaterialPageRoute<String>(
           builder: (_) => AiPlanPreviewScreen(
             initialPreview: preview,
             existingGoalId: widget.existingGoalId,
           ),
         ),
       );
+      if (importedGoalId != null && mounted) {
+        Navigator.of(context).pop(importedGoalId);
+      }
     } catch (error) {
       if (!mounted) {
         return;

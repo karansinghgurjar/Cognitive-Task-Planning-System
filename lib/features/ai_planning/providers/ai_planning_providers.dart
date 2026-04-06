@@ -147,15 +147,19 @@ class AiPlanningController extends AsyncNotifier<void> {
     }
   }
 
-  Future<void> importPlan(AiPlanResult result, {String? existingGoalId}) async {
+  Future<String> importPlan(
+    AiPlanResult result, {
+    String? existingGoalId,
+  }) async {
     state = const AsyncLoading();
     try {
       final importer = await ref.read(aiPlanImportServiceProvider.future);
-      await importer.importApprovedPlan(
+      final goalId = await importer.importApprovedPlan(
         result,
         ImportOptions(existingGoalId: existingGoalId),
       );
       state = const AsyncData(null);
+      return goalId;
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       rethrow;

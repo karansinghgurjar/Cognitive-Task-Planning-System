@@ -36,7 +36,7 @@ class AiPlanImportService {
   final AiPlanTaskStore _taskRepository;
   final Uuid _uuid;
 
-  Future<void> importApprovedPlan(
+  Future<String> importApprovedPlan(
     AiPlanResult result,
     ImportOptions options,
   ) async {
@@ -121,7 +121,7 @@ class AiPlanImportService {
     }
 
     if (!options.createDependencies) {
-      return;
+      return goal.id;
     }
 
     for (final draft in result.dependencies) {
@@ -146,6 +146,8 @@ class AiPlanImportService {
         ),
       );
     }
+
+    return goal.id;
   }
 
   Future<LearningGoal> _resolveGoal(
