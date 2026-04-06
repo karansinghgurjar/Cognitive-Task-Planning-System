@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/navigation/app_navigation.dart';
 import '../features/analytics/presentation/analytics_dashboard_screen.dart';
 import '../features/goals/presentation/add_goal_screen.dart';
+import '../features/quick_capture/presentation/quick_capture_inbox_screen.dart';
+import '../features/quick_capture/presentation/quick_capture_sheet.dart';
 import '../features/goals/presentation/goals_screen.dart';
 import '../features/schedule/presentation/today_screen.dart';
 import '../features/tasks/presentation/add_task_screen.dart';
@@ -112,9 +114,40 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   }
 
   Widget? _buildFloatingActionButton() {
+    final primaryFab = _buildPrimaryFloatingActionButton();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        FloatingActionButton.small(
+          heroTag: 'quick-capture-inbox-fab',
+          tooltip: 'Open Quick Capture inbox',
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const QuickCaptureInboxScreen(),
+              ),
+            );
+          },
+          child: const Icon(Icons.inbox_rounded),
+        ),
+        const SizedBox(height: 12),
+        FloatingActionButton.small(
+          heroTag: 'quick-capture-entry-fab',
+          tooltip: 'Quick Capture',
+          onPressed: () => QuickCaptureSheet.show(context),
+          child: const Icon(Icons.bolt_rounded),
+        ),
+        if (primaryFab != null) ...[const SizedBox(height: 12), primaryFab],
+      ],
+    );
+  }
+
+  Widget? _buildPrimaryFloatingActionButton() {
     switch (ref.watch(homeTabIndexProvider)) {
       case 1:
         return FloatingActionButton.extended(
+          heroTag: 'add-task-fab',
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const AddTaskScreen()),
@@ -125,6 +158,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         );
       case 2:
         return FloatingActionButton.extended(
+          heroTag: 'add-goal-fab',
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const AddGoalScreen()),
@@ -135,6 +169,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         );
       case 4:
         return FloatingActionButton.extended(
+          heroTag: 'add-slot-fab',
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(

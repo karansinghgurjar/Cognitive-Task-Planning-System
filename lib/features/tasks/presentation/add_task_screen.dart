@@ -8,9 +8,24 @@ import '../models/task.dart';
 import '../providers/task_providers.dart';
 
 class AddTaskScreen extends ConsumerStatefulWidget {
-  const AddTaskScreen({super.key, this.initialTask});
+  const AddTaskScreen({
+    super.key,
+    this.initialTask,
+    this.initialTitle,
+    this.initialDescription,
+    this.initialType,
+    this.initialEstimatedDurationMinutes,
+    this.initialPriority,
+    this.initialDueDate,
+  });
 
   final Task? initialTask;
+  final String? initialTitle;
+  final String? initialDescription;
+  final TaskType? initialType;
+  final int? initialEstimatedDurationMinutes;
+  final int? initialPriority;
+  final DateTime? initialDueDate;
 
   bool get isEditing => initialTask != null;
 
@@ -36,13 +51,16 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
   void initState() {
     super.initState();
     final task = widget.initialTask;
-    _selectedType = task?.type ?? TaskType.study;
-    _selectedPriority = task?.priority ?? 3;
-    _selectedDueDate = task?.dueDate;
-    _titleController.text = task?.title ?? '';
-    _descriptionController.text = task?.description ?? '';
+    _selectedType = task?.type ?? widget.initialType ?? TaskType.study;
+    _selectedPriority = task?.priority ?? widget.initialPriority ?? 3;
+    _selectedDueDate = task?.dueDate ?? widget.initialDueDate;
+    _titleController.text = task?.title ?? widget.initialTitle ?? '';
+    _descriptionController.text =
+        task?.description ?? widget.initialDescription ?? '';
     _estimatedDurationController.text =
-        task?.estimatedDurationMinutes.toString() ?? '';
+        task?.estimatedDurationMinutes.toString() ??
+        widget.initialEstimatedDurationMinutes?.toString() ??
+        '';
     _resourceUrlController.text = task?.resourceUrl ?? '';
     _resourceTagController.text = task?.resourceTag ?? '';
   }
@@ -227,7 +245,13 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.save_rounded),
-              label: Text(_isSaving ? 'Saving...' : isEditing ? 'Save changes' : 'Save task'),
+              label: Text(
+                _isSaving
+                    ? 'Saving...'
+                    : isEditing
+                    ? 'Save changes'
+                    : 'Save task',
+              ),
             ),
           ],
         ),
@@ -272,7 +296,9 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
           title: _titleController.text.trim(),
           description: _normalizeOptionalText(_descriptionController.text),
           type: _selectedType,
-          estimatedDurationMinutes: int.parse(_estimatedDurationController.text),
+          estimatedDurationMinutes: int.parse(
+            _estimatedDurationController.text,
+          ),
           dueDate: _selectedDueDate,
           priority: _selectedPriority,
           resourceUrl: _normalizeOptionalText(_resourceUrlController.text),
@@ -283,28 +309,39 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
           completedAt: null,
         );
         await ref.read(taskActionControllerProvider.notifier).addTask(task);
+        if (!mounted) {
+          return;
+        }
+        Navigator.of(context).pop(task.id);
+        return;
       } else {
         final updatedTask = existingTask.copyWith(
           title: _titleController.text.trim(),
           description: _normalizeOptionalText(_descriptionController.text),
           type: _selectedType,
-          estimatedDurationMinutes: int.parse(_estimatedDurationController.text),
+          estimatedDurationMinutes: int.parse(
+            _estimatedDurationController.text,
+          ),
           dueDate: _selectedDueDate,
           clearDueDate: _selectedDueDate == null,
           priority: _selectedPriority,
           resourceUrl: _normalizeOptionalText(_resourceUrlController.text),
-          clearResourceUrl: _normalizeOptionalText(_resourceUrlController.text) == null,
+          clearResourceUrl:
+              _normalizeOptionalText(_resourceUrlController.text) == null,
           resourceTag: _normalizeOptionalText(_resourceTagController.text),
-          clearResourceTag: _normalizeOptionalText(_resourceTagController.text) == null,
+          clearResourceTag:
+              _normalizeOptionalText(_resourceTagController.text) == null,
           updatedAt: DateTime.now(),
         );
-        await ref.read(taskActionControllerProvider.notifier).updateTask(updatedTask);
-      }
-
-      if (!mounted) {
+        await ref
+            .read(taskActionControllerProvider.notifier)
+            .updateTask(updatedTask);
+        if (!mounted) {
+          return;
+        }
+        Navigator.of(context).pop(updatedTask.id);
         return;
       }
-      Navigator.of(context).pop();
     } catch (error) {
       if (!mounted) {
         return;
@@ -312,7 +349,9 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
       ErrorHandler.showSnackBar(
         context,
         error,
-        fallbackTitle: widget.isEditing ? 'Task update failed' : 'Task save failed',
+        fallbackTitle: widget.isEditing
+            ? 'Task update failed'
+            : 'Task save failed',
         fallbackMessage: widget.isEditing
             ? 'The task could not be updated.'
             : 'The task could not be saved.',

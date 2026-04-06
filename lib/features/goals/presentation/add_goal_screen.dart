@@ -8,7 +8,22 @@ import '../models/learning_goal.dart';
 import '../providers/goal_providers.dart';
 
 class AddGoalScreen extends ConsumerStatefulWidget {
-  const AddGoalScreen({super.key});
+  const AddGoalScreen({
+    super.key,
+    this.initialTitle,
+    this.initialDescription,
+    this.initialGoalType,
+    this.initialPriority,
+    this.initialEstimatedMinutes,
+    this.initialTargetDate,
+  });
+
+  final String? initialTitle;
+  final String? initialDescription;
+  final GoalType? initialGoalType;
+  final int? initialPriority;
+  final int? initialEstimatedMinutes;
+  final DateTime? initialTargetDate;
 
   @override
   ConsumerState<AddGoalScreen> createState() => _AddGoalScreenState();
@@ -25,6 +40,18 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
   int _selectedPriority = 3;
   DateTime? _selectedTargetDate;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedGoalType = widget.initialGoalType ?? GoalType.learning;
+    _selectedPriority = widget.initialPriority ?? 3;
+    _selectedTargetDate = widget.initialTargetDate;
+    _titleController.text = widget.initialTitle ?? '';
+    _descriptionController.text = widget.initialDescription ?? '';
+    _estimatedMinutesController.text =
+        widget.initialEstimatedMinutes?.toString() ?? '';
+  }
 
   @override
   void dispose() {
@@ -217,7 +244,7 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(goal.id);
     } catch (error) {
       if (!mounted) {
         return;

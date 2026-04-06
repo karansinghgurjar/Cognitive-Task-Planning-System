@@ -6,24 +6,32 @@ import '../data/quick_capture_repository.dart';
 import '../domain/quick_capture_parser_service.dart';
 import '../models/quick_capture_item.dart';
 
-final quickCaptureParserServiceProvider = Provider<QuickCaptureParserService>((ref) {
+final quickCaptureParserServiceProvider = Provider<QuickCaptureParserService>((
+  ref,
+) {
   return const QuickCaptureParserService();
 });
 
-final quickCaptureRepositoryProvider = FutureProvider<QuickCaptureRepository>((ref) async {
+final quickCaptureRepositoryProvider = FutureProvider<QuickCaptureRepository>((
+  ref,
+) async {
   final isar = await ref.watch(isarInstanceProvider.future);
   return QuickCaptureRepository(isar);
 });
 
-final watchAllCapturesProvider = StreamProvider<List<QuickCaptureItem>>((ref) async* {
+final watchAllCapturesProvider = StreamProvider<List<QuickCaptureItem>>((
+  ref,
+) async* {
   final repository = await ref.watch(quickCaptureRepositoryProvider.future);
   yield* repository.watchAllCaptures();
 });
 
-final watchUnprocessedCapturesProvider = StreamProvider<List<QuickCaptureItem>>((ref) async* {
-  final repository = await ref.watch(quickCaptureRepositoryProvider.future);
-  yield* repository.watchUnprocessedCaptures();
-});
+final watchUnprocessedCapturesProvider = StreamProvider<List<QuickCaptureItem>>(
+  (ref) async* {
+    final repository = await ref.watch(quickCaptureRepositoryProvider.future);
+    yield* repository.watchUnprocessedCaptures();
+  },
+);
 
 final unprocessedCaptureCountProvider = Provider<AsyncValue<int>>((ref) {
   final capturesAsync = ref.watch(watchUnprocessedCapturesProvider);
@@ -49,7 +57,10 @@ class QuickCaptureActionController extends AsyncNotifier<void> {
     });
   }
 
-  Future<void> addCaptureFromText(String rawText) async {
+  Future<void> addCaptureFromText(
+    String rawText, {
+    QuickCaptureSuggestedType? suggestedType,
+  }) async {
     _ensureIdle();
     final trimmed = rawText.trim();
     if (trimmed.isEmpty) {
@@ -66,7 +77,7 @@ class QuickCaptureActionController extends AsyncNotifier<void> {
           rawText: trimmed,
           createdAt: now,
           updatedAt: now,
-          suggestedType: parser.classify(trimmed),
+          suggestedType: suggestedType ?? parser.classify(trimmed),
         ),
       );
     });

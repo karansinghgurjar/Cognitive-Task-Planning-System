@@ -75,3 +75,31 @@ class QuickCaptureItem {
     )..isarId = isarId;
   }
 }
+
+extension QuickCaptureSuggestedTypeX on QuickCaptureSuggestedType {
+  String get label {
+    switch (this) {
+      case QuickCaptureSuggestedType.task:
+        return 'Task';
+      case QuickCaptureSuggestedType.goal:
+        return 'Goal';
+      case QuickCaptureSuggestedType.note:
+        return 'Note';
+      case QuickCaptureSuggestedType.unknown:
+        return 'Unknown';
+    }
+  }
+}
+
+extension QuickCaptureProcessedEntityTypeX on QuickCaptureProcessedEntityType {
+  String get label {
+    switch (this) {
+      case QuickCaptureProcessedEntityType.task:
+        return 'Task';
+      case QuickCaptureProcessedEntityType.goal:
+        return 'Goal';
+      case QuickCaptureProcessedEntityType.note:
+        return 'Note';
+    }
+  }
+}
