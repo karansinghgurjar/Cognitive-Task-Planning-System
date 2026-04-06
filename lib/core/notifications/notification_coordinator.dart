@@ -98,7 +98,7 @@ class _NotificationCoordinatorState
       });
     }, fireImmediately: true);
 
-    _tasksSub = ref.listenManual(watchTasksProvider, (_, next) {
+    _tasksSub = ref.listenManual(watchActiveTasksProvider, (_, next) {
       next.whenData((tasks) {
         _tasks = tasks;
         unawaited(_syncSessionNotifications());
@@ -148,7 +148,9 @@ class _NotificationCoordinatorState
     }
 
     try {
-      final syncService = await ref.read(notificationSyncServiceProvider.future);
+      final syncService = await ref.read(
+        notificationSyncServiceProvider.future,
+      );
       final now = DateTime.now();
       await syncService.cancelRemovedSessionReminders(
         previousSessions: _previousSessions,
@@ -195,7 +197,9 @@ class _NotificationCoordinatorState
     }
 
     try {
-      final syncService = await ref.read(notificationSyncServiceProvider.future);
+      final syncService = await ref.read(
+        notificationSyncServiceProvider.future,
+      );
       await syncService.syncRiskWarnings(
         goalReports: _goalReports,
         workloadWarnings: _workloadWarnings,

@@ -19,15 +19,17 @@ class Task {
     this.goalId,
     this.milestoneId,
     this.isCompleted = false,
+    this.isArchived = false,
     required this.createdAt,
+    DateTime? updatedAt,
     this.completedAt,
-  });
+    this.archivedAt,
+  }) : updatedAt = updatedAt ?? createdAt;
 
   Id isarId = Isar.autoIncrement;
 
   @Index(unique: true, replace: true)
   late String id;
-
   late String title;
   String? description;
 
@@ -42,8 +44,11 @@ class Task {
   String? goalId;
   String? milestoneId;
   late bool isCompleted;
+  late bool isArchived;
   late DateTime createdAt;
+  DateTime? updatedAt;
   DateTime? completedAt;
+  DateTime? archivedAt;
 
   Task copyWith({
     String? id,
@@ -63,9 +68,13 @@ class Task {
     String? milestoneId,
     bool clearMilestoneId = false,
     bool? isCompleted,
+    bool? isArchived,
     DateTime? createdAt,
+    DateTime? updatedAt,
     DateTime? completedAt,
     bool clearCompletedAt = false,
+    DateTime? archivedAt,
+    bool clearArchivedAt = false,
   }) {
     final task = Task(
       id: id ?? this.id,
@@ -81,8 +90,11 @@ class Task {
       goalId: clearGoalId ? null : goalId ?? this.goalId,
       milestoneId: clearMilestoneId ? null : milestoneId ?? this.milestoneId,
       isCompleted: isCompleted ?? this.isCompleted,
+      isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       completedAt: clearCompletedAt ? null : completedAt ?? this.completedAt,
+      archivedAt: clearArchivedAt ? null : archivedAt ?? this.archivedAt,
     )..isarId = isarId;
 
     return task;

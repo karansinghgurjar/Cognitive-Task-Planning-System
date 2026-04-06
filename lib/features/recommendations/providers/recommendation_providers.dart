@@ -45,7 +45,7 @@ final weeklyAvailabilityProvider =
 
 final bestNextTaskRecommendationProvider =
     Provider<AsyncValue<TaskRecommendation?>>((ref) {
-      final tasksAsync = ref.watch(watchTasksProvider);
+      final tasksAsync = ref.watch(watchActiveTasksProvider);
       final goalsAsync = ref.watch(watchGoalsProvider);
       final milestonesAsync = ref.watch(watchAllMilestonesProvider);
       final dependenciesAsync = ref.watch(watchDependenciesProvider);
@@ -141,7 +141,7 @@ final goalFeasibilityReportsProvider =
     Provider<AsyncValue<List<GoalFeasibilityReport>>>((ref) {
       final goalsAsync = ref.watch(watchGoalsProvider);
       final milestonesAsync = ref.watch(watchAllMilestonesProvider);
-      final tasksAsync = ref.watch(watchTasksProvider);
+      final tasksAsync = ref.watch(watchActiveTasksProvider);
       final sessionsAsync = ref.watch(watchAllSessionsProvider);
       final availabilityAsync = ref.watch(weeklyAvailabilityProvider);
 
@@ -198,7 +198,7 @@ final goalFeasibilityReportsProvider =
 final workloadWarningsProvider = Provider<AsyncValue<List<WorkloadWarning>>>((
   ref,
 ) {
-  final tasksAsync = ref.watch(watchTasksProvider);
+  final tasksAsync = ref.watch(watchActiveTasksProvider);
   final goalsAsync = ref.watch(watchGoalsProvider);
   final sessionsAsync = ref.watch(watchAllSessionsProvider);
   final availabilityAsync = ref.watch(weeklyAvailabilityProvider);
@@ -256,7 +256,7 @@ final workloadWarningsProvider = Provider<AsyncValue<List<WorkloadWarning>>>((
 
 final recommendationSummaryProvider =
     Provider<AsyncValue<RecommendationSummary>>((ref) {
-      final tasksAsync = ref.watch(watchTasksProvider);
+      final tasksAsync = ref.watch(watchActiveTasksProvider);
       final goalsAsync = ref.watch(watchGoalsProvider);
       final milestonesAsync = ref.watch(watchAllMilestonesProvider);
       final dependenciesAsync = ref.watch(watchDependenciesProvider);

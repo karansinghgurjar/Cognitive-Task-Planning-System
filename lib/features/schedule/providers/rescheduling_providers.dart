@@ -67,7 +67,7 @@ class ReschedulingController extends AsyncNotifier<ReschedulingResult?> {
         plannedSessionRepositoryProvider.future,
       );
 
-      final tasks = await taskRepository.getAllTasks();
+      final tasks = await taskRepository.getAllTasks(includeArchived: false);
       final dependencies = await goalRepository.getAllDependencies();
       final slots = await timetableRepository.getAllSlots();
       final sessions = await sessionRepository.getAllSessions();

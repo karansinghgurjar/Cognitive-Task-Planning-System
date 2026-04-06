@@ -58,7 +58,7 @@ void callbackDispatcher() {
 
       final preferences = await settingsRepository.getPreferences();
       final sessions = await plannedSessionRepository.getAllSessions();
-      final tasks = await taskRepository.getAllTasks();
+      final tasks = await taskRepository.getAllTasks(includeArchived: false);
       final goals = await goalRepository.getAllGoals();
       final milestones = await goalRepository.getAllMilestones();
       final timetableSlots = await timetableRepository.getAllSlots();

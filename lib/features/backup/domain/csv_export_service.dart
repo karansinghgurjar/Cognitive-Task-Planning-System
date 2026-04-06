@@ -21,8 +21,11 @@ class CsvExportService {
         'goalId',
         'milestoneId',
         'isCompleted',
+        'isArchived',
         'createdAt',
+        'updatedAt',
         'completedAt',
+        'archivedAt',
       ],
       for (final task in tasks)
         [
@@ -38,8 +41,11 @@ class CsvExportService {
           task.goalId ?? '',
           task.milestoneId ?? '',
           task.isCompleted.toString(),
+          task.isArchived.toString(),
           task.createdAt.toIso8601String(),
+          task.updatedAt?.toIso8601String() ?? '',
           task.completedAt?.toIso8601String() ?? '',
+          task.archivedAt?.toIso8601String() ?? '',
         ],
     ];
     return _encode(rows);

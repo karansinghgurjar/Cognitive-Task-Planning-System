@@ -18,7 +18,9 @@ import '../models/planned_session.dart';
 final plannedSessionRepositoryProvider =
     FutureProvider<PlannedSessionRepository>((ref) async {
       final isar = await ref.watch(isarInstanceProvider.future);
-      final syncMutationRecorder = await ref.watch(syncMutationRecorderProvider.future);
+      final syncMutationRecorder = await ref.watch(
+        syncMutationRecorderProvider.future,
+      );
       return PlannedSessionRepository(
         isar,
         syncMutationRecorder: syncMutationRecorder,
@@ -115,7 +117,7 @@ class ScheduleActionController extends AsyncNotifier<SchedulingResult?> {
         plannedSessionRepositoryProvider.future,
       );
 
-      final allTasks = await taskRepository.getAllTasks();
+      final allTasks = await taskRepository.getAllTasks(includeArchived: false);
       final incompleteTasks = allTasks
           .where((task) => !task.isCompleted)
           .toList();

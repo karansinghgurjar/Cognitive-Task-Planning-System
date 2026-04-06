@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
@@ -93,8 +93,11 @@ class SyncEntityCodec {
     'goalId': task.goalId,
     'milestoneId': task.milestoneId,
     'isCompleted': task.isCompleted,
+    'isArchived': task.isArchived,
     'createdAt': task.createdAt.toIso8601String(),
+    'updatedAt': task.updatedAt?.toIso8601String(),
     'completedAt': task.completedAt?.toIso8601String(),
+    'archivedAt': task.archivedAt?.toIso8601String(),
   };
 
   Task _taskFromJson(Map<String, dynamic> json) {
@@ -232,7 +235,9 @@ class SyncEntityCodec {
     );
   }
 
-  Map<String, dynamic> _preferencesToJson(NotificationPreferences preferences) => {
+  Map<String, dynamic> _preferencesToJson(
+    NotificationPreferences preferences,
+  ) => {
     'id': preferences.id,
     'sessionRemindersEnabled': preferences.sessionRemindersEnabled,
     'dailySummaryEnabled': preferences.dailySummaryEnabled,
@@ -258,7 +263,8 @@ class SyncEntityCodec {
       dailySummaryMinute: json['dailySummaryMinute'] as int? ?? 0,
       backupReminderEnabled: json['backupReminderEnabled'] as bool? ?? false,
       backupReminderCadence: BackupReminderCadence.values.byName(
-        json['backupReminderCadence'] as String? ?? BackupReminderCadence.weekly.name,
+        json['backupReminderCadence'] as String? ??
+            BackupReminderCadence.weekly.name,
       ),
       syncEnabled: json['syncEnabled'] as bool? ?? false,
       autoSyncEnabled: json['autoSyncEnabled'] as bool? ?? true,
@@ -273,4 +279,3 @@ class SyncEntityCodec {
     return null;
   }
 }
-

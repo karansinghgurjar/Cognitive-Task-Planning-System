@@ -360,8 +360,11 @@ class BackupSerialization {
       'goalId': task.goalId,
       'milestoneId': task.milestoneId,
       'isCompleted': task.isCompleted,
+      'isArchived': task.isArchived,
       'createdAt': task.createdAt.toIso8601String(),
+      'updatedAt': task.updatedAt?.toIso8601String(),
       'completedAt': task.completedAt?.toIso8601String(),
+      'archivedAt': task.archivedAt?.toIso8601String(),
     };
   }
 

@@ -58,7 +58,7 @@ class LocalSyncStore implements LocalSyncStoreContract {
           userId: userId,
           deviceId: deviceId,
           payload: codec.encodeEntity(SyncEntityType.task, task),
-          fallbackModifiedAt: task.createdAt,
+          fallbackModifiedAt: task.updatedAt ?? task.createdAt,
         ),
       );
     }

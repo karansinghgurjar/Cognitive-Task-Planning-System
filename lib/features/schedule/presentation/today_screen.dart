@@ -57,7 +57,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
   @override
   Widget build(BuildContext context) {
     final sessionsAsync = ref.watch(watchAllSessionsProvider);
-    final tasksAsync = ref.watch(watchTasksProvider);
+    final tasksAsync = ref.watch(watchActiveTasksProvider);
     final generateState = ref.watch(scheduleActionControllerProvider);
     final recoverState = ref.watch(reschedulingControllerProvider);
     final activeFocusSession = ref.watch(focusSessionControllerProvider);
