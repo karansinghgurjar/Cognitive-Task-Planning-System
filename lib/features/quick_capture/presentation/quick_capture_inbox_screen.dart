@@ -1,3 +1,4 @@
+import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,8 +10,10 @@ import '../../../core/widgets/app_status_chip.dart';
 import '../../ai_planning/domain/ai_planning_models.dart';
 import '../../goals/models/learning_goal.dart';
 import '../../goals/presentation/add_goal_screen.dart';
+import '../../goals/providers/goal_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/presentation/add_task_screen.dart';
+import '../../tasks/providers/task_providers.dart';
 import '../models/quick_capture_item.dart';
 import '../providers/quick_capture_providers.dart';
 
@@ -26,6 +29,7 @@ class QuickCaptureInboxScreen extends ConsumerStatefulWidget {
 
 class _QuickCaptureInboxScreenState
     extends ConsumerState<QuickCaptureInboxScreen> {
+  static const _uuid = Uuid();
   QuickCaptureInboxFilter _filter = QuickCaptureInboxFilter.unprocessed;
   String? _busyItemId;
 
@@ -107,6 +111,16 @@ class _QuickCaptureInboxScreenState
                                 value: _CaptureMenuAction.edit,
                                 child: Text('Edit text'),
                               ),
+                              if (!item.isProcessed)
+                                const PopupMenuItem(
+                                  value: _CaptureMenuAction.instantTask,
+                                  child: Text('Create Task Instantly'),
+                                ),
+                              if (!item.isProcessed)
+                                const PopupMenuItem(
+                                  value: _CaptureMenuAction.instantGoal,
+                                  child: Text('Create Goal Instantly'),
+                                ),
                               if (!item.isProcessed)
                                 const PopupMenuItem(
                                   value: _CaptureMenuAction.markNote,
@@ -221,6 +235,12 @@ class _QuickCaptureInboxScreenState
       case _CaptureMenuAction.edit:
         await _editRawText(item);
         break;
+      case _CaptureMenuAction.instantTask:
+        await _createTaskInstantly(item);
+        break;
+      case _CaptureMenuAction.instantGoal:
+        await _createGoalInstantly(item);
+        break;
       case _CaptureMenuAction.markNote:
         await _markAsNote(item);
         break;
@@ -319,6 +339,89 @@ class _QuickCaptureInboxScreenState
       fallbackTitle: 'Goal conversion failed',
       fallbackMessage:
           'The inbox item could not be linked to the created goal.',
+    );
+  }
+
+  Future<void> _createTaskInstantly(QuickCaptureItem item) async {
+    final parser = ref.read(quickCaptureParserServiceProvider);
+    final draft =
+        parser.toTaskDraft(item.rawText) ??
+        TaskDraft(
+          id: 'quick-capture-fallback',
+          title: item.rawText.trim(),
+          type: TaskType.misc,
+          estimatedMinutes: 60,
+          description: 'Created from Quick Capture.',
+        );
+
+    await _runItemAction(
+      item.id,
+      () async {
+        final now = DateTime.now();
+        final task = Task(
+          id: _uuid.v4(),
+          title: draft.title,
+          description: draft.description,
+          type: draft.type,
+          estimatedDurationMinutes: draft.estimatedMinutes,
+          dueDate: draft.dueDate,
+          priority: 3,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await ref.read(taskActionControllerProvider.notifier).addTask(task);
+        await ref
+            .read(quickCaptureActionControllerProvider.notifier)
+            .markProcessed(
+              item.id,
+              linkedEntityId: task.id,
+              processedEntityType: QuickCaptureProcessedEntityType.task,
+            );
+      },
+      fallbackTitle: 'Instant task creation failed',
+      fallbackMessage:
+          'The capture could not be converted into a task instantly.',
+    );
+  }
+
+  Future<void> _createGoalInstantly(QuickCaptureItem item) async {
+    final parser = ref.read(quickCaptureParserServiceProvider);
+    final draft =
+        parser.toGoalDraft(item.rawText) ??
+        GoalDraft(
+          title: item.rawText.trim(),
+          goalType: _fallbackGoalType(item.suggestedType),
+          priority: 3,
+          description: 'Created from Quick Capture.',
+          estimatedTotalMinutes: 480,
+        );
+
+    await _runItemAction(
+      item.id,
+      () async {
+        final goal = LearningGoal(
+          id: _uuid.v4(),
+          title: draft.title,
+          description: draft.description,
+          goalType: draft.goalType,
+          targetDate: draft.targetDate,
+          priority: draft.priority,
+          status: GoalStatus.active,
+          estimatedTotalMinutes: draft.estimatedTotalMinutes,
+          createdAt: DateTime.now(),
+        );
+        await ref.read(goalActionControllerProvider.notifier).addGoal(goal);
+        await ref
+            .read(quickCaptureActionControllerProvider.notifier)
+            .markProcessed(
+              item.id,
+              linkedEntityId: goal.id,
+              processedEntityType: QuickCaptureProcessedEntityType.goal,
+            );
+      },
+      fallbackTitle: 'Instant goal creation failed',
+      fallbackMessage:
+          'The capture could not be converted into a goal instantly.',
     );
   }
 
@@ -472,4 +575,4 @@ class _QuickCaptureInboxScreenState
   }
 }
 
-enum _CaptureMenuAction { edit, markNote, delete }
+enum _CaptureMenuAction { edit, instantTask, instantGoal, markNote, delete }

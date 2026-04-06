@@ -15,6 +15,9 @@ import '../../focus_session/providers/focus_session_providers.dart';
 import '../../recommendations/domain/recommendation_models.dart';
 import '../../recommendations/providers/recommendation_providers.dart';
 import '../../tasks/models/task.dart';
+import '../../quick_capture/presentation/quick_capture_inbox_screen.dart';
+import '../../quick_capture/presentation/quick_capture_sheet.dart';
+import '../../quick_capture/providers/quick_capture_providers.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../domain/rescheduling_models.dart';
 import '../models/planned_session.dart';
@@ -510,7 +513,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
   }
 }
 
-class _TodayHeader extends StatelessWidget {
+class _TodayHeader extends ConsumerWidget {
   const _TodayHeader({
     required this.isGenerating,
     required this.isRecovering,
@@ -524,12 +527,30 @@ class _TodayHeader extends StatelessWidget {
   final VoidCallback onRecover;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inboxCount =
+        ref.watch(unprocessedCaptureCountProvider).valueOrNull ?? 0;
     return AppSectionHeader(
       title: 'Today',
       description:
           'Generate, recover, and execute your next seven days of planned work.',
       actions: [
+        FilledButton.tonalIcon(
+          onPressed: () => QuickCaptureSheet.show(context),
+          icon: const Icon(Icons.bolt_rounded),
+          label: const Text('Quick Capture'),
+        ),
+        FilledButton.tonalIcon(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const QuickCaptureInboxScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.inbox_rounded),
+          label: Text('Inbox ($inboxCount)'),
+        ),
         Semantics(
           button: true,
           label: 'Generate Schedule',

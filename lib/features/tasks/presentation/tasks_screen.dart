@@ -11,6 +11,9 @@ import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/app_status_chip.dart';
+import '../../quick_capture/presentation/quick_capture_inbox_screen.dart';
+import '../../quick_capture/presentation/quick_capture_sheet.dart';
+import '../../quick_capture/providers/quick_capture_providers.dart';
 import '../domain/task_lifecycle_service.dart';
 import '../models/task.dart';
 import '../providers/task_providers.dart';
@@ -199,16 +202,34 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   }
 }
 
-class _TasksHeader extends StatelessWidget {
+class _TasksHeader extends ConsumerWidget {
   const _TasksHeader();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inboxCount =
+        ref.watch(unprocessedCaptureCountProvider).valueOrNull ?? 0;
     return AppSectionHeader(
       title: 'Tasks',
       description:
           'Track work, due dates, completion, and lifecycle actions without losing control of your schedule.',
       actions: [
+        FilledButton.tonalIcon(
+          onPressed: () => QuickCaptureSheet.show(context),
+          icon: const Icon(Icons.bolt_rounded),
+          label: const Text('Quick Capture'),
+        ),
+        FilledButton.tonalIcon(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const QuickCaptureInboxScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.inbox_rounded),
+          label: Text('Inbox ($inboxCount)'),
+        ),
         IconButton(
           onPressed: () => AppRouter.openSettings(context),
           icon: const Icon(Icons.settings_outlined),
@@ -236,9 +257,9 @@ class _TaskFilterBar extends StatelessWidget {
       children: [
         Text(
           'View',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         SegmentedButton<TaskListFilter>(
           segments: const [
@@ -463,7 +484,9 @@ class _TaskCard extends ConsumerWidget {
 
   Future<void> _toggleCompleted(BuildContext context, WidgetRef ref) async {
     try {
-      await ref.read(taskActionControllerProvider.notifier).toggleCompleted(task);
+      await ref
+          .read(taskActionControllerProvider.notifier)
+          .toggleCompleted(task);
     } catch (error) {
       if (context.mounted) {
         ErrorHandler.showSnackBar(
