@@ -14,5 +14,10 @@ class MigrationNotes {
       description:
           'Initial Cognitive Task Planning System schema with tasks, timetable, schedule, goals, notifications, analytics, and backup metadata.',
     ),
+    MigrationNote(
+      version: 2,
+      description:
+          'Added Quick Capture inbox storage for low-friction brain-dump items.',
+    ),
   ];
 }
