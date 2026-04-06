@@ -62,6 +62,14 @@ class TaskActionController extends AsyncNotifier<void> {
     });
   }
 
+  Future<void> updateTask(Task task) async {
+    _ensureIdle();
+    await _run(() async {
+      final repository = await ref.read(taskRepositoryProvider.future);
+      await repository.updateTask(task.copyWith(updatedAt: DateTime.now()));
+    });
+  }
+
   Future<void> toggleCompleted(Task task) async {
     _ensureIdle();
     await _run(() async {
@@ -167,4 +175,3 @@ class TaskActionController extends AsyncNotifier<void> {
     }
   }
 }
-

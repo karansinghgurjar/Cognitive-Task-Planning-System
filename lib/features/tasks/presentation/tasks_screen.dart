@@ -14,12 +14,20 @@ import '../../../core/widgets/app_status_chip.dart';
 import '../domain/task_lifecycle_service.dart';
 import '../models/task.dart';
 import '../providers/task_providers.dart';
+import 'add_task_screen.dart';
 
-class TasksScreen extends ConsumerWidget {
+class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TasksScreen> createState() => _TasksScreenState();
+}
+
+class _TasksScreenState extends ConsumerState<TasksScreen> {
+  TaskListFilter _filter = TaskListFilter.active;
+
+  @override
+  Widget build(BuildContext context) {
     final tasksAsync = ref.watch(watchTasksProvider);
     final actionState = ref.watch(taskActionControllerProvider);
 
@@ -35,56 +43,12 @@ class TasksScreen extends ConsumerWidget {
             Expanded(
               child: ResponsiveContent(
                 child: tasksAsync.when(
-                  data: (tasks) {
-                    final activeTasks = tasks
-                        .where((task) => !task.isArchived)
-                        .toList();
-                    final archivedTasks = tasks
-                        .where((task) => task.isArchived)
-                        .toList();
-
-                    if (tasks.isEmpty) {
-                      return ListView(
-                        padding: padding,
-                        children: const [
-                          _TasksHeader(),
-                          SizedBox(height: 24),
-                          AppEmptyState(
-                            icon: Icons.inbox_rounded,
-                            title: 'No tasks yet',
-                            message:
-                                'Add your first task to define real work before generating schedules or focus sessions.',
-                          ),
-                        ],
-                      );
-                    }
-
-                    return ListView(
-                      padding: padding,
-                      children: [
-                        const _TasksHeader(),
-                        const SizedBox(height: 24),
-                        if (activeTasks.isEmpty)
-                          const AppEmptyState(
-                            icon: Icons.assignment_turned_in_outlined,
-                            title: 'No active tasks',
-                            message:
-                                'Your active list is clear. Restore an archived task or create a new one to keep planning.',
-                          )
-                        else ...[
-                          const _TaskSectionHeader(label: 'Active Tasks'),
-                          const SizedBox(height: 12),
-                          ..._buildTaskCards(activeTasks),
-                        ],
-                        if (archivedTasks.isNotEmpty) ...[
-                          const SizedBox(height: 24),
-                          const _TaskSectionHeader(label: 'Archived Tasks'),
-                          const SizedBox(height: 12),
-                          ..._buildTaskCards(archivedTasks),
-                        ],
-                      ],
-                    );
-                  },
+                  data: (tasks) => _buildContent(
+                    context,
+                    padding,
+                    tasks,
+                    actionState.isLoading,
+                  ),
                   loading: () =>
                       const AppLoadingIndicator(label: 'Loading tasks...'),
                   error: (error, _) => ErrorBoundaryWidget(error: error),
@@ -97,10 +61,138 @@ class TasksScreen extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildTaskCards(List<Task> tasks) {
+  Widget _buildContent(
+    BuildContext context,
+    EdgeInsets padding,
+    List<Task> tasks,
+    bool actionsDisabled,
+  ) {
+    final activeTasks = tasks.where((task) => !task.isArchived).toList();
+    final archivedTasks = tasks.where((task) => task.isArchived).toList();
+
+    if (tasks.isEmpty) {
+      return ListView(
+        padding: padding,
+        children: const [
+          _TasksHeader(),
+          SizedBox(height: 24),
+          AppEmptyState(
+            icon: Icons.inbox_rounded,
+            title: 'No tasks yet',
+            message:
+                'Add your first task to define real work before generating schedules or focus sessions.',
+          ),
+        ],
+      );
+    }
+
+    return ListView(
+      padding: padding,
+      children: [
+        const _TasksHeader(),
+        const SizedBox(height: 20),
+        _TaskFilterBar(
+          value: _filter,
+          onChanged: (value) {
+            setState(() {
+              _filter = value;
+            });
+          },
+        ),
+        const SizedBox(height: 20),
+        ...switch (_filter) {
+          TaskListFilter.active => _buildSingleSection(
+            label: 'Active Tasks',
+            tasks: activeTasks,
+            emptyState: const AppEmptyState(
+              icon: Icons.assignment_turned_in_outlined,
+              title: 'No active tasks',
+              message:
+                  'Your active list is clear. Restore an archived task or create a new one to keep planning.',
+            ),
+            actionsDisabled: actionsDisabled,
+          ),
+          TaskListFilter.archived => _buildSingleSection(
+            label: 'Archived Tasks',
+            tasks: archivedTasks,
+            emptyState: const AppEmptyState(
+              icon: Icons.archive_outlined,
+              title: 'No archived tasks',
+              message:
+                  'Archived tasks will appear here. Archive tasks when you want to hide them from active planning without deleting their history.',
+            ),
+            actionsDisabled: actionsDisabled,
+          ),
+          TaskListFilter.all => _buildAllSections(
+            activeTasks: activeTasks,
+            archivedTasks: archivedTasks,
+            actionsDisabled: actionsDisabled,
+          ),
+        },
+      ],
+    );
+  }
+
+  List<Widget> _buildSingleSection({
+    required String label,
+    required List<Task> tasks,
+    required Widget emptyState,
+    required bool actionsDisabled,
+  }) {
+    if (tasks.isEmpty) {
+      return [emptyState];
+    }
+
+    return [
+      _TaskSectionHeader(label: label),
+      const SizedBox(height: 12),
+      ..._buildTaskCards(tasks, actionsDisabled),
+    ];
+  }
+
+  List<Widget> _buildAllSections({
+    required List<Task> activeTasks,
+    required List<Task> archivedTasks,
+    required bool actionsDisabled,
+  }) {
+    final widgets = <Widget>[];
+
+    widgets.addAll(
+      _buildSingleSection(
+        label: 'Active Tasks',
+        tasks: activeTasks,
+        emptyState: const AppEmptyState(
+          icon: Icons.assignment_turned_in_outlined,
+          title: 'No active tasks',
+          message:
+              'Your active list is clear. Restore an archived task or create a new one to keep planning.',
+        ),
+        actionsDisabled: actionsDisabled,
+      ),
+    );
+
+    widgets.add(const SizedBox(height: 24));
+    widgets.addAll(
+      _buildSingleSection(
+        label: 'Archived Tasks',
+        tasks: archivedTasks,
+        emptyState: const AppEmptyState(
+          icon: Icons.archive_outlined,
+          title: 'No archived tasks',
+          message:
+              'Archived tasks will appear here. Archive tasks when you want to hide them from active planning without deleting their history.',
+        ),
+        actionsDisabled: actionsDisabled,
+      ),
+    );
+
+    return widgets;
+  }
+
+  List<Widget> _buildTaskCards(List<Task> tasks, bool actionsDisabled) {
     return [
       for (var index = 0; index < tasks.length; index++) ...[
-        _TaskCard(task: tasks[index]),
+        _TaskCard(task: tasks[index], actionsDisabled: actionsDisabled),
         if (index < tasks.length - 1) const SizedBox(height: 12),
       ],
     ];
@@ -127,6 +219,58 @@ class _TasksHeader extends StatelessWidget {
   }
 }
 
+enum TaskListFilter { active, archived, all }
+
+class _TaskFilterBar extends StatelessWidget {
+  const _TaskFilterBar({required this.value, required this.onChanged});
+
+  final TaskListFilter value;
+  final ValueChanged<TaskListFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          'View',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        SegmentedButton<TaskListFilter>(
+          segments: const [
+            ButtonSegment<TaskListFilter>(
+              value: TaskListFilter.active,
+              label: Text('Active'),
+              icon: Icon(Icons.checklist_rtl_rounded),
+            ),
+            ButtonSegment<TaskListFilter>(
+              value: TaskListFilter.archived,
+              label: Text('Archived'),
+              icon: Icon(Icons.archive_outlined),
+            ),
+            ButtonSegment<TaskListFilter>(
+              value: TaskListFilter.all,
+              label: Text('All'),
+              icon: Icon(Icons.apps_rounded),
+            ),
+          ],
+          selected: {value},
+          onSelectionChanged: (selection) {
+            final selectedValue = selection.firstOrNull;
+            if (selectedValue != null) {
+              onChanged(selectedValue);
+            }
+          },
+        ),
+      ],
+    );
+  }
+}
+
 class _TaskSectionHeader extends StatelessWidget {
   const _TaskSectionHeader({required this.label});
 
@@ -143,19 +287,21 @@ class _TaskSectionHeader extends StatelessWidget {
   }
 }
 
-enum _TaskLifecycleAction {
-  softReset,
-  hardReset,
-  resetGeneratedSessions,
+enum _TaskAction {
+  edit,
+  toggleCompleted,
+  resetProgress,
+  clearGeneratedSessions,
   archive,
   restore,
   delete,
 }
 
 class _TaskCard extends ConsumerWidget {
-  const _TaskCard({required this.task});
+  const _TaskCard({required this.task, required this.actionsDisabled});
 
   final Task task;
+  final bool actionsDisabled;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -174,7 +320,7 @@ class _TaskCard extends ConsumerWidget {
           children: [
             Checkbox(
               value: task.isCompleted,
-              onChanged: task.isArchived
+              onChanged: task.isArchived || actionsDisabled
                   ? null
                   : (_) => _toggleCompleted(context, ref),
             ),
@@ -199,43 +345,55 @@ class _TaskCard extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      PopupMenuButton<_TaskLifecycleAction>(
+                      PopupMenuButton<_TaskAction>(
                         tooltip: 'Task actions',
+                        enabled: !actionsDisabled,
                         onSelected: (action) =>
-                            _handleLifecycleAction(context, ref, action),
+                            _handleAction(context, ref, action),
                         itemBuilder: (context) {
                           if (task.isArchived) {
                             return const [
                               PopupMenuItem(
-                                value: _TaskLifecycleAction.restore,
+                                value: _TaskAction.edit,
+                                child: Text('Edit'),
+                              ),
+                              PopupMenuItem(
+                                value: _TaskAction.restore,
                                 child: Text('Restore task'),
                               ),
                               PopupMenuItem(
-                                value: _TaskLifecycleAction.delete,
+                                value: _TaskAction.delete,
                                 child: Text('Delete permanently'),
                               ),
                             ];
                           }
-                          return const [
-                            PopupMenuItem(
-                              value: _TaskLifecycleAction.softReset,
-                              child: Text('Soft reset progress'),
+                          return [
+                            const PopupMenuItem(
+                              value: _TaskAction.edit,
+                              child: Text('Edit'),
                             ),
                             PopupMenuItem(
-                              value: _TaskLifecycleAction.hardReset,
-                              child: Text('Hard reset task'),
+                              value: _TaskAction.toggleCompleted,
+                              child: Text(
+                                task.isCompleted
+                                    ? 'Mark incomplete'
+                                    : 'Mark complete',
+                              ),
                             ),
-                            PopupMenuItem(
-                              value:
-                                  _TaskLifecycleAction.resetGeneratedSessions,
+                            const PopupMenuItem(
+                              value: _TaskAction.resetProgress,
+                              child: Text('Reset progress'),
+                            ),
+                            const PopupMenuItem(
+                              value: _TaskAction.clearGeneratedSessions,
                               child: Text('Clear generated sessions'),
                             ),
-                            PopupMenuItem(
-                              value: _TaskLifecycleAction.archive,
+                            const PopupMenuItem(
+                              value: _TaskAction.archive,
                               child: Text('Archive task'),
                             ),
-                            PopupMenuItem(
-                              value: _TaskLifecycleAction.delete,
+                            const PopupMenuItem(
+                              value: _TaskAction.delete,
                               child: Text('Delete permanently'),
                             ),
                           ];
@@ -279,7 +437,7 @@ class _TaskCard extends ConsumerWidget {
       ),
     );
 
-    if (task.isArchived) {
+    if (task.isArchived || actionsDisabled) {
       return card;
     }
 
@@ -306,9 +464,7 @@ class _TaskCard extends ConsumerWidget {
 
   Future<void> _toggleCompleted(BuildContext context, WidgetRef ref) async {
     try {
-      await ref
-          .read(taskActionControllerProvider.notifier)
-          .toggleCompleted(task);
+      await ref.read(taskActionControllerProvider.notifier).toggleCompleted(task);
     } catch (error) {
       if (context.mounted) {
         ErrorHandler.showSnackBar(
@@ -348,40 +504,31 @@ class _TaskCard extends ConsumerWidget {
     }
   }
 
-  Future<void> _handleLifecycleAction(
+  Future<void> _handleAction(
     BuildContext context,
     WidgetRef ref,
-    _TaskLifecycleAction action,
+    _TaskAction action,
   ) async {
     final controller = ref.read(taskActionControllerProvider.notifier);
 
     try {
       switch (action) {
-        case _TaskLifecycleAction.softReset:
-          final confirmed = await AppConfirmationDialog.show(
-            context,
-            title: 'Soft reset task?',
-            message:
-                'Mark "${task.title}" as incomplete and clear its future generated sessions? Completed session history will be kept.',
-            confirmLabel: 'Soft reset',
-            destructive: true,
+        case _TaskAction.edit:
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => AddTaskScreen(initialTask: task),
+            ),
           );
-          if (confirmed != true) return;
-          await controller.resetTask(task, mode: TaskResetMode.soft);
           break;
-        case _TaskLifecycleAction.hardReset:
-          final confirmed = await AppConfirmationDialog.show(
-            context,
-            title: 'Hard reset task?',
-            message:
-                'Reset "${task.title}" completely? All linked planned and completed sessions will be removed.',
-            confirmLabel: 'Hard reset',
-            destructive: true,
-          );
-          if (confirmed != true) return;
-          await controller.resetTask(task, mode: TaskResetMode.hard);
+        case _TaskAction.toggleCompleted:
+          await controller.toggleCompleted(task);
           break;
-        case _TaskLifecycleAction.resetGeneratedSessions:
+        case _TaskAction.resetProgress:
+          final resetMode = await _showResetDialog(context);
+          if (resetMode == null) return;
+          await controller.resetTask(task, mode: resetMode);
+          break;
+        case _TaskAction.clearGeneratedSessions:
           final confirmed = await AppConfirmationDialog.show(
             context,
             title: 'Clear generated sessions?',
@@ -393,7 +540,7 @@ class _TaskCard extends ConsumerWidget {
           if (confirmed != true) return;
           await controller.resetGeneratedSessions(task);
           break;
-        case _TaskLifecycleAction.archive:
+        case _TaskAction.archive:
           final confirmed = await AppConfirmationDialog.show(
             context,
             title: 'Archive task?',
@@ -404,10 +551,10 @@ class _TaskCard extends ConsumerWidget {
           if (confirmed != true) return;
           await controller.archiveTask(task);
           break;
-        case _TaskLifecycleAction.restore:
+        case _TaskAction.restore:
           await controller.restoreTask(task);
           break;
-        case _TaskLifecycleAction.delete:
+        case _TaskAction.delete:
           final confirmed = await _confirmDelete(context);
           if (confirmed != true) return;
           await controller.deleteTask(task.id);
@@ -424,6 +571,104 @@ class _TaskCard extends ConsumerWidget {
       }
     }
   }
+
+  Future<TaskResetMode?> _showResetDialog(BuildContext context) {
+    return showDialog<TaskResetMode>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reset task progress'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Choose how to reset "${task.title}". This affects task completion state and linked sessions.',
+              ),
+              const SizedBox(height: 16),
+              _ResetOptionTile(
+                title: 'Soft Reset',
+                subtitle:
+                    'Keep history, mark the task incomplete, and clear future generated sessions.',
+                onTap: () => Navigator.of(context).pop(TaskResetMode.soft),
+              ),
+              const SizedBox(height: 12),
+              _ResetOptionTile(
+                title: 'Hard Reset',
+                subtitle:
+                    'Remove all linked sessions and progress for this task, then mark it incomplete.',
+                destructive: true,
+                onTap: () => Navigator.of(context).pop(TaskResetMode.hard),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ResetOptionTile extends StatelessWidget {
+  const _ResetOptionTile({
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.destructive = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final borderColor = destructive ? colorScheme.errorContainer : colorScheme.outlineVariant;
+    final iconColor = destructive ? colorScheme.error : colorScheme.primary;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Ink(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              destructive ? Icons.restart_alt_rounded : Icons.history_toggle_off_rounded,
+              color: iconColor,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(subtitle),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _TaskMetaChip extends StatelessWidget {
@@ -436,3 +681,4 @@ class _TaskMetaChip extends StatelessWidget {
     return AppStatusChip(label: label);
   }
 }
+
