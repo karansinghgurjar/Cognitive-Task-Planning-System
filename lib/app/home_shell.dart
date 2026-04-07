@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/navigation/app_navigation.dart';
 import '../features/command_palette/presentation/command_palette_dialog.dart';
+import '../features/search/presentation/global_search_screen.dart';
 import '../features/analytics/presentation/analytics_dashboard_screen.dart';
 import '../features/goals/presentation/add_goal_screen.dart';
 import '../features/quick_capture/presentation/quick_capture_inbox_screen.dart';
@@ -54,6 +55,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             _ChangeTabIntent(4),
         SingleActivator(LogicalKeyboardKey.comma, control: true):
             _OpenSettingsIntent(),
+        SingleActivator(LogicalKeyboardKey.keyP, control: true):
+            _OpenGlobalSearchIntent(),
+        SingleActivator(LogicalKeyboardKey.keyP, meta: true):
+            _OpenGlobalSearchIntent(),
         SingleActivator(LogicalKeyboardKey.keyK, control: true):
             _OpenCommandPaletteIntent(),
         SingleActivator(LogicalKeyboardKey.keyK, meta: true):
@@ -74,6 +79,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           _OpenSettingsIntent: CallbackAction<_OpenSettingsIntent>(
             onInvoke: (_) {
               AppRouter.openSettings(context);
+              return null;
+            },
+          ),
+          _OpenGlobalSearchIntent: CallbackAction<_OpenGlobalSearchIntent>(
+            onInvoke: (_) {
+              GlobalSearchScreen.show(context);
               return null;
             },
           ),
@@ -222,6 +233,10 @@ class _ChangeTabIntent extends Intent {
 
 class _OpenSettingsIntent extends Intent {
   const _OpenSettingsIntent();
+}
+
+class _OpenGlobalSearchIntent extends Intent {
+  const _OpenGlobalSearchIntent();
 }
 
 class _OpenCommandPaletteIntent extends Intent {

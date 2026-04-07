@@ -17,6 +17,15 @@ class CommandRegistryService {
         priority: 100,
       ),
       const AppCommand(
+        id: AppCommandId.openSearch,
+        title: 'Open Search',
+        subtitle: 'Search tasks, goals, notes, captures, and reviews',
+        keywords: ['search', 'find', 'global search'],
+        category: CommandCategory.navigation,
+        icon: Icons.manage_search_rounded,
+        priority: 97,
+      ),
+      const AppCommand(
         id: AppCommandId.openTasks,
         title: 'Open Tasks',
         subtitle: 'Go to the task list',

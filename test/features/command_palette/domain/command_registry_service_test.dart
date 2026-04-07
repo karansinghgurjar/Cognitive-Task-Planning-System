@@ -21,6 +21,7 @@ void main() {
       final ids = commands.map((command) => command.id).toSet();
 
       expect(ids, contains(AppCommandId.openToday));
+      expect(ids, contains(AppCommandId.openSearch));
       expect(ids, contains(AppCommandId.openTasks));
       expect(ids, contains(AppCommandId.openGoals));
       expect(ids, contains(AppCommandId.openAnalytics));

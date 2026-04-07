@@ -22,7 +22,9 @@ import '../providers/quick_capture_providers.dart';
 enum QuickCaptureInboxFilter { unprocessed, all }
 
 class QuickCaptureInboxScreen extends ConsumerStatefulWidget {
-  const QuickCaptureInboxScreen({super.key});
+  const QuickCaptureInboxScreen({this.initialCaptureId, super.key});
+
+  final String? initialCaptureId;
 
   @override
   ConsumerState<QuickCaptureInboxScreen> createState() =>
@@ -130,6 +132,9 @@ class _QuickCaptureInboxScreenState
               final item = captures[index];
               final isBusy = _busyItemId == item.id;
               return Card(
+                color: widget.initialCaptureId == item.id
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : null,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(

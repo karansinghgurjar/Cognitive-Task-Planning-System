@@ -11,7 +11,9 @@ import '../models/weekly_review.dart';
 import '../providers/weekly_review_providers.dart';
 
 class WeeklyReviewScreen extends ConsumerStatefulWidget {
-  const WeeklyReviewScreen({super.key});
+  const WeeklyReviewScreen({this.initialWeekStart, super.key});
+
+  final DateTime? initialWeekStart;
 
   @override
   ConsumerState<WeeklyReviewScreen> createState() => _WeeklyReviewScreenState();
@@ -23,6 +25,23 @@ class _WeeklyReviewScreenState extends ConsumerState<WeeklyReviewScreen> {
   final _nextWeekFocusController = TextEditingController();
   String? _loadedReviewId;
   DateTime? _loadedWeekStart;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialWeekStart = widget.initialWeekStart;
+    if (initialWeekStart != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        final normalized = ref
+            .read(weeklyReviewServiceProvider)
+            .weekStartFor(initialWeekStart);
+        ref.read(selectedWeeklyReviewWeekProvider.notifier).state = normalized;
+      });
+    }
+  }
 
   @override
   void dispose() {

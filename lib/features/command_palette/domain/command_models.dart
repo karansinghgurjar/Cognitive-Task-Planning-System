@@ -34,6 +34,7 @@ extension CommandCategoryX on CommandCategory {
 
 abstract final class AppCommandId {
   static const openToday = 'open_today';
+  static const openSearch = 'open_search';
   static const openTasks = 'open_tasks';
   static const openGoals = 'open_goals';
   static const openAnalytics = 'open_analytics';

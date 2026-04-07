@@ -14,6 +14,7 @@ import '../../quick_capture/presentation/quick_capture_sheet.dart';
 import '../../review/presentation/weekly_review_screen.dart';
 import '../../schedule/providers/rescheduling_providers.dart';
 import '../../schedule/providers/schedule_providers.dart';
+import '../../search/presentation/global_search_screen.dart';
 import '../../sync/presentation/sync_status_screen.dart';
 import '../../tasks/presentation/add_task_screen.dart';
 import '../../tasks/presentation/task_detail_screen.dart';
@@ -40,6 +41,9 @@ class CommandExecutionService {
       switch (command.id) {
         case AppCommandId.openToday:
           ref.read(homeTabIndexProvider.notifier).setTab(AppTab.today);
+          return const CommandExecutionResult(success: true);
+        case AppCommandId.openSearch:
+          await GlobalSearchScreen.show(context);
           return const CommandExecutionResult(success: true);
         case AppCommandId.openTasks:
           ref.read(homeTabIndexProvider.notifier).setTab(AppTab.tasks);
