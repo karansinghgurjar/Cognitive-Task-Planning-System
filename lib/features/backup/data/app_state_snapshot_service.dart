@@ -2,6 +2,7 @@ import '../../goals/data/goal_repository.dart';
 import '../../notes/data/notes_repository.dart';
 import '../../notes/data/resources_repository.dart';
 import '../../notes/models/entity_note.dart';
+import '../../review/data/weekly_review_repository.dart';
 import '../../schedule/data/planned_session_repository.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../tasks/data/task_repository.dart';
@@ -16,6 +17,7 @@ class AppStateSnapshotService {
     required this.goalRepository,
     required this.notesRepository,
     required this.resourcesRepository,
+    required this.weeklyReviewRepository,
     required this.settingsRepository,
   });
 
@@ -25,6 +27,7 @@ class AppStateSnapshotService {
   final GoalRepository goalRepository;
   final NotesRepository notesRepository;
   final ResourcesRepository resourcesRepository;
+  final WeeklyReviewRepository weeklyReviewRepository;
   final SettingsRepository settingsRepository;
 
   Future<ExistingAppStateSnapshot> createSnapshot() async {
@@ -36,6 +39,7 @@ class AppStateSnapshotService {
     final dependencies = await goalRepository.getAllDependencies();
     final entityNotes = await notesRepository.getAllNotes();
     final entityResources = await resourcesRepository.getAllResources();
+    final weeklyReviews = await weeklyReviewRepository.getAllReviews();
     final preferences = await settingsRepository.getPreferences();
 
     return ExistingAppStateSnapshot(
@@ -47,6 +51,7 @@ class AppStateSnapshotService {
       dependencies: dependencies,
       entityNotes: entityNotes,
       entityResources: entityResources,
+      weeklyReviews: weeklyReviews,
       preferences: preferences,
     );
   }

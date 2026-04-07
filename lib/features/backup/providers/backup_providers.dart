@@ -7,6 +7,7 @@ import '../../../core/database/isar_providers.dart';
 import '../../analytics/providers/analytics_providers.dart';
 import '../../goals/providers/goal_providers.dart';
 import '../../notes/providers/notes_providers.dart';
+import '../../review/providers/weekly_review_providers.dart';
 import '../../schedule/providers/schedule_providers.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../../sync/providers/sync_providers.dart';
@@ -78,6 +79,9 @@ final appStateSnapshotServiceProvider = FutureProvider<AppStateSnapshotService>(
     final resourcesRepository = await ref.watch(
       resourcesRepositoryProvider.future,
     );
+    final weeklyReviewRepository = await ref.watch(
+      weeklyReviewRepositoryProvider.future,
+    );
     final settingsRepository = await ref.watch(
       settingsRepositoryProvider.future,
     );
@@ -89,6 +93,7 @@ final appStateSnapshotServiceProvider = FutureProvider<AppStateSnapshotService>(
       goalRepository: goalRepository,
       notesRepository: notesRepository,
       resourcesRepository: resourcesRepository,
+      weeklyReviewRepository: weeklyReviewRepository,
       settingsRepository: settingsRepository,
     );
   },

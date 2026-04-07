@@ -1,5 +1,6 @@
 import '../../schedule/domain/task_progress_service.dart';
 import '../../notes/models/entity_note.dart';
+import '../../review/models/weekly_review.dart';
 import '../domain/backup_models.dart';
 
 class DataIntegrityService {
@@ -143,8 +144,29 @@ class DataIntegrityService {
         );
       }
     }
+    _scanWeeklyReviews(snapshot.weeklyReviews, issues);
 
     return DataIntegrityReport(scannedAt: DateTime.now(), issues: issues);
+  }
+
+  void _scanWeeklyReviews(
+    List<WeeklyReview> reviews,
+    List<DataIntegrityIssue> issues,
+  ) {
+    for (final review in reviews) {
+      if (review.weekEnd.isBefore(review.weekStart)) {
+        issues.add(
+          DataIntegrityIssue(
+            code: 'invalid_weekly_review_range',
+            message:
+                'Weekly review ${review.id} has a weekEnd before weekStart.',
+            severity: DataIntegritySeverity.error,
+            relatedEntityId: review.id,
+            suggestedRepair: 'Recreate the weekly review for this week.',
+          ),
+        );
+      }
+    }
   }
 }
 

@@ -19,6 +19,7 @@ import '../../tasks/models/task.dart';
 import '../../quick_capture/presentation/quick_capture_inbox_screen.dart';
 import '../../quick_capture/presentation/quick_capture_sheet.dart';
 import '../../quick_capture/providers/quick_capture_providers.dart';
+import '../../review/presentation/weekly_review_screen.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../domain/rescheduling_models.dart';
 import '../models/planned_session.dart';
@@ -584,6 +585,17 @@ class _TodayHeader extends ConsumerWidget {
           },
           icon: const Icon(Icons.event_available_rounded),
           tooltip: 'Export to Calendar',
+        ),
+        IconButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const WeeklyReviewScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.rate_review_outlined),
+          tooltip: 'Weekly Review',
         ),
         IconButton(
           onPressed: () => AppRouter.openSettings(context),

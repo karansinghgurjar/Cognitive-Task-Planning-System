@@ -10,6 +10,7 @@ import '../../features/notes/models/entity_resource.dart';
 import '../../features/onboarding/models/onboarding_state.dart';
 import '../../features/goals/models/task_dependency.dart';
 import '../../features/quick_capture/models/quick_capture_item.dart';
+import '../../features/review/models/weekly_review.dart';
 import '../../features/schedule/models/planned_session.dart';
 import '../../features/settings/models/notification_preferences.dart';
 import '../../features/sync/models/pending_sync_operation.dart';
@@ -61,6 +62,7 @@ class IsarService {
           EntityNoteSchema,
           EntityResourceSchema,
           QuickCaptureItemSchema,
+          WeeklyReviewSchema,
           OnboardingStateRecordSchema,
           NotificationPreferencesSchema,
           NotificationLogEntrySchema,

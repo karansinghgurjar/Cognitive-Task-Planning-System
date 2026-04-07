@@ -24,5 +24,10 @@ class MigrationNotes {
       description:
           'Added contextual notes and resource attachments for tasks and goals.',
     ),
+    MigrationNote(
+      version: 4,
+      description:
+          'Added weekly review reflections and end-of-week productivity summaries.',
+    ),
   ];
 }

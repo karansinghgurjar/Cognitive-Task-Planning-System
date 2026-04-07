@@ -56,6 +56,7 @@ class BackupService {
       dependencies: snapshot.dependencies,
       entityNotes: snapshot.entityNotes,
       entityResources: snapshot.entityResources,
+      weeklyReviews: snapshot.weeklyReviews,
       preferences: snapshot.preferences,
     );
   }
@@ -130,6 +131,12 @@ class BackupService {
       existing.entityResources,
       (item) => item.id,
     );
+    collectConflicts(
+      'weeklyReviews',
+      bundle.weeklyReviews,
+      existing.weeklyReviews,
+      (item) => item.id,
+    );
 
     final importCounts = {
       'tasks': bundle.tasks.length,
@@ -138,6 +145,9 @@ class BackupService {
       'goals': bundle.goals.length,
       'milestones': bundle.milestones.length,
       'dependencies': bundle.dependencies.length,
+      'entityNotes': bundle.entityNotes.length,
+      'entityResources': bundle.entityResources.length,
+      'weeklyReviews': bundle.weeklyReviews.length,
       'settings': 1,
     };
 
@@ -255,6 +265,12 @@ class BackupService {
       'entityResources',
       (item) => item.id,
     );
+    final weeklyReviews = filterForMode(
+      bundle.weeklyReviews,
+      existing.weeklyReviews.map((item) => item.id).toSet(),
+      'weeklyReviews',
+      (item) => item.id,
+    );
 
     await _restoreStore.mergeBundle(
       tasks: tasks,
@@ -265,6 +281,7 @@ class BackupService {
       dependencies: dependencies,
       entityNotes: entityNotes,
       entityResources: entityResources,
+      weeklyReviews: weeklyReviews,
       preferences: preferImported ? bundle.preferences : null,
     );
 
@@ -294,6 +311,7 @@ class BackupService {
       'dependencies': bundle.dependencies.length,
       'entityNotes': bundle.entityNotes.length,
       'entityResources': bundle.entityResources.length,
+      'weeklyReviews': bundle.weeklyReviews.length,
       'settings': 1,
     };
   }

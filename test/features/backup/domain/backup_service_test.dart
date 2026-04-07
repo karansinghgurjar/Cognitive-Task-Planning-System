@@ -8,6 +8,7 @@ import 'package:study_flow/features/goals/models/learning_goal.dart';
 import 'package:study_flow/features/goals/models/task_dependency.dart';
 import 'package:study_flow/features/notes/models/entity_note.dart';
 import 'package:study_flow/features/notes/models/entity_resource.dart';
+import 'package:study_flow/features/review/models/weekly_review.dart';
 import 'package:study_flow/features/schedule/models/planned_session.dart';
 import 'package:study_flow/features/settings/models/notification_preferences.dart';
 import 'package:study_flow/features/tasks/models/task.dart';
@@ -112,6 +113,7 @@ class _FakeRestoreStore implements BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<WeeklyReview> weeklyReviews,
     NotificationPreferences? preferences,
   }) async {
     mergedTasks = tasks;

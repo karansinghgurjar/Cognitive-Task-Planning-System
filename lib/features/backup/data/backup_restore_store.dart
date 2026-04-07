@@ -5,6 +5,7 @@ import '../../goals/models/learning_goal.dart';
 import '../../goals/models/task_dependency.dart';
 import '../../notes/models/entity_note.dart';
 import '../../notes/models/entity_resource.dart';
+import '../../review/models/weekly_review.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../settings/models/notification_preferences.dart';
 import '../../tasks/models/task.dart';
@@ -23,6 +24,7 @@ abstract class BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<WeeklyReview> weeklyReviews,
     NotificationPreferences? preferences,
   });
 }
@@ -43,6 +45,7 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
       await _isar.taskDependencys.clear();
       await _isar.entityNotes.clear();
       await _isar.entityResources.clear();
+      await _isar.weeklyReviews.clear();
       await _isar.notificationPreferences.clear();
       await _mergeBundleInCurrentTransaction(
         tasks: bundle.tasks,
@@ -53,6 +56,7 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
         dependencies: bundle.dependencies,
         entityNotes: bundle.entityNotes,
         entityResources: bundle.entityResources,
+        weeklyReviews: bundle.weeklyReviews,
         preferences: bundle.preferences,
       );
     });
@@ -68,6 +72,7 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<WeeklyReview> weeklyReviews,
     NotificationPreferences? preferences,
   }) {
     return _isar.writeTxn(() async {
@@ -80,6 +85,7 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
         dependencies: dependencies,
         entityNotes: entityNotes,
         entityResources: entityResources,
+        weeklyReviews: weeklyReviews,
         preferences: preferences,
       );
     });
@@ -94,6 +100,7 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<WeeklyReview> weeklyReviews,
     NotificationPreferences? preferences,
   }) async {
     if (tasks.isNotEmpty) {
@@ -119,6 +126,9 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     }
     if (entityResources.isNotEmpty) {
       await _isar.entityResources.putAll(entityResources);
+    }
+    if (weeklyReviews.isNotEmpty) {
+      await _isar.weeklyReviews.putAll(weeklyReviews);
     }
     if (preferences != null) {
       await _isar.notificationPreferences.put(preferences);

@@ -6,6 +6,7 @@ import '../../goals/models/learning_goal.dart';
 import '../../goals/models/task_dependency.dart';
 import '../../notes/models/entity_note.dart';
 import '../../notes/models/entity_resource.dart';
+import '../../review/models/weekly_review.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../settings/models/notification_preferences.dart';
 import '../../tasks/models/task.dart';
@@ -42,6 +43,7 @@ class BackupSerialization {
         'dependencies': bundle.dependencies.map(_dependencyToJson).toList(),
         'entityNotes': bundle.entityNotes.map(_entityNoteToJson).toList(),
         'entityResources': bundle.entityResources.map(_entityResourceToJson).toList(),
+        'weeklyReviews': bundle.weeklyReviews.map(_weeklyReviewToJson).toList(),
         'settings': _preferencesToJson(bundle.preferences),
       },
     };
@@ -168,6 +170,13 @@ class BackupSerialization {
       parser: (json, itemWarnings) =>
           _entityResourceFromJson(json, itemWarnings),
     );
+    final weeklyReviews = _parseOptionalCollection<WeeklyReview>(
+      name: 'weeklyReviews',
+      source: validCollections,
+      warnings: warnings,
+      idOf: (item) => item.id,
+      parser: (json, itemWarnings) => _weeklyReviewFromJson(json, itemWarnings),
+    );
 
     final settingsMap = validCollections['settings'];
     final preferences = _preferencesFromJson(settingsMap, warnings, errors);
@@ -191,6 +200,7 @@ class BackupSerialization {
         dependencies: dependencies,
         entityNotes: entityNotes,
         entityResources: entityResources,
+        weeklyReviews: weeklyReviews,
         preferences: preferences,
       ),
       warnings: warnings,
@@ -421,6 +431,17 @@ class BackupSerialization {
       normalizedResources.add(resource);
     }
 
+    final normalizedWeeklyReviews = <WeeklyReview>[];
+    for (final review in bundle.weeklyReviews) {
+      if (review.weekEnd.isBefore(review.weekStart)) {
+        warnings.add(
+          'Weekly review ${review.id} has an invalid date range and will be skipped.',
+        );
+        continue;
+      }
+      normalizedWeeklyReviews.add(review);
+    }
+
     return AppBackupBundle(
       metadata: bundle.metadata,
       tasks: normalizedTasks,
@@ -431,6 +452,7 @@ class BackupSerialization {
       dependencies: normalizedDependencies,
       entityNotes: normalizedNotes,
       entityResources: normalizedResources,
+      weeklyReviews: normalizedWeeklyReviews,
       preferences: bundle.preferences,
       warnings: List<String>.from(warnings),
     );
@@ -850,6 +872,47 @@ class BackupSerialization {
       createdAt: createdAt!,
       updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
       isPinned: _asBool(json['isPinned']) ?? false,
+    );
+  }
+
+  Map<String, dynamic> _weeklyReviewToJson(WeeklyReview review) {
+    return {
+      'id': review.id,
+      'weekStart': review.weekStart.toIso8601String(),
+      'weekEnd': review.weekEnd.toIso8601String(),
+      'createdAt': review.createdAt.toIso8601String(),
+      'updatedAt': review.updatedAt?.toIso8601String(),
+      'summaryText': review.summaryText,
+      'winsText': review.winsText,
+      'challengesText': review.challengesText,
+      'nextWeekFocusText': review.nextWeekFocusText,
+      'isLocked': review.isLocked,
+    };
+  }
+
+  WeeklyReview? _weeklyReviewFromJson(
+    Map<String, dynamic> json,
+    List<String> warnings,
+  ) {
+    final id = json['id']?.toString();
+    final weekStart = _asDateTime(json['weekStart']);
+    final weekEnd = _asDateTime(json['weekEnd']);
+    final createdAt = _asDateTime(json['createdAt']);
+    if ([id, weekStart, weekEnd, createdAt].any((v) => v == null)) {
+      warnings.add('Weekly review is missing required fields and will be skipped.');
+      return null;
+    }
+    return WeeklyReview(
+      id: id!,
+      weekStart: weekStart!,
+      weekEnd: weekEnd!,
+      createdAt: createdAt!,
+      updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
+      summaryText: json['summaryText']?.toString(),
+      winsText: json['winsText']?.toString(),
+      challengesText: json['challengesText']?.toString(),
+      nextWeekFocusText: json['nextWeekFocusText']?.toString(),
+      isLocked: _asBool(json['isLocked']) ?? false,
     );
   }
 

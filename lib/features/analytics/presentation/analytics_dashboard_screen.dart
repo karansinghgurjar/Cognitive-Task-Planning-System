@@ -8,6 +8,7 @@ import '../../goals/models/learning_goal.dart';
 import '../../quick_capture/presentation/quick_capture_inbox_action_button.dart';
 import '../../recommendations/domain/recommendation_models.dart';
 import '../../recommendations/presentation/recommendations_dashboard.dart';
+import '../../review/presentation/weekly_review_screen.dart';
 import '../../settings/presentation/settings_home_screen.dart';
 import '../domain/analytics_models.dart';
 import '../providers/analytics_providers.dart';
@@ -56,6 +57,17 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
               ),
               const QuickCaptureInboxActionButton(
                 tooltip: 'Open Quick Capture inbox from Analytics',
+              ),
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const WeeklyReviewScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.rate_review_outlined),
+                tooltip: 'Weekly Review',
               ),
               IconButton(
                 onPressed: () {
