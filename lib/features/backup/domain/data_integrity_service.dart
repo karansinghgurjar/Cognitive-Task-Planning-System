@@ -1,4 +1,5 @@
 import '../../schedule/domain/task_progress_service.dart';
+import '../../notes/models/entity_note.dart';
 import '../domain/backup_models.dart';
 
 class DataIntegrityService {
@@ -98,6 +99,46 @@ class DataIntegrityService {
             severity: DataIntegritySeverity.error,
             relatedEntityId: dependency.id,
             suggestedRepair: 'Delete the broken dependency or restore the missing tasks.',
+          ),
+        );
+      }
+    }
+
+    for (final note in snapshot.entityNotes) {
+      final exists = switch (note.entityType) {
+        EntityAttachmentType.task => taskIds.contains(note.entityId),
+        EntityAttachmentType.goal => goalIds.contains(note.entityId),
+      };
+      if (!exists) {
+        issues.add(
+          DataIntegrityIssue(
+            code: 'orphan_note',
+            message:
+                'Note ${note.id} references missing ${note.entityType.name} ${note.entityId}.',
+            severity: DataIntegritySeverity.warning,
+            relatedEntityId: note.id,
+            suggestedRepair:
+                'Delete the orphan note or restore the missing entity.',
+          ),
+        );
+      }
+    }
+
+    for (final resource in snapshot.entityResources) {
+      final exists = switch (resource.entityType) {
+        EntityAttachmentType.task => taskIds.contains(resource.entityId),
+        EntityAttachmentType.goal => goalIds.contains(resource.entityId),
+      };
+      if (!exists) {
+        issues.add(
+          DataIntegrityIssue(
+            code: 'orphan_resource',
+            message:
+                'Resource ${resource.id} references missing ${resource.entityType.name} ${resource.entityId}.',
+            severity: DataIntegritySeverity.warning,
+            relatedEntityId: resource.id,
+            suggestedRepair:
+                'Delete the orphan resource or restore the missing entity.',
           ),
         );
       }

@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:study_flow/features/goals/data/goal_repository.dart';
 import 'package:study_flow/features/goals/models/goal_milestone.dart';
 import 'package:study_flow/features/goals/models/learning_goal.dart';
 import 'package:study_flow/features/goals/models/task_dependency.dart';
+import 'package:study_flow/features/notes/domain/entity_attachments_cleanup_service.dart';
+import 'package:study_flow/features/notes/models/entity_note.dart';
 import 'package:study_flow/features/schedule/data/planned_session_repository.dart';
 import 'package:study_flow/features/schedule/models/planned_session.dart';
 import 'package:study_flow/features/tasks/data/task_repository.dart';
@@ -126,6 +129,33 @@ void main() {
       ('task-1', archivedAt),
     ]);
   });
+
+  test('permanent delete clears attachments before deleting task', () async {
+    final taskRepository = _FakeTaskRepository();
+    final sessionRepository = _FakePlannedSessionRepository();
+    final goalRepository = _FakeGoalRepository();
+    final cleanupService = _MockEntityAttachmentsCleanupService();
+
+    when(
+      () => cleanupService.deleteForEntity(EntityAttachmentType.task, 'task-1'),
+    ).thenAnswer((_) async {});
+
+    final service = TaskLifecycleService(
+      taskRepository: taskRepository,
+      plannedSessionRepository: sessionRepository,
+      goalRepository: goalRepository,
+      entityAttachmentsCleanupService: cleanupService,
+    );
+
+    await service.deleteTaskPermanently('task-1');
+
+    expect(sessionRepository.deletedTaskIds, ['task-1']);
+    expect(goalRepository.deletedDependenciesForTaskIds, ['task-1']);
+    verify(
+      () => cleanupService.deleteForEntity(EntityAttachmentType.task, 'task-1'),
+    ).called(1);
+    expect(taskRepository.deletedIds, ['task-1']);
+  });
 }
 
 class _FakeTaskRepository implements TaskRepository {
@@ -133,6 +163,7 @@ class _FakeTaskRepository implements TaskRepository {
   final List<Task> updatedTasks = [];
   final List<(String, DateTime)> archivedCalls = [];
   final List<String> restoredIds = [];
+  final List<String> deletedIds = [];
 
   @override
   Future<void> addTask(Task task) async {}
@@ -146,7 +177,9 @@ class _FakeTaskRepository implements TaskRepository {
   }
 
   @override
-  Future<void> deleteTask(String id) async {}
+  Future<void> deleteTask(String id) async {
+    deletedIds.add(id);
+  }
 
   @override
   Future<List<Task>> getAllTasks({bool includeArchived = true}) async =>
@@ -263,6 +296,8 @@ class _FakePlannedSessionRepository implements PlannedSessionRepository {
 }
 
 class _FakeGoalRepository implements GoalRepository {
+  final List<String> deletedDependenciesForTaskIds = [];
+
   @override
   Future<void> addDependency(TaskDependency dependency) async {}
 
@@ -273,7 +308,9 @@ class _FakeGoalRepository implements GoalRepository {
   Future<void> addMilestone(GoalMilestone milestone) async {}
 
   @override
-  Future<void> deleteDependenciesForTask(String taskId) async {}
+  Future<void> deleteDependenciesForTask(String taskId) async {
+    deletedDependenciesForTaskIds.add(taskId);
+  }
 
   @override
   Future<void> deleteDependency(String id) async {}
@@ -326,3 +363,6 @@ class _FakeGoalRepository implements GoalRepository {
     yield const [];
   }
 }
+
+class _MockEntityAttachmentsCleanupService extends Mock
+    implements EntityAttachmentsCleanupService {}

@@ -3,6 +3,8 @@
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
 import '../../goals/models/task_dependency.dart';
+import '../../notes/models/entity_note.dart';
+import '../../notes/models/entity_resource.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../settings/models/notification_preferences.dart';
 import '../../tasks/models/task.dart';
@@ -19,6 +21,8 @@ abstract class BackupRestoreStore {
     required List<LearningGoal> goals,
     required List<GoalMilestone> milestones,
     required List<TaskDependency> dependencies,
+    required List<EntityNote> entityNotes,
+    required List<EntityResource> entityResources,
     NotificationPreferences? preferences,
   });
 }
@@ -37,6 +41,8 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
       await _isar.learningGoals.clear();
       await _isar.goalMilestones.clear();
       await _isar.taskDependencys.clear();
+      await _isar.entityNotes.clear();
+      await _isar.entityResources.clear();
       await _isar.notificationPreferences.clear();
       await _mergeBundleInCurrentTransaction(
         tasks: bundle.tasks,
@@ -45,6 +51,8 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
         goals: bundle.goals,
         milestones: bundle.milestones,
         dependencies: bundle.dependencies,
+        entityNotes: bundle.entityNotes,
+        entityResources: bundle.entityResources,
         preferences: bundle.preferences,
       );
     });
@@ -58,6 +66,8 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     required List<LearningGoal> goals,
     required List<GoalMilestone> milestones,
     required List<TaskDependency> dependencies,
+    required List<EntityNote> entityNotes,
+    required List<EntityResource> entityResources,
     NotificationPreferences? preferences,
   }) {
     return _isar.writeTxn(() async {
@@ -68,6 +78,8 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
         goals: goals,
         milestones: milestones,
         dependencies: dependencies,
+        entityNotes: entityNotes,
+        entityResources: entityResources,
         preferences: preferences,
       );
     });
@@ -80,6 +92,8 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     required List<LearningGoal> goals,
     required List<GoalMilestone> milestones,
     required List<TaskDependency> dependencies,
+    required List<EntityNote> entityNotes,
+    required List<EntityResource> entityResources,
     NotificationPreferences? preferences,
   }) async {
     if (tasks.isNotEmpty) {
@@ -99,6 +113,12 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     }
     if (dependencies.isNotEmpty) {
       await _isar.taskDependencys.putAll(dependencies);
+    }
+    if (entityNotes.isNotEmpty) {
+      await _isar.entityNotes.putAll(entityNotes);
+    }
+    if (entityResources.isNotEmpty) {
+      await _isar.entityResources.putAll(entityResources);
     }
     if (preferences != null) {
       await _isar.notificationPreferences.put(preferences);

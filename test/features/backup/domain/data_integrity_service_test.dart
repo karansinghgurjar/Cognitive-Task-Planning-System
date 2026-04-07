@@ -4,6 +4,8 @@ import 'package:study_flow/features/backup/domain/data_integrity_service.dart';
 import 'package:study_flow/features/goals/models/goal_milestone.dart';
 import 'package:study_flow/features/goals/models/learning_goal.dart';
 import 'package:study_flow/features/goals/models/task_dependency.dart';
+import 'package:study_flow/features/notes/models/entity_note.dart';
+import 'package:study_flow/features/notes/models/entity_resource.dart';
 import 'package:study_flow/features/schedule/models/planned_session.dart';
 import 'package:study_flow/features/settings/models/notification_preferences.dart';
 import 'package:study_flow/features/tasks/models/task.dart';
@@ -47,6 +49,25 @@ void main() {
             createdAt: DateTime(2026, 3, 1),
           ),
         ],
+        entityNotes: [
+          EntityNote(
+            id: 'note-1',
+            entityType: EntityAttachmentType.goal,
+            entityId: 'missing-goal',
+            content: 'Review again before exam.',
+            createdAt: DateTime(2026, 3, 1),
+          ),
+        ],
+        entityResources: [
+          EntityResource(
+            id: 'resource-1',
+            entityType: EntityAttachmentType.task,
+            entityId: 'missing-task',
+            title: 'Reference repo',
+            resourceType: EntityResourceType.repo,
+            createdAt: DateTime(2026, 3, 1),
+          ),
+        ],
         preferences: NotificationPreferences(),
       );
 
@@ -63,6 +84,14 @@ void main() {
       );
       expect(
         report.issues.any((issue) => issue.code == 'broken_dependency'),
+        isTrue,
+      );
+      expect(
+        report.issues.any((issue) => issue.code == 'orphan_note'),
+        isTrue,
+      );
+      expect(
+        report.issues.any((issue) => issue.code == 'orphan_resource'),
         isTrue,
       );
     });

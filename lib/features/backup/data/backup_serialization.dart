@@ -4,6 +4,8 @@ import '../../../core/database/database_version.dart';
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
 import '../../goals/models/task_dependency.dart';
+import '../../notes/models/entity_note.dart';
+import '../../notes/models/entity_resource.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../settings/models/notification_preferences.dart';
 import '../../tasks/models/task.dart';
@@ -38,6 +40,8 @@ class BackupSerialization {
         'goals': bundle.goals.map(_goalToJson).toList(),
         'milestones': bundle.milestones.map(_milestoneToJson).toList(),
         'dependencies': bundle.dependencies.map(_dependencyToJson).toList(),
+        'entityNotes': bundle.entityNotes.map(_entityNoteToJson).toList(),
+        'entityResources': bundle.entityResources.map(_entityResourceToJson).toList(),
         'settings': _preferencesToJson(bundle.preferences),
       },
     };
@@ -149,6 +153,21 @@ class BackupSerialization {
       idOf: (item) => item.id,
       parser: (json, itemWarnings) => _dependencyFromJson(json, itemWarnings),
     );
+    final entityNotes = _parseOptionalCollection<EntityNote>(
+      name: 'entityNotes',
+      source: validCollections,
+      warnings: warnings,
+      idOf: (item) => item.id,
+      parser: (json, itemWarnings) => _entityNoteFromJson(json, itemWarnings),
+    );
+    final entityResources = _parseOptionalCollection<EntityResource>(
+      name: 'entityResources',
+      source: validCollections,
+      warnings: warnings,
+      idOf: (item) => item.id,
+      parser: (json, itemWarnings) =>
+          _entityResourceFromJson(json, itemWarnings),
+    );
 
     final settingsMap = validCollections['settings'];
     final preferences = _preferencesFromJson(settingsMap, warnings, errors);
@@ -170,6 +189,8 @@ class BackupSerialization {
         goals: goals,
         milestones: milestones,
         dependencies: dependencies,
+        entityNotes: entityNotes,
+        entityResources: entityResources,
         preferences: preferences,
       ),
       warnings: warnings,
@@ -272,6 +293,41 @@ class BackupSerialization {
     return valuesById.values.toList();
   }
 
+  List<T> _parseOptionalCollection<T>({
+    required String name,
+    required Map<String, dynamic> source,
+    required List<String> warnings,
+    required String Function(T item) idOf,
+    required T? Function(Map<String, dynamic> json, List<String> warnings)
+    parser,
+  }) {
+    final raw = source[name];
+    if (raw == null) {
+      return const [];
+    }
+    if (raw is! List) {
+      warnings.add('Collection $name is invalid and will be ignored.');
+      return const [];
+    }
+
+    final valuesById = <String, T>{};
+    for (var index = 0; index < raw.length; index++) {
+      final item = raw[index];
+      if (item is! Map<String, dynamic>) {
+        warnings.add('Skipping invalid $name[$index] entry.');
+        continue;
+      }
+      final itemWarnings = <String>[];
+      final parsed = parser(item, itemWarnings);
+      warnings.addAll(itemWarnings.map((warning) => '$name[$index]: $warning'));
+      if (parsed == null) {
+        continue;
+      }
+      valuesById[idOf(parsed)] = parsed;
+    }
+    return valuesById.values.toList();
+  }
+
   AppBackupBundle _normalizeBundle({
     required AppBackupBundle bundle,
     required List<String> warnings,
@@ -279,6 +335,7 @@ class BackupSerialization {
     final goalIds = bundle.goals.map((item) => item.id).toSet();
     final milestoneIds = bundle.milestones.map((item) => item.id).toSet();
     final taskIds = bundle.tasks.map((item) => item.id).toSet();
+    final goalIdsForAttachments = bundle.goals.map((item) => item.id).toSet();
 
     final normalizedMilestones = <GoalMilestone>[];
     for (final milestone in bundle.milestones) {
@@ -333,6 +390,37 @@ class BackupSerialization {
       normalizedDependencies.add(dependency);
     }
 
+    final normalizedNotes = <EntityNote>[];
+    for (final note in bundle.entityNotes) {
+      final entityExists = switch (note.entityType) {
+        EntityAttachmentType.task => taskIds.contains(note.entityId),
+        EntityAttachmentType.goal => goalIdsForAttachments.contains(note.entityId),
+      };
+      if (!entityExists) {
+        warnings.add(
+          'Note ${note.id} references missing ${note.entityType.name} ${note.entityId} and will be skipped.',
+        );
+        continue;
+      }
+      normalizedNotes.add(note);
+    }
+
+    final normalizedResources = <EntityResource>[];
+    for (final resource in bundle.entityResources) {
+      final entityExists = switch (resource.entityType) {
+        EntityAttachmentType.task => taskIds.contains(resource.entityId),
+        EntityAttachmentType.goal =>
+          goalIdsForAttachments.contains(resource.entityId),
+      };
+      if (!entityExists) {
+        warnings.add(
+          'Resource ${resource.id} references missing ${resource.entityType.name} ${resource.entityId} and will be skipped.',
+        );
+        continue;
+      }
+      normalizedResources.add(resource);
+    }
+
     return AppBackupBundle(
       metadata: bundle.metadata,
       tasks: normalizedTasks,
@@ -341,6 +429,8 @@ class BackupSerialization {
       goals: bundle.goals,
       milestones: normalizedMilestones,
       dependencies: normalizedDependencies,
+      entityNotes: normalizedNotes,
+      entityResources: normalizedResources,
       preferences: bundle.preferences,
       warnings: List<String>.from(warnings),
     );
@@ -667,6 +757,102 @@ class BackupSerialization {
     );
   }
 
+  Map<String, dynamic> _entityNoteToJson(EntityNote note) {
+    return {
+      'id': note.id,
+      'entityType': note.entityType.name,
+      'entityId': note.entityId,
+      'title': note.title,
+      'content': note.content,
+      'createdAt': note.createdAt.toIso8601String(),
+      'updatedAt': note.updatedAt?.toIso8601String(),
+      'isPinned': note.isPinned,
+      'isArchived': note.isArchived,
+    };
+  }
+
+  EntityNote? _entityNoteFromJson(
+    Map<String, dynamic> json,
+    List<String> warnings,
+  ) {
+    final id = json['id']?.toString();
+    final entityType = _entityAttachmentTypeFromJson(
+      json['entityType'],
+      warnings,
+    );
+    final entityId = json['entityId']?.toString();
+    final content = json['content']?.toString();
+    final createdAt = _asDateTime(json['createdAt']);
+    if ([id, entityType, entityId, content, createdAt].any((v) => v == null)) {
+      warnings.add('Entity note is missing required fields and will be skipped.');
+      return null;
+    }
+    return EntityNote(
+      id: id!,
+      entityType: entityType,
+      entityId: entityId!,
+      title: json['title']?.toString(),
+      content: content!,
+      createdAt: createdAt!,
+      updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
+      isPinned: _asBool(json['isPinned']) ?? false,
+      isArchived: _asBool(json['isArchived']) ?? false,
+    );
+  }
+
+  Map<String, dynamic> _entityResourceToJson(EntityResource resource) {
+    return {
+      'id': resource.id,
+      'entityType': resource.entityType.name,
+      'entityId': resource.entityId,
+      'title': resource.title,
+      'url': resource.url,
+      'description': resource.description,
+      'resourceType': resource.resourceType.name,
+      'createdAt': resource.createdAt.toIso8601String(),
+      'updatedAt': resource.updatedAt?.toIso8601String(),
+      'isPinned': resource.isPinned,
+    };
+  }
+
+  EntityResource? _entityResourceFromJson(
+    Map<String, dynamic> json,
+    List<String> warnings,
+  ) {
+    final id = json['id']?.toString();
+    final entityType = _entityAttachmentTypeFromJson(
+      json['entityType'],
+      warnings,
+    );
+    final entityId = json['entityId']?.toString();
+    final title = json['title']?.toString();
+    final resourceType = _entityResourceTypeFromJson(
+      json['resourceType'],
+      warnings,
+    );
+    final createdAt = _asDateTime(json['createdAt']);
+    if ([id, entityType, entityId, title, resourceType, createdAt].any(
+      (v) => v == null,
+    )) {
+      warnings.add(
+        'Entity resource is missing required fields and will be skipped.',
+      );
+      return null;
+    }
+    return EntityResource(
+      id: id!,
+      entityType: entityType,
+      entityId: entityId!,
+      title: title!,
+      url: json['url']?.toString(),
+      description: json['description']?.toString(),
+      resourceType: resourceType,
+      createdAt: createdAt!,
+      updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
+      isPinned: _asBool(json['isPinned']) ?? false,
+    );
+  }
+
   Map<String, dynamic> _preferencesToJson(NotificationPreferences preferences) {
     return {
       'sessionRemindersEnabled': preferences.sessionRemindersEnabled,
@@ -756,6 +942,34 @@ class BackupSerialization {
           label: 'goal status',
         ) ??
         GoalStatus.active;
+  }
+
+  EntityAttachmentType _entityAttachmentTypeFromJson(
+    Object? raw,
+    List<String> warnings,
+  ) {
+    return _enumByName<EntityAttachmentType>(
+          EntityAttachmentType.values,
+          raw,
+          warnings,
+          fallback: EntityAttachmentType.task,
+          label: 'entity attachment type',
+        ) ??
+        EntityAttachmentType.task;
+  }
+
+  EntityResourceType _entityResourceTypeFromJson(
+    Object? raw,
+    List<String> warnings,
+  ) {
+    return _enumByName<EntityResourceType>(
+          EntityResourceType.values,
+          raw,
+          warnings,
+          fallback: EntityResourceType.other,
+          label: 'entity resource type',
+        ) ??
+        EntityResourceType.other;
   }
 
   BackupReminderCadence _backupReminderCadenceFromJson(

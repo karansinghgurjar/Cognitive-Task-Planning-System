@@ -6,6 +6,8 @@ import 'package:study_flow/features/backup/domain/backup_service.dart';
 import 'package:study_flow/features/goals/models/goal_milestone.dart';
 import 'package:study_flow/features/goals/models/learning_goal.dart';
 import 'package:study_flow/features/goals/models/task_dependency.dart';
+import 'package:study_flow/features/notes/models/entity_note.dart';
+import 'package:study_flow/features/notes/models/entity_resource.dart';
 import 'package:study_flow/features/schedule/models/planned_session.dart';
 import 'package:study_flow/features/settings/models/notification_preferences.dart';
 import 'package:study_flow/features/tasks/models/task.dart';
@@ -108,6 +110,8 @@ class _FakeRestoreStore implements BackupRestoreStore {
     required List<LearningGoal> goals,
     required List<GoalMilestone> milestones,
     required List<TaskDependency> dependencies,
+    required List<EntityNote> entityNotes,
+    required List<EntityResource> entityResources,
     NotificationPreferences? preferences,
   }) async {
     mergedTasks = tasks;
@@ -139,6 +143,8 @@ ExistingAppStateSnapshot _existingSnapshot() {
     ],
     milestones: const [],
     dependencies: const [],
+    entityNotes: const <EntityNote>[],
+    entityResources: const <EntityResource>[],
     preferences: NotificationPreferences(),
   );
 }
@@ -191,6 +197,8 @@ AppBackupBundle _importBundle() {
     ],
     milestones: const [],
     dependencies: const [],
+    entityNotes: const <EntityNote>[],
+    entityResources: const <EntityResource>[],
     preferences: NotificationPreferences(
       backupReminderEnabled: true,
       backupReminderCadence: BackupReminderCadence.monthly,

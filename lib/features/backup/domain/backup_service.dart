@@ -54,6 +54,8 @@ class BackupService {
       goals: snapshot.goals,
       milestones: snapshot.milestones,
       dependencies: snapshot.dependencies,
+      entityNotes: snapshot.entityNotes,
+      entityResources: snapshot.entityResources,
       preferences: snapshot.preferences,
     );
   }
@@ -114,6 +116,18 @@ class BackupService {
       'dependencies',
       bundle.dependencies,
       existing.dependencies,
+      (item) => item.id,
+    );
+    collectConflicts(
+      'entityNotes',
+      bundle.entityNotes,
+      existing.entityNotes,
+      (item) => item.id,
+    );
+    collectConflicts(
+      'entityResources',
+      bundle.entityResources,
+      existing.entityResources,
       (item) => item.id,
     );
 
@@ -229,6 +243,18 @@ class BackupService {
       'dependencies',
       (item) => item.id,
     );
+    final entityNotes = filterForMode(
+      bundle.entityNotes,
+      existing.entityNotes.map((item) => item.id).toSet(),
+      'entityNotes',
+      (item) => item.id,
+    );
+    final entityResources = filterForMode(
+      bundle.entityResources,
+      existing.entityResources.map((item) => item.id).toSet(),
+      'entityResources',
+      (item) => item.id,
+    );
 
     await _restoreStore.mergeBundle(
       tasks: tasks,
@@ -237,6 +263,8 @@ class BackupService {
       goals: goals,
       milestones: milestones,
       dependencies: dependencies,
+      entityNotes: entityNotes,
+      entityResources: entityResources,
       preferences: preferImported ? bundle.preferences : null,
     );
 
@@ -264,6 +292,8 @@ class BackupService {
       'goals': bundle.goals.length,
       'milestones': bundle.milestones.length,
       'dependencies': bundle.dependencies.length,
+      'entityNotes': bundle.entityNotes.length,
+      'entityResources': bundle.entityResources.length,
       'settings': 1,
     };
   }

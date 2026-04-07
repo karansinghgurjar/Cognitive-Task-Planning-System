@@ -4,6 +4,8 @@ import 'package:study_flow/features/backup/domain/backup_models.dart';
 import 'package:study_flow/features/goals/models/goal_milestone.dart';
 import 'package:study_flow/features/goals/models/learning_goal.dart';
 import 'package:study_flow/features/goals/models/task_dependency.dart';
+import 'package:study_flow/features/notes/models/entity_note.dart';
+import 'package:study_flow/features/notes/models/entity_resource.dart';
 import 'package:study_flow/features/schedule/models/planned_session.dart';
 import 'package:study_flow/features/settings/models/notification_preferences.dart';
 import 'package:study_flow/features/tasks/models/task.dart';
@@ -194,6 +196,8 @@ AppBackupBundle _sampleBundle() {
         createdAt: DateTime(2026, 3, 1, 10),
       ),
     ],
+    entityNotes: const <EntityNote>[],
+    entityResources: const <EntityResource>[],
     preferences: NotificationPreferences(
       backupReminderEnabled: true,
       backupReminderCadence: BackupReminderCadence.everyTwoWeeks,

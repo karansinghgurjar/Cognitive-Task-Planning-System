@@ -5,11 +5,14 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/errors/error_handler.dart';
 import '../../ai_planning/presentation/ai_plan_generator_screen.dart';
+import '../../notes/models/entity_note.dart';
+import '../../notes/presentation/entity_support_sections.dart';
 import '../../recommendations/domain/recommendation_models.dart';
 import '../../recommendations/providers/recommendation_providers.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../schedule/providers/schedule_providers.dart';
 import '../../tasks/models/task.dart';
+import '../../tasks/presentation/task_detail_screen.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../models/goal_milestone.dart';
 import '../models/learning_goal.dart';
@@ -259,6 +262,18 @@ class _GoalDetailScreenState extends ConsumerState<GoalDetailScreen> {
               child: _LinkedTaskCard(task: task),
             ),
           ),
+        const SizedBox(height: 20),
+        EntityNotesSection(
+          entityType: EntityAttachmentType.goal,
+          entityId: goal.id,
+          title: 'Notes',
+        ),
+        const SizedBox(height: 20),
+        EntityResourcesSection(
+          entityType: EntityAttachmentType.goal,
+          entityId: goal.id,
+          title: 'Resources',
+        ),
       ],
     );
   }
@@ -532,42 +547,52 @@ class _LinkedTaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              task.title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                decoration: task.isCompleted
-                    ? TextDecoration.lineThrough
-                    : null,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => TaskDetailScreen(taskId: task.id),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                task.title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  decoration: task.isCompleted
+                      ? TextDecoration.lineThrough
+                      : null,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _DetailChip(label: task.type.label),
-                _DetailChip(label: '${task.estimatedDurationMinutes} min'),
-                _DetailChip(label: task.isCompleted ? 'Completed' : 'Open'),
-                if (task.milestoneId != null)
-                  const _DetailChip(label: 'Milestone Task'),
-                if (task.dueDate != null)
-                  _DetailChip(
-                    label: 'Due ${DateFormat.yMMMd().format(task.dueDate!)}',
-                  ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _DetailChip(label: task.type.label),
+                  _DetailChip(label: '${task.estimatedDurationMinutes} min'),
+                  _DetailChip(label: task.isCompleted ? 'Completed' : 'Open'),
+                  if (task.milestoneId != null)
+                    const _DetailChip(label: 'Milestone Task'),
+                  if (task.dueDate != null)
+                    _DetailChip(
+                      label: 'Due ${DateFormat.yMMMd().format(task.dueDate!)}',
+                    ),
+                ],
+              ),
+              if (task.description != null &&
+                  task.description!.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(task.description!),
               ],
-            ),
-            if (task.description != null &&
-                task.description!.trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(task.description!),
             ],
-          ],
+          ),
         ),
       ),
     );

@@ -18,6 +18,7 @@ import '../domain/task_lifecycle_service.dart';
 import '../models/task.dart';
 import '../providers/task_providers.dart';
 import 'add_task_screen.dart';
+import 'task_detail_screen.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -333,126 +334,136 @@ class _TaskCard extends ConsumerWidget {
         : DateFormat.yMMMd().format(task.archivedAt!);
 
     final card = Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Checkbox(
-              value: task.isCompleted,
-              onChanged: task.isArchived || actionsDisabled
-                  ? null
-                  : (_) => _toggleCompleted(context, ref),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => TaskDetailScreen(taskId: task.id),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          task.title,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                decoration: task.isCompleted
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Checkbox(
+                value: task.isCompleted,
+                onChanged: task.isArchived || actionsDisabled
+                    ? null
+                    : (_) => _toggleCompleted(context, ref),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            task.title,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  decoration: task.isCompleted
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      PopupMenuButton<_TaskAction>(
-                        tooltip: 'Task actions',
-                        enabled: !actionsDisabled,
-                        onSelected: (action) =>
-                            _handleAction(context, ref, action),
-                        itemBuilder: (context) {
-                          if (task.isArchived) {
-                            return const [
-                              PopupMenuItem(
+                        const SizedBox(width: 12),
+                        PopupMenuButton<_TaskAction>(
+                          tooltip: 'Task actions',
+                          enabled: !actionsDisabled,
+                          onSelected: (action) =>
+                              _handleAction(context, ref, action),
+                          itemBuilder: (context) {
+                            if (task.isArchived) {
+                              return const [
+                                PopupMenuItem(
+                                  value: _TaskAction.edit,
+                                  child: Text('Edit'),
+                                ),
+                                PopupMenuItem(
+                                  value: _TaskAction.restore,
+                                  child: Text('Restore task'),
+                                ),
+                                PopupMenuItem(
+                                  value: _TaskAction.delete,
+                                  child: Text('Delete permanently'),
+                                ),
+                              ];
+                            }
+                            return [
+                              const PopupMenuItem(
                                 value: _TaskAction.edit,
                                 child: Text('Edit'),
                               ),
                               PopupMenuItem(
-                                value: _TaskAction.restore,
-                                child: Text('Restore task'),
+                                value: _TaskAction.toggleCompleted,
+                                child: Text(
+                                  task.isCompleted
+                                      ? 'Mark incomplete'
+                                      : 'Mark complete',
+                                ),
                               ),
-                              PopupMenuItem(
+                              const PopupMenuItem(
+                                value: _TaskAction.resetProgress,
+                                child: Text('Reset progress'),
+                              ),
+                              const PopupMenuItem(
+                                value: _TaskAction.clearGeneratedSessions,
+                                child: Text('Clear generated sessions'),
+                              ),
+                              const PopupMenuItem(
+                                value: _TaskAction.archive,
+                                child: Text('Archive task'),
+                              ),
+                              const PopupMenuItem(
                                 value: _TaskAction.delete,
                                 child: Text('Delete permanently'),
                               ),
                             ];
-                          }
-                          return [
-                            const PopupMenuItem(
-                              value: _TaskAction.edit,
-                              child: Text('Edit'),
-                            ),
-                            PopupMenuItem(
-                              value: _TaskAction.toggleCompleted,
-                              child: Text(
-                                task.isCompleted
-                                    ? 'Mark incomplete'
-                                    : 'Mark complete',
-                              ),
-                            ),
-                            const PopupMenuItem(
-                              value: _TaskAction.resetProgress,
-                              child: Text('Reset progress'),
-                            ),
-                            const PopupMenuItem(
-                              value: _TaskAction.clearGeneratedSessions,
-                              child: Text('Clear generated sessions'),
-                            ),
-                            const PopupMenuItem(
-                              value: _TaskAction.archive,
-                              child: Text('Archive task'),
-                            ),
-                            const PopupMenuItem(
-                              value: _TaskAction.delete,
-                              child: Text('Delete permanently'),
-                            ),
-                          ];
-                        },
-                      ),
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _TaskMetaChip(label: task.type.label),
+                        _TaskMetaChip(
+                          label: '${task.estimatedDurationMinutes} min',
+                        ),
+                        _TaskMetaChip(label: 'Priority ${task.priority}'),
+                        _TaskMetaChip(
+                          label: task.isArchived
+                              ? 'Archived'
+                              : task.isCompleted
+                              ? 'Completed'
+                              : 'Incomplete',
+                        ),
+                        if (formattedDueDate != null)
+                          _TaskMetaChip(label: 'Due $formattedDueDate'),
+                        if (formattedArchivedDate != null)
+                          _TaskMetaChip(label: 'Archived $formattedArchivedDate'),
+                      ],
+                    ),
+                    if (task.description != null &&
+                        task.description!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Text(task.description!),
                     ],
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _TaskMetaChip(label: task.type.label),
-                      _TaskMetaChip(
-                        label: '${task.estimatedDurationMinutes} min',
-                      ),
-                      _TaskMetaChip(label: 'Priority ${task.priority}'),
-                      _TaskMetaChip(
-                        label: task.isArchived
-                            ? 'Archived'
-                            : task.isCompleted
-                            ? 'Completed'
-                            : 'Incomplete',
-                      ),
-                      if (formattedDueDate != null)
-                        _TaskMetaChip(label: 'Due $formattedDueDate'),
-                      if (formattedArchivedDate != null)
-                        _TaskMetaChip(label: 'Archived $formattedArchivedDate'),
-                    ],
-                  ),
-                  if (task.description != null &&
-                      task.description!.trim().isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(task.description!),
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

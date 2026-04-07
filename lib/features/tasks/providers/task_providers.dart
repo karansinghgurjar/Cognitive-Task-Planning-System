@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/isar_providers.dart';
 import '../../focus_session/providers/focus_session_providers.dart';
 import '../../goals/providers/goal_providers.dart';
+import '../../notes/providers/notes_providers.dart';
 import '../../schedule/providers/schedule_providers.dart';
 import '../../sync/providers/sync_providers.dart';
 import '../data/task_repository.dart';
@@ -25,10 +26,14 @@ final taskLifecycleServiceProvider = FutureProvider<TaskLifecycleService>((
     plannedSessionRepositoryProvider.future,
   );
   final goalRepository = await ref.watch(goalRepositoryProvider.future);
+  final entityAttachmentsCleanupService = await ref.watch(
+    entityAttachmentsCleanupServiceProvider.future,
+  );
   return TaskLifecycleService(
     taskRepository: taskRepository,
     plannedSessionRepository: plannedSessionRepository,
     goalRepository: goalRepository,
+    entityAttachmentsCleanupService: entityAttachmentsCleanupService,
   );
 });
 

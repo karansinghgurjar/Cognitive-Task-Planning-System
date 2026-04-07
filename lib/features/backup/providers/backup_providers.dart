@@ -6,6 +6,7 @@ import '../../../core/config/app_brand.dart';
 import '../../../core/database/isar_providers.dart';
 import '../../analytics/providers/analytics_providers.dart';
 import '../../goals/providers/goal_providers.dart';
+import '../../notes/providers/notes_providers.dart';
 import '../../schedule/providers/schedule_providers.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../../sync/providers/sync_providers.dart';
@@ -73,6 +74,10 @@ final appStateSnapshotServiceProvider = FutureProvider<AppStateSnapshotService>(
       plannedSessionRepositoryProvider.future,
     );
     final goalRepository = await ref.watch(goalRepositoryProvider.future);
+    final notesRepository = await ref.watch(notesRepositoryProvider.future);
+    final resourcesRepository = await ref.watch(
+      resourcesRepositoryProvider.future,
+    );
     final settingsRepository = await ref.watch(
       settingsRepositoryProvider.future,
     );
@@ -82,6 +87,8 @@ final appStateSnapshotServiceProvider = FutureProvider<AppStateSnapshotService>(
       timetableRepository: timetableRepository,
       plannedSessionRepository: sessionRepository,
       goalRepository: goalRepository,
+      notesRepository: notesRepository,
+      resourcesRepository: resourcesRepository,
       settingsRepository: settingsRepository,
     );
   },

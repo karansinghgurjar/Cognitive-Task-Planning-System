@@ -12,6 +12,7 @@ The app is designed for local-first usage with Isar as the primary datastore and
 - Focus sessions with pause, resume, cancel, and completion flows
 - Recommendations and analytics dashboards for workload and progress visibility
 - JSON backup/restore, CSV export, ICS calendar export, and integrity checks
+- Task and goal notes with lightweight resource attachments
 - Optional Supabase-based sync and account flows
 - Notification and reminder infrastructure with background-worker support
 
@@ -22,6 +23,7 @@ The app is designed for local-first usage with Isar as the primary datastore and
 - `Today`: daily schedule view, recovery prompts, and recommended next action
 - `Tasks`: task creation, completion, deletion, and task-level planning metadata
 - `Goals`: goal creation, milestones, progress, and goal detail insights
+- `Notes & Resources`: task-linked and goal-linked notes, links, references, and revision context
 - `Timetable`: availability slots and overlap validation for planning windows
 - `AI planning`: generate a draft plan from a natural-language prompt, review it, edit it, and import it into the system
 

@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/isar_providers.dart';
+import '../../notes/models/entity_note.dart';
+import '../../notes/providers/notes_providers.dart';
 import '../../sync/providers/sync_providers.dart';
 import '../../schedule/providers/schedule_providers.dart';
 import '../../tasks/data/task_repository.dart';
@@ -149,7 +151,7 @@ class GoalActionController extends AsyncNotifier<void> {
   });
 
   Future<void> deleteGoal(String id) => _run((repository, _) {
-    return repository.deleteGoal(id);
+    return _deleteGoalWithAttachments(repository, id);
   });
 
   Future<void> addMilestone(GoalMilestone milestone) => _run((repository, _) {
@@ -248,5 +250,16 @@ class GoalActionController extends AsyncNotifier<void> {
       state = AsyncError(error, stackTrace);
       rethrow;
     }
+  }
+
+  Future<void> _deleteGoalWithAttachments(
+    GoalRepository repository,
+    String id,
+  ) async {
+    final cleanupService = await ref.read(
+      entityAttachmentsCleanupServiceProvider.future,
+    );
+    await cleanupService.deleteForEntity(EntityAttachmentType.goal, id);
+    await repository.deleteGoal(id);
   }
 }

@@ -1,4 +1,7 @@
-﻿import '../../goals/data/goal_repository.dart';
+import '../../goals/data/goal_repository.dart';
+import '../../notes/data/notes_repository.dart';
+import '../../notes/data/resources_repository.dart';
+import '../../notes/models/entity_note.dart';
 import '../../schedule/data/planned_session_repository.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../tasks/data/task_repository.dart';
@@ -11,6 +14,8 @@ class AppStateSnapshotService {
     required this.timetableRepository,
     required this.plannedSessionRepository,
     required this.goalRepository,
+    required this.notesRepository,
+    required this.resourcesRepository,
     required this.settingsRepository,
   });
 
@@ -18,6 +23,8 @@ class AppStateSnapshotService {
   final TimetableRepository timetableRepository;
   final PlannedSessionRepository plannedSessionRepository;
   final GoalRepository goalRepository;
+  final NotesRepository notesRepository;
+  final ResourcesRepository resourcesRepository;
   final SettingsRepository settingsRepository;
 
   Future<ExistingAppStateSnapshot> createSnapshot() async {
@@ -27,6 +34,8 @@ class AppStateSnapshotService {
     final goals = await goalRepository.getAllGoals();
     final milestones = await goalRepository.getAllMilestones();
     final dependencies = await goalRepository.getAllDependencies();
+    final entityNotes = await notesRepository.getAllNotes();
+    final entityResources = await resourcesRepository.getAllResources();
     final preferences = await settingsRepository.getPreferences();
 
     return ExistingAppStateSnapshot(
@@ -36,6 +45,8 @@ class AppStateSnapshotService {
       goals: goals,
       milestones: milestones,
       dependencies: dependencies,
+      entityNotes: entityNotes,
+      entityResources: entityResources,
       preferences: preferences,
     );
   }
@@ -54,7 +65,9 @@ class AppStateSnapshotService {
 
     for (final milestone in snapshot.milestones) {
       if (!goalIds.contains(milestone.goalId)) {
-        warnings.add('Milestone ${milestone.id} references missing goal ${milestone.goalId}.');
+        warnings.add(
+          'Milestone ${milestone.id} references missing goal ${milestone.goalId}.',
+        );
       }
     }
     for (final task in snapshot.tasks) {
@@ -62,12 +75,40 @@ class AppStateSnapshotService {
         warnings.add('Task ${task.id} references missing goal ${task.goalId}.');
       }
       if (task.milestoneId != null && !milestoneIds.contains(task.milestoneId)) {
-        warnings.add('Task ${task.id} references missing milestone ${task.milestoneId}.');
+        warnings.add(
+          'Task ${task.id} references missing milestone ${task.milestoneId}.',
+        );
       }
     }
     for (final session in snapshot.plannedSessions) {
       if (!taskIds.contains(session.taskId)) {
-        warnings.add('Session ${session.id} references missing task ${session.taskId}.');
+        warnings.add(
+          'Session ${session.id} references missing task ${session.taskId}.',
+        );
+      }
+    }
+    for (final note in snapshot.entityNotes) {
+      if (note.entityType == EntityAttachmentType.task &&
+          !taskIds.contains(note.entityId)) {
+        warnings.add('Note ${note.id} references missing task ${note.entityId}.');
+      }
+      if (note.entityType == EntityAttachmentType.goal &&
+          !goalIds.contains(note.entityId)) {
+        warnings.add('Note ${note.id} references missing goal ${note.entityId}.');
+      }
+    }
+    for (final resource in snapshot.entityResources) {
+      if (resource.entityType == EntityAttachmentType.task &&
+          !taskIds.contains(resource.entityId)) {
+        warnings.add(
+          'Resource ${resource.id} references missing task ${resource.entityId}.',
+        );
+      }
+      if (resource.entityType == EntityAttachmentType.goal &&
+          !goalIds.contains(resource.entityId)) {
+        warnings.add(
+          'Resource ${resource.id} references missing goal ${resource.entityId}.',
+        );
       }
     }
     return warnings;

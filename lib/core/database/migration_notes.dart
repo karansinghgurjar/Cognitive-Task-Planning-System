@@ -19,5 +19,10 @@ class MigrationNotes {
       description:
           'Added Quick Capture inbox storage for low-friction brain-dump items.',
     ),
+    MigrationNote(
+      version: 3,
+      description:
+          'Added contextual notes and resource attachments for tasks and goals.',
+    ),
   ];
 }

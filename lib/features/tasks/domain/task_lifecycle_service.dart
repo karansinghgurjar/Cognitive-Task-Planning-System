@@ -1,4 +1,6 @@
 import '../../goals/data/goal_repository.dart';
+import '../../notes/domain/entity_attachments_cleanup_service.dart';
+import '../../notes/models/entity_note.dart';
 import '../../schedule/data/planned_session_repository.dart';
 import '../data/task_repository.dart';
 
@@ -11,6 +13,7 @@ class TaskLifecycleService {
     required TaskRepository taskRepository,
     required PlannedSessionRepository plannedSessionRepository,
     required GoalRepository goalRepository,
+    this.entityAttachmentsCleanupService,
     TaskLifecycleClock clock = DateTime.now,
   }) : _taskRepository = taskRepository,
        _plannedSessionRepository = plannedSessionRepository,
@@ -20,6 +23,7 @@ class TaskLifecycleService {
   final TaskRepository _taskRepository;
   final PlannedSessionRepository _plannedSessionRepository;
   final GoalRepository _goalRepository;
+  final EntityAttachmentsCleanupService? entityAttachmentsCleanupService;
   final TaskLifecycleClock _clock;
 
   Future<void> archiveTask(String taskId) async {
@@ -66,6 +70,10 @@ class TaskLifecycleService {
   Future<void> deleteTaskPermanently(String taskId) async {
     await clearAllSessionsForTask(taskId);
     await _goalRepository.deleteDependenciesForTask(taskId);
+    await entityAttachmentsCleanupService?.deleteForEntity(
+      EntityAttachmentType.task,
+      taskId,
+    );
     await _taskRepository.deleteTask(taskId);
   }
 

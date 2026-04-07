@@ -2,6 +2,8 @@
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
 import '../../goals/models/task_dependency.dart';
+import '../../notes/models/entity_note.dart';
+import '../../notes/models/entity_resource.dart';
 import '../../recommendations/domain/recommendation_models.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../settings/models/notification_preferences.dart';
@@ -35,6 +37,8 @@ class AppBackupBundle {
     required this.goals,
     required this.milestones,
     required this.dependencies,
+    required this.entityNotes,
+    required this.entityResources,
     required this.preferences,
     this.warnings = const [],
   });
@@ -46,6 +50,8 @@ class AppBackupBundle {
   final List<LearningGoal> goals;
   final List<GoalMilestone> milestones;
   final List<TaskDependency> dependencies;
+  final List<EntityNote> entityNotes;
+  final List<EntityResource> entityResources;
   final NotificationPreferences preferences;
   final List<String> warnings;
 }
@@ -58,6 +64,8 @@ class ExistingAppStateSnapshot {
     required this.goals,
     required this.milestones,
     required this.dependencies,
+    required this.entityNotes,
+    required this.entityResources,
     required this.preferences,
   });
 
@@ -67,6 +75,8 @@ class ExistingAppStateSnapshot {
   final List<LearningGoal> goals;
   final List<GoalMilestone> milestones;
   final List<TaskDependency> dependencies;
+  final List<EntityNote> entityNotes;
+  final List<EntityResource> entityResources;
   final NotificationPreferences preferences;
 
   Map<String, int> get entityCounts => {
@@ -76,6 +86,8 @@ class ExistingAppStateSnapshot {
     'goals': goals.length,
     'milestones': milestones.length,
     'dependencies': dependencies.length,
+    'entityNotes': entityNotes.length,
+    'entityResources': entityResources.length,
     'settings': 1,
   };
 }

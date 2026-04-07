@@ -5,6 +5,8 @@ import '../../core/notifications/notification_log.dart';
 import '../../features/backup/models/backup_record.dart';
 import '../../features/goals/models/goal_milestone.dart';
 import '../../features/goals/models/learning_goal.dart';
+import '../../features/notes/models/entity_note.dart';
+import '../../features/notes/models/entity_resource.dart';
 import '../../features/onboarding/models/onboarding_state.dart';
 import '../../features/goals/models/task_dependency.dart';
 import '../../features/quick_capture/models/quick_capture_item.dart';
@@ -56,6 +58,8 @@ class IsarService {
           LearningGoalSchema,
           GoalMilestoneSchema,
           TaskDependencySchema,
+          EntityNoteSchema,
+          EntityResourceSchema,
           QuickCaptureItemSchema,
           OnboardingStateRecordSchema,
           NotificationPreferencesSchema,
