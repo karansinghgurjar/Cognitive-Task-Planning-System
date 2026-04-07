@@ -1,3 +1,4 @@
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:study_flow/core/notifications/notification_service.dart';
 import 'package:study_flow/features/schedule/models/planned_session.dart';
@@ -109,6 +110,24 @@ void main() {
       final intent = NotificationService.parsePayload('{not-json');
 
       expect(intent, isNull);
+    });
+
+    test('uses exact scheduling for near-term reminders', () {
+      final mode = NotificationService.preferredScheduleModeFor(
+        DateTime(2026, 3, 16, 10, 0),
+        now: DateTime(2026, 3, 16, 9, 0),
+      );
+
+      expect(mode, AndroidScheduleMode.exactAllowWhileIdle);
+    });
+
+    test('uses inexact scheduling for distant reminders', () {
+      final mode = NotificationService.preferredScheduleModeFor(
+        DateTime(2026, 3, 16, 14, 0),
+        now: DateTime(2026, 3, 16, 9, 0),
+      );
+
+      expect(mode, AndroidScheduleMode.inexactAllowWhileIdle);
     });
   });
 }

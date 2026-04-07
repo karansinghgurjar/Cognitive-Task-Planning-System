@@ -14,31 +14,52 @@ class AppSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final compact = MediaQuery.sizeOf(context).width < 720;
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
+        if (compact || actions.isEmpty)
+          _HeaderText(title: title, description: description)
+        else
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+              Expanded(
+                child: _HeaderText(title: title, description: description),
               ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
+              const SizedBox(width: 12),
+              Wrap(spacing: 8, runSpacing: 8, children: actions),
             ],
           ),
-        ),
-        if (actions.isNotEmpty) ...[
-          const SizedBox(width: 12),
+        if (compact && actions.isNotEmpty) ...[
+          const SizedBox(height: 16),
           Wrap(spacing: 8, runSpacing: 8, children: actions),
         ],
+      ],
+    );
+  }
+}
+
+class _HeaderText extends StatelessWidget {
+  const _HeaderText({required this.title, required this.description});
+
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(description, style: Theme.of(context).textTheme.bodyLarge),
       ],
     );
   }

@@ -81,13 +81,14 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
         ? 'No due date'
         : DateFormat.yMMMd().format(_selectedDueDate!);
     final isEditing = widget.isEditing;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
       appBar: AppBar(title: Text(isEditing ? 'Edit Task' : 'Add Task')),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(16, 24, 16, 24 + bottomInset),
           children: [
             TextFormField(
               controller: _titleController,

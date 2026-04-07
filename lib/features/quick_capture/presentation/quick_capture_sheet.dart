@@ -60,94 +60,101 @@ class _QuickCaptureSheetState extends ConsumerState<QuickCaptureSheet> {
   @override
   Widget build(BuildContext context) {
     final viewInsets = MediaQuery.of(context).viewInsets;
+    final screenHeight = MediaQuery.sizeOf(context).height;
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + viewInsets.bottom),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + viewInsets.bottom),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Quick Capture',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+        constraints: BoxConstraints(
+          maxWidth: 560,
+          maxHeight: screenHeight * 0.9,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Quick Capture',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Open inbox',
-                  onPressed: _isSaving ? null : _openInbox,
-                  icon: const Icon(Icons.inbox_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Capture a task, goal, or note without opening the full creation flow.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              enabled: !_isSaving,
-              minLines: 4,
-              maxLines: 6,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _capture(),
-              decoration: const InputDecoration(
-                hintText:
-                    'Revise Java OOP\nPrepare DSA arrays\nLearn REST APIs',
-                border: OutlineInputBorder(),
+                  IconButton(
+                    tooltip: 'Open inbox',
+                    onPressed: _isSaving ? null : _openInbox,
+                    icon: const Icon(Icons.inbox_rounded),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: QuickCaptureEntryMode.values.map((mode) {
-                final selected = _mode == mode;
-                return ChoiceChip(
-                  label: Text(_modeLabel(mode)),
-                  selected: selected,
-                  onSelected: _isSaving
-                      ? null
-                      : (_) {
-                          setState(() {
-                            _mode = mode;
-                          });
-                        },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _isSaving
-                      ? null
-                      : () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
+              const SizedBox(height: 8),
+              Text(
+                'Capture a task, goal, or note without opening the full creation flow.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                enabled: !_isSaving,
+                minLines: 4,
+                maxLines: 6,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _capture(),
+                decoration: const InputDecoration(
+                  hintText:
+                      'Revise Java OOP\nPrepare DSA arrays\nLearn REST APIs',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _isSaving ? null : _capture,
-                  icon: _isSaving
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.bolt_rounded),
-                  label: Text(_isSaving ? 'Capturing...' : 'Capture'),
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: QuickCaptureEntryMode.values.map((mode) {
+                  final selected = _mode == mode;
+                  return ChoiceChip(
+                    label: Text(_modeLabel(mode)),
+                    selected: selected,
+                    onSelected: _isSaving
+                        ? null
+                        : (_) {
+                            setState(() {
+                              _mode = mode;
+                            });
+                          },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                alignment: WrapAlignment.end,
+                runAlignment: WrapAlignment.end,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  TextButton(
+                    onPressed: _isSaving
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _isSaving ? null : _capture,
+                    icon: _isSaving
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.bolt_rounded),
+                    label: Text(_isSaving ? 'Capturing...' : 'Capture'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

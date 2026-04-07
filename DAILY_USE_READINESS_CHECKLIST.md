@@ -71,6 +71,15 @@
 - If on Android, verify the notification actually arrives.
 - If notification permissions are denied, confirm the app stays usable and the feature degrades gracefully.
 
+## Android-Specific Phone Pass
+- Launch the app on an actual Android phone and confirm no startup plugin exception appears.
+- Open Quick Capture and confirm the bottom sheet remains scrollable above the keyboard.
+- Open Global Search and Command Palette entry points and confirm they fit on a small screen.
+- Open Analytics and confirm the header actions wrap cleanly instead of clipping.
+- Open add/edit forms for tasks, goals, notes, and resources, then confirm the save button stays reachable with the keyboard open.
+- Export a backup and an `.ics` calendar file, then cancel once and confirm the app stays stable.
+- If exact alarms are not allowed, confirm reminders still degrade gracefully instead of crashing.
+
 ## AI Planning
 - Create a plan from a natural-language prompt.
 - Review the preview.
@@ -80,3 +89,4 @@
 - Reopen the app after closing it.
 - Confirm startup still succeeds.
 - Confirm Today, Tasks, Timetable, Goals, Settings, Backup, and Sync screens all open without crashes.
+- On Android, repeat the final sanity pass after backgrounding and resuming the app once.

@@ -59,6 +59,7 @@ class _AddEditResourceScreenState extends ConsumerState<AddEditResourceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Edit Resource' : 'Add Resource'),
@@ -66,7 +67,7 @@ class _AddEditResourceScreenState extends ConsumerState<AddEditResourceScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(16, 24, 16, 24 + bottomInset),
           children: [
             TextFormField(
               controller: _titleController,
@@ -100,10 +101,7 @@ class _AddEditResourceScreenState extends ConsumerState<AddEditResourceScreen> {
                 border: OutlineInputBorder(),
               ),
               items: EntityResourceType.values.map((value) {
-                return DropdownMenuItem(
-                  value: value,
-                  child: Text(value.label),
-                );
+                return DropdownMenuItem(value: value, child: Text(value.label));
               }).toList(),
               onChanged: _isSaving
                   ? null

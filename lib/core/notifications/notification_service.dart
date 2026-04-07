@@ -367,8 +367,12 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-    await android?.requestNotificationsPermission();
-    await android?.requestExactAlarmsPermission();
+    try {
+      await android?.requestNotificationsPermission();
+    } catch (_) {}
+    try {
+      await android?.requestExactAlarmsPermission();
+    } catch (_) {}
   }
 
   Future<void> _ensureAndroidChannels() async {
@@ -422,18 +426,46 @@ class NotificationService {
       tz.UTC,
       request.when.millisecondsSinceEpoch,
     );
-    await _plugin.zonedSchedule(
-      id: request.id,
-      title: request.title,
-      body: request.body,
-      scheduledDate: scheduledDate,
-      notificationDetails: _notificationDetails(
-        channelId: channelId,
-        actions: request.actions,
-      ),
-      payload: request.payload,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    final details = _notificationDetails(
+      channelId: channelId,
+      actions: request.actions,
     );
+    final scheduleMode = preferredScheduleModeFor(
+      request.when,
+      now: DateTime.now(),
+    );
+    try {
+      await _plugin.zonedSchedule(
+        id: request.id,
+        title: request.title,
+        body: request.body,
+        scheduledDate: scheduledDate,
+        notificationDetails: details,
+        payload: request.payload,
+        androidScheduleMode: scheduleMode,
+      );
+    } catch (_) {
+      await _plugin.zonedSchedule(
+        id: request.id,
+        title: request.title,
+        body: request.body,
+        scheduledDate: scheduledDate,
+        notificationDetails: details,
+        payload: request.payload,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
+  }
+
+  static AndroidScheduleMode preferredScheduleModeFor(
+    DateTime scheduledFor, {
+    required DateTime now,
+  }) {
+    final difference = scheduledFor.difference(now);
+    if (difference.inMinutes <= 90) {
+      return AndroidScheduleMode.exactAllowWhileIdle;
+    }
+    return AndroidScheduleMode.inexactAllowWhileIdle;
   }
 
   NotificationDetails _notificationDetails({

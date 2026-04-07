@@ -20,11 +20,11 @@ class GlobalSearchScreen extends ConsumerStatefulWidget {
       await showDialog<void>(
         context: context,
         builder: (_) => Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: SizedBox(
-            width: 760,
-            child: const GlobalSearchScreen(),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 32,
           ),
+          child: SizedBox(width: 760, child: const GlobalSearchScreen()),
         ),
       );
       return;
@@ -66,27 +66,31 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.sizeOf(context).height;
     final query = ref.watch(searchQueryProvider);
     final sectionsAsync = ref.watch(groupedSearchResultsProvider);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        24,
-        24,
-        24,
-        24 + MediaQuery.of(context).viewInsets.bottom,
+        16,
+        16,
+        16,
+        16 + MediaQuery.of(context).viewInsets.bottom,
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760, maxHeight: 640),
+        constraints: BoxConstraints(
+          maxWidth: 760,
+          maxHeight: screenHeight * 0.9,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Global Search',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -134,9 +138,8 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => Center(
-                  child: Text(ErrorHandler.mapError(error).message),
-                ),
+                error: (error, _) =>
+                    Center(child: Text(ErrorHandler.mapError(error).message)),
               ),
             ),
           ],
@@ -168,19 +171,22 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
           );
           break;
         case SearchResultType.note:
-          if (result.parentEntityId == null || result.parentEntityType == null) {
+          if (result.parentEntityId == null ||
+              result.parentEntityType == null) {
             throw StateError('That note no longer has a valid parent item.');
           }
           if (result.parentEntityType == EntityAttachmentType.task) {
             await rootNavigator.push(
               MaterialPageRoute<void>(
-                builder: (_) => TaskDetailScreen(taskId: result.parentEntityId!),
+                builder: (_) =>
+                    TaskDetailScreen(taskId: result.parentEntityId!),
               ),
             );
           } else {
             await rootNavigator.push(
               MaterialPageRoute<void>(
-                builder: (_) => GoalDetailScreen(goalId: result.parentEntityId!),
+                builder: (_) =>
+                    GoalDetailScreen(goalId: result.parentEntityId!),
               ),
             );
           }
@@ -188,18 +194,16 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
         case SearchResultType.capture:
           await rootNavigator.push(
             MaterialPageRoute<void>(
-              builder: (_) => QuickCaptureInboxScreen(
-                initialCaptureId: result.entityId,
-              ),
+              builder: (_) =>
+                  QuickCaptureInboxScreen(initialCaptureId: result.entityId),
             ),
           );
           break;
         case SearchResultType.weeklyReview:
           await rootNavigator.push(
             MaterialPageRoute<void>(
-              builder: (_) => WeeklyReviewScreen(
-                initialWeekStart: result.weekStart,
-              ),
+              builder: (_) =>
+                  WeeklyReviewScreen(initialWeekStart: result.weekStart),
             ),
           );
           break;
@@ -219,10 +223,7 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
 }
 
 class _SearchSectionCard extends StatelessWidget {
-  const _SearchSectionCard({
-    required this.section,
-    required this.onTap,
-  });
+  const _SearchSectionCard({required this.section, required this.onTap});
 
   final SearchSection section;
   final ValueChanged<GlobalSearchResult> onTap;
@@ -237,15 +238,18 @@ class _SearchSectionCard extends StatelessWidget {
           children: [
             Text(
               section.title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
             ...section.results.map((result) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _SearchResultTile(result: result, onTap: () => onTap(result)),
+                child: _SearchResultTile(
+                  result: result,
+                  onTap: () => onTap(result),
+                ),
               );
             }),
           ],
@@ -256,10 +260,7 @@ class _SearchSectionCard extends StatelessWidget {
 }
 
 class _SearchResultTile extends StatelessWidget {
-  const _SearchResultTile({
-    required this.result,
-    required this.onTap,
-  });
+  const _SearchResultTile({required this.result, required this.onTap});
 
   final GlobalSearchResult result;
   final VoidCallback onTap;
@@ -288,9 +289,8 @@ class _SearchResultTile extends StatelessWidget {
                         Expanded(
                           child: Text(
                             result.title,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
                         if (result.isArchived)

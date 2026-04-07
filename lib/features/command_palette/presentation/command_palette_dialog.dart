@@ -18,7 +18,10 @@ class CommandPaletteDialog extends ConsumerStatefulWidget {
       await showDialog<void>(
         context: context,
         builder: (_) => Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 32,
+          ),
           child: SizedBox(
             width: 680,
             child: CommandPaletteDialog(hostContext: context),
@@ -94,13 +97,15 @@ class _CommandPaletteDialogState extends ConsumerState<CommandPaletteDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.sizeOf(context).height;
     final commandMatches = ref.watch(matchedCommandsProvider);
     final entityMatches = ref.watch(matchedLauncherEntitiesProvider);
     final combinedResults = <_PaletteResult>[
       ...commandMatches.map(_CommandPaletteResult.new),
       ...entityMatches.map(_EntityPaletteResult.new),
     ];
-    if (_selectedIndex >= combinedResults.length && combinedResults.isNotEmpty) {
+    if (_selectedIndex >= combinedResults.length &&
+        combinedResults.isNotEmpty) {
       _selectedIndex = combinedResults.length - 1;
     } else if (combinedResults.isEmpty) {
       _selectedIndex = 0;
@@ -138,13 +143,16 @@ class _CommandPaletteDialogState extends ConsumerState<CommandPaletteDialog> {
         },
         child: Padding(
           padding: EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
-            24 + MediaQuery.of(context).viewInsets.bottom,
+            16,
+            16,
+            16,
+            16 + MediaQuery.of(context).viewInsets.bottom,
           ),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680, maxHeight: 560),
+            constraints: BoxConstraints(
+              maxWidth: 680,
+              maxHeight: screenHeight * 0.9,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,8 +160,8 @@ class _CommandPaletteDialogState extends ConsumerState<CommandPaletteDialog> {
                 Text(
                   'Command Palette',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
@@ -165,7 +173,8 @@ class _CommandPaletteDialogState extends ConsumerState<CommandPaletteDialog> {
                     prefixIcon: Icon(Icons.search_rounded),
                   ),
                   onChanged: (value) {
-                    ref.read(commandPaletteQueryProvider.notifier).state = value;
+                    ref.read(commandPaletteQueryProvider.notifier).state =
+                        value;
                     setState(() {
                       _selectedIndex = 0;
                     });
@@ -182,7 +191,9 @@ class _CommandPaletteDialogState extends ConsumerState<CommandPaletteDialog> {
                       ? const Center(
                           child: Padding(
                             padding: EdgeInsets.all(24),
-                            child: Text('No commands or items match your search.'),
+                            child: Text(
+                              'No commands or items match your search.',
+                            ),
                           ),
                         )
                       : ListView.builder(
@@ -194,15 +205,15 @@ class _CommandPaletteDialogState extends ConsumerState<CommandPaletteDialog> {
                               padding: const EdgeInsets.only(bottom: 8),
                               child: switch (result) {
                                 _CommandPaletteResult() => _CommandRow(
-                                    match: result.match,
-                                    selected: index == _selectedIndex,
-                                    onTap: () => _execute(result),
-                                  ),
+                                  match: result.match,
+                                  selected: index == _selectedIndex,
+                                  onTap: () => _execute(result),
+                                ),
                                 _EntityPaletteResult() => _EntityRow(
-                                    entity: result.entity,
-                                    selected: index == _selectedIndex,
-                                    onTap: () => _execute(result),
-                                  ),
+                                  entity: result.entity,
+                                  selected: index == _selectedIndex,
+                                  onTap: () => _execute(result),
+                                ),
                               },
                             );
                           },
@@ -248,10 +259,7 @@ class _CommandPaletteDialogState extends ConsumerState<CommandPaletteDialog> {
       case _EntityPaletteResult():
         executionResult = await ref
             .read(commandExecutionServiceProvider)
-            .executeEntity(
-              context: widget.hostContext,
-              entity: result.entity,
-            );
+            .executeEntity(context: widget.hostContext, entity: result.entity);
         break;
     }
 
@@ -296,19 +304,22 @@ class _CommandRow extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Icon(command.icon),
-                const SizedBox(width: 12),
-                Expanded(
+                SizedBox(
+                  width: MediaQuery.sizeOf(context).width >= 480 ? 320 : 220,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         command.title,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       if (command.subtitle != null) ...[
                         const SizedBox(height: 4),
@@ -317,10 +328,8 @@ class _CommandRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
                 _CategoryBadge(label: command.category.label),
                 if (!command.isEnabled) ...[
-                  const SizedBox(width: 8),
                   const _CategoryBadge(label: 'Unavailable'),
                 ],
               ],
@@ -348,7 +357,9 @@ class _EntityRow extends StatelessWidget {
     final icon = entity.entityType == LauncherEntityType.task
         ? Icons.checklist_rounded
         : Icons.track_changes_rounded;
-    final label = entity.entityType == LauncherEntityType.task ? 'Task' : 'Goal';
+    final label = entity.entityType == LauncherEntityType.task
+        ? 'Task'
+        : 'Goal';
     return Semantics(
       button: true,
       label: entity.title,
@@ -362,26 +373,28 @@ class _EntityRow extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Icon(icon),
-                const SizedBox(width: 12),
-                Expanded(
+                SizedBox(
+                  width: MediaQuery.sizeOf(context).width >= 480 ? 320 : 220,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         entity.title,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(entity.subtitle),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
                 _CategoryBadge(label: label),
               ],
             ),

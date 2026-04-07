@@ -50,14 +50,13 @@ class _AddEditNoteScreenState extends ConsumerState<AddEditNoteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isEditing ? 'Edit Note' : 'Add Note'),
-      ),
+      appBar: AppBar(title: Text(widget.isEditing ? 'Edit Note' : 'Add Note')),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(16, 24, 16, 24 + bottomInset),
           children: [
             TextFormField(
               controller: _titleController,

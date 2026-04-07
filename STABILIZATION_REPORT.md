@@ -1,9 +1,10 @@
 # STABILIZATION_REPORT
 
 ## Scope audited so far
-The stabilization work now covers two passes:
+The stabilization work now covers three passes:
 - pass 1: crash fixing, transaction safety, state consistency, startup fallback, and critical flow safeguards
 - pass 2: runtime-focused hardening for Windows execution, sync/auth runtime safety, notification/plugin guardrails, focus lifecycle idempotency, and file-operation resilience
+- pass 3: Android readiness and mobile usability hardening for compact layouts, keyboard-safe forms, export fallbacks, and defensive notification scheduling
 
 ## What was audited
 - startup and initialization order
@@ -20,6 +21,9 @@ The stabilization work now covers two passes:
 - notification initialization and coordinator behavior
 - platform file picker / save dialog failure paths
 - Windows runtime launch behavior
+- Android compact-screen layout pressure points
+- Android keyboard and bottom-sheet behavior
+- Android notification permission and exact-alarm fallback handling
 
 ## What was fixed
 - Optional sync backend init no longer blocks app startup.
@@ -36,17 +40,27 @@ The stabilization work now covers two passes:
 - Focus session completion and cancellation are guarded against overlapping terminal actions.
 - Background worker failures now surface through runtime reporting instead of silent failure.
 - File picker/save dialog failures are wrapped into clearer action errors.
+- Shared section headers now adapt for compact screens instead of assuming desktop-width action rows.
+- Quick Capture, Command Palette, and Global Search now use more mobile-safe sheet spacing and height limits.
+- Add/edit task, goal, note, and resource forms now include keyboard-aware bottom padding.
+- Android file export now falls back to app documents when the system save picker is unavailable.
+- Notification scheduling now degrades from exact to inexact alarms when Android exact scheduling is unavailable.
 
 ## Verification performed
 - `dart analyze lib test`
 - `flutter test`
 - `flutter run -d windows`
 - direct Windows debug executable launch and process-stability spot check
+- `flutter build apk --debug`
+- emulator install/runtime validation via `adb` for `com.example.study_flow`
+- focused Android-safety tests for notifications and compact headers
 
 ## Runtime observations
 - The Windows app launched and remained alive when started directly from the debug executable.
 - One early `flutter run -d windows` session lost device connection after startup, but the app process itself remained alive when checked separately.
 - A later `flutter run -d windows` session stayed active until command timeout, which is consistent with an app that remained running.
+- The Android emulator build installed successfully, and the app process was confirmed running.
+- Manual in-app Android flow verification is still pending; this pass validated build/install/runtime readiness more than complete feature walkthrough coverage.
 
 ## Safe for daily use now
 - Local-only daily use: yes, at the current verification level
@@ -57,6 +71,7 @@ The stabilization work now covers two passes:
 - Live Supabase sign-in, bootstrap, push/pull, retry, and sign-out behavior were not exercised with real credentials in this shell session.
 - Notification permission and delivery behavior were not manually verified on Android or Windows during this pass.
 - File dialog interaction was hardened against platform errors, but still needs manual verification on both target platforms.
+- Android-specific picker/share UX still varies by device vendor and needs real-phone confirmation.
 
 ## What still needs caution
 - Do not treat sync as production-safe until you verify it with real backend credentials.

@@ -20,71 +20,74 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardAsync = ref.watch(analyticsDashboardDataProvider);
     final rangePreset = ref.watch(analyticsRangePresetProvider);
+    final compact = MediaQuery.sizeOf(context).width < 720;
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-          child: Row(
+          padding: EdgeInsets.fromLTRB(16, 24, 16, compact ? 12 : 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Analytics',
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Track consistency, time allocation, plan adherence, and workload sustainability.',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                  ],
+              Text(
+                'Analytics',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              IconButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const RecommendationsDashboard(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.insights_outlined),
-                tooltip: 'Recommendations',
+              const SizedBox(height: 4),
+              Text(
+                'Track consistency, time allocation, plan adherence, and workload sustainability.',
+                style: Theme.of(context).textTheme.bodyLarge,
               ),
-              const QuickCaptureInboxActionButton(
-                tooltip: 'Open Quick Capture inbox from Analytics',
-              ),
-              IconButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const WeeklyReviewScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.rate_review_outlined),
-                tooltip: 'Weekly Review',
-              ),
-              IconButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const SettingsHomeScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.settings_outlined),
-                tooltip: 'Settings',
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const RecommendationsDashboard(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.insights_outlined),
+                    label: const Text('Recommendations'),
+                  ),
+                  const QuickCaptureInboxActionButton(
+                    tooltip: 'Open Quick Capture inbox from Analytics',
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const WeeklyReviewScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.rate_review_outlined),
+                    label: const Text('Weekly Review'),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const SettingsHomeScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.settings_outlined),
+                    tooltip: 'Settings',
+                  ),
+                ],
               ),
             ],
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Align(
             alignment: Alignment.centerLeft,
             child: SingleChildScrollView(

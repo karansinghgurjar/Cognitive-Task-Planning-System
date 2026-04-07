@@ -1,7 +1,9 @@
-﻿import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../domain/backup_models.dart';
 
@@ -97,8 +99,35 @@ class FileExportService {
         message: 'File saved successfully.',
       );
     } catch (error) {
+      if (!kIsWeb && Platform.isAndroid) {
+        return _saveToAndroidDocuments(
+          content: content,
+          suggestedName: suggestedName,
+        );
+      }
+      throw StateError('Could not save the selected file. ${error.toString()}');
+    }
+  }
+
+  Future<ExportResult> _saveToAndroidDocuments({
+    required String content,
+    required String suggestedName,
+  }) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}${Platform.pathSeparator}$suggestedName';
+      final bytes = utf8.encode(content);
+      await File(path).writeAsBytes(bytes, flush: true);
+      return ExportResult(
+        success: true,
+        filePath: path,
+        bytesWritten: bytes.length,
+        message:
+            'File saved to app documents because the system save picker was unavailable on this device.',
+      );
+    } catch (error) {
       throw StateError(
-        'Could not save the selected file. ${error.toString()}',
+        'Could not save the file on this device. ${error.toString()}',
       );
     }
   }
