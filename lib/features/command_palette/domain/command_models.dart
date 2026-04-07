@@ -37,6 +37,7 @@ abstract final class AppCommandId {
   static const openSearch = 'open_search';
   static const openTasks = 'open_tasks';
   static const openGoals = 'open_goals';
+  static const openRoutines = 'open_routines';
   static const openAnalytics = 'open_analytics';
   static const openWeeklyReview = 'open_weekly_review';
   static const openSettings = 'open_settings';

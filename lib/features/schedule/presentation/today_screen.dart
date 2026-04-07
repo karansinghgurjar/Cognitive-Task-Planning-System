@@ -20,6 +20,10 @@ import '../../quick_capture/presentation/quick_capture_inbox_screen.dart';
 import '../../quick_capture/presentation/quick_capture_sheet.dart';
 import '../../quick_capture/providers/quick_capture_providers.dart';
 import '../../review/presentation/weekly_review_screen.dart';
+import '../../routines/models/routine.dart';
+import '../../routines/models/routine_occurrence.dart';
+import '../../routines/presentation/routines_screen.dart';
+import '../../routines/providers/routine_providers.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../domain/rescheduling_models.dart';
 import '../models/planned_session.dart';
@@ -70,6 +74,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final recommendationSummaryAsync = ref.watch(recommendationSummaryProvider);
     final dailyStatsAsync = ref.watch(dailyStatsProvider);
     final streakSummaryAsync = ref.watch(streakSummaryProvider);
+    final routinesAsync = ref.watch(watchAllRoutinesProvider);
+    final routineOccurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
 
     return Column(
       children: [
@@ -88,6 +94,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             recommendationSummaryAsync: recommendationSummaryAsync,
             dailyStatsAsync: dailyStatsAsync,
             streakSummaryAsync: streakSummaryAsync,
+            routinesAsync: routinesAsync,
+            routineOccurrencesAsync: routineOccurrencesAsync,
           ),
         ),
       ],
@@ -106,6 +114,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     required AsyncValue<RecommendationSummary> recommendationSummaryAsync,
     required AsyncValue<DailyProductivityStats> dailyStatsAsync,
     required AsyncValue<StreakSummary> streakSummaryAsync,
+    required AsyncValue<List<Routine>> routinesAsync,
+    required AsyncValue<List<RoutineOccurrence>> routineOccurrencesAsync,
   }) {
     final header = _TodayHeader(
       isGenerating: isGenerating,
@@ -162,6 +172,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final sessions = sessionsAsync.value ?? const <PlannedSession>[];
     final tasks = tasksAsync.value ?? const <Task>[];
     final taskById = {for (final task in tasks) task.id: task};
+    final routines = routinesAsync.valueOrNull ?? const <Routine>[];
+    final routineOccurrences =
+        routineOccurrencesAsync.valueOrNull ?? const <RoutineOccurrence>[];
+    final routineById = {for (final routine in routines) routine.id: routine};
 
     final missedSessions =
         sessions.where((session) => session.isMissed).toList()
@@ -180,8 +194,31 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           ..sort((left, right) => left.start.compareTo(right.start));
 
     final groupedUpcomingSessions = _groupSessionsByDate(upcomingSessions);
+    final missedRoutineOccurrences = routineOccurrences
+        .where(
+          (occurrence) =>
+              occurrence.effectiveStatusAt(now) == RoutineOccurrenceStatus.missed,
+        )
+        .toList()
+      ..sort(
+        (left, right) =>
+            right.scheduledEnd.compareTo(left.scheduledEnd),
+      );
+    final upcomingRoutineOccurrences = routineOccurrences
+        .where((occurrence) {
+          return occurrence.effectiveStatusAt(now) == RoutineOccurrenceStatus.pending &&
+              occurrence.scheduledEnd.isAfter(now);
+        })
+        .toList()
+      ..sort(
+        (left, right) =>
+            left.scheduledStart.compareTo(right.scheduledStart),
+      );
+    final groupedRoutineOccurrences = _groupRoutineOccurrencesByDate(
+      upcomingRoutineOccurrences,
+    );
 
-    if (sessions.isEmpty) {
+    if (sessions.isEmpty && upcomingRoutineOccurrences.isEmpty) {
       return ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
         children: [
@@ -272,6 +309,49 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           const SizedBox(height: 16),
           _RecoverySummaryCard(result: recoveryResult),
         ],
+        if (missedRoutineOccurrences.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Missed Routine Blocks',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          for (var index = 0; index < missedRoutineOccurrences.length; index++) ...[
+            _RoutineOccurrenceTile(
+              occurrence: missedRoutineOccurrences[index],
+              routineTitle:
+                  routineById[missedRoutineOccurrences[index].routineId]?.title ??
+                      'Routine',
+            ),
+            if (index < missedRoutineOccurrences.length - 1)
+              const SizedBox(height: 12),
+          ],
+        ],
+        if (upcomingRoutineOccurrences.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Routine Blocks',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          for (final entry in groupedRoutineOccurrences.entries) ...[
+            _DateGroupHeader(date: entry.key),
+            const SizedBox(height: 12),
+            for (var index = 0; index < entry.value.length; index++) ...[
+              _RoutineOccurrenceTile(
+                occurrence: entry.value[index],
+                routineTitle:
+                    routineById[entry.value[index].routineId]?.title ?? 'Routine',
+              ),
+              if (index < entry.value.length - 1) const SizedBox(height: 12),
+            ],
+            const SizedBox(height: 20),
+          ],
+        ],
         const SizedBox(height: 16),
         if (missedSessions.isNotEmpty) ...[
           Text(
@@ -339,6 +419,21 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
       grouped.putIfAbsent(date, () => []).add(session);
     }
 
+    return grouped;
+  }
+
+  Map<DateTime, List<RoutineOccurrence>> _groupRoutineOccurrencesByDate(
+    List<RoutineOccurrence> occurrences,
+  ) {
+    final grouped = <DateTime, List<RoutineOccurrence>>{};
+    for (final occurrence in occurrences) {
+      final date = DateTime(
+        occurrence.scheduledStart.year,
+        occurrence.scheduledStart.month,
+        occurrence.scheduledStart.day,
+      );
+      grouped.putIfAbsent(date, () => []).add(occurrence);
+    }
     return grouped;
   }
 
@@ -541,6 +636,17 @@ class _TodayHeader extends ConsumerWidget {
       description:
           'Generate, recover, and execute your next seven days of planned work.',
       actions: [
+        FilledButton.tonalIcon(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const RoutinesScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.repeat_rounded),
+          label: const Text('Routines'),
+        ),
         FilledButton.tonalIcon(
           onPressed: () => QuickCaptureSheet.show(context),
           icon: const Icon(Icons.bolt_rounded),
@@ -1146,6 +1252,147 @@ class _SessionTile extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _RoutineOccurrenceTile extends ConsumerWidget {
+  const _RoutineOccurrenceTile({
+    required this.occurrence,
+    required this.routineTitle,
+  });
+
+  final RoutineOccurrence occurrence;
+  final String routineTitle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final timeFormat = DateFormat.jm();
+    final effectiveStatus = occurrence.effectiveStatusAt(DateTime.now());
+    final canComplete = effectiveStatus == RoutineOccurrenceStatus.pending;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: effectiveStatus == RoutineOccurrenceStatus.completed,
+                  onChanged: canComplete
+                      ? (_) async {
+                          try {
+                            await ref
+                                .read(routineActionControllerProvider.notifier)
+                                .markOccurrenceCompleted(occurrence);
+                          } catch (error) {
+                            if (context.mounted) {
+                              ErrorHandler.showSnackBar(
+                                context,
+                                error,
+                                fallbackTitle: 'Routine update failed',
+                                fallbackMessage:
+                                    'The routine block could not be marked complete.',
+                              );
+                            }
+                          }
+                        }
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        routineTitle,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              decoration:
+                                  effectiveStatus == RoutineOccurrenceStatus.completed
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${timeFormat.format(occurrence.scheduledStart)} -> ${timeFormat.format(occurrence.scheduledEnd)}',
+                      ),
+                      const SizedBox(height: 6),
+                      Text('${occurrence.durationMinutes} min'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _RoutineStatusBadge(status: effectiveStatus),
+              ],
+            ),
+            if (canComplete) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    try {
+                      await ref
+                          .read(routineActionControllerProvider.notifier)
+                          .markOccurrenceCancelled(occurrence);
+                    } catch (error) {
+                      if (context.mounted) {
+                        ErrorHandler.showSnackBar(
+                          context,
+                          error,
+                          fallbackTitle: 'Routine update failed',
+                          fallbackMessage:
+                              'The routine block could not be cancelled.',
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.close_rounded),
+                  label: const Text('Cancel Block'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoutineStatusBadge extends StatelessWidget {
+  const _RoutineStatusBadge({required this.status});
+
+  final RoutineOccurrenceStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final (background, foreground) = switch (status) {
+      RoutineOccurrenceStatus.pending => (
+        colorScheme.tertiaryContainer,
+        colorScheme.onTertiaryContainer,
+      ),
+      RoutineOccurrenceStatus.completed => (
+        colorScheme.secondaryContainer,
+        colorScheme.onSecondaryContainer,
+      ),
+      RoutineOccurrenceStatus.missed => (
+        colorScheme.errorContainer,
+        colorScheme.onErrorContainer,
+      ),
+      RoutineOccurrenceStatus.cancelled => (
+        colorScheme.surfaceContainerHighest,
+        colorScheme.onSurface,
+      ),
+    };
+    return AppStatusChip(
+      label: status.label,
+      backgroundColor: background,
+      foregroundColor: foreground,
+    );
   }
 }
 

@@ -29,5 +29,10 @@ class MigrationNotes {
       description:
           'Added weekly review reflections and end-of-week productivity summaries.',
     ),
+    MigrationNote(
+      version: 5,
+      description:
+          'Added smart repeating routines and routine occurrences for recurring habit blocks.',
+    ),
   ];
 }

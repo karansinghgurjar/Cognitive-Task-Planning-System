@@ -12,6 +12,7 @@ import '../../integrations/presentation/calendar_export_screen.dart';
 import '../../quick_capture/presentation/quick_capture_inbox_screen.dart';
 import '../../quick_capture/presentation/quick_capture_sheet.dart';
 import '../../review/presentation/weekly_review_screen.dart';
+import '../../routines/presentation/routines_screen.dart';
 import '../../schedule/providers/rescheduling_providers.dart';
 import '../../schedule/providers/schedule_providers.dart';
 import '../../search/presentation/global_search_screen.dart';
@@ -50,6 +51,11 @@ class CommandExecutionService {
           return const CommandExecutionResult(success: true);
         case AppCommandId.openGoals:
           ref.read(homeTabIndexProvider.notifier).setTab(AppTab.goals);
+          return const CommandExecutionResult(success: true);
+        case AppCommandId.openRoutines:
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const RoutinesScreen()),
+          );
           return const CommandExecutionResult(success: true);
         case AppCommandId.openAnalytics:
           ref.read(homeTabIndexProvider.notifier).setTab(AppTab.insights);

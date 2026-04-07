@@ -6,6 +6,7 @@ import '../../schedule/providers/schedule_providers.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../../timetable/domain/availability_service.dart';
 import '../../timetable/providers/timetable_providers.dart';
+import '../../routines/providers/routine_providers.dart';
 import '../domain/feasibility_service.dart';
 import '../domain/recommendation_engine_service.dart';
 import '../domain/recommendation_models.dart';
@@ -262,6 +263,7 @@ final recommendationSummaryProvider =
       final dependenciesAsync = ref.watch(watchDependenciesProvider);
       final sessionsAsync = ref.watch(watchAllSessionsProvider);
       final availabilityAsync = ref.watch(weeklyAvailabilityProvider);
+      final routineActionsAsync = ref.watch(routineRecommendationActionsProvider);
 
       return switch ((
         tasksAsync,
@@ -270,6 +272,7 @@ final recommendationSummaryProvider =
         dependenciesAsync,
         sessionsAsync,
         availabilityAsync,
+        routineActionsAsync,
       )) {
         (
           AsyncData(value: final tasks),
@@ -278,31 +281,46 @@ final recommendationSummaryProvider =
           AsyncData(value: final dependencies),
           AsyncData(value: final sessions),
           AsyncData(value: final weeklyAvailability),
+          AsyncData(value: final routineActions),
         ) =>
           AsyncData(
-            ref
-                .read(recommendationEngineServiceProvider)
-                .buildSummary(
-                  tasks: tasks,
-                  goals: goals,
-                  milestones: milestones,
-                  dependencies: dependencies,
-                  plannedSessions: sessions,
-                  weeklyAvailability: weeklyAvailability,
-                  now: DateTime.now(),
-                ),
+            () {
+              final summary = ref
+                  .read(recommendationEngineServiceProvider)
+                  .buildSummary(
+                    tasks: tasks,
+                    goals: goals,
+                    milestones: milestones,
+                    dependencies: dependencies,
+                    plannedSessions: sessions,
+                    weeklyAvailability: weeklyAvailability,
+                    now: DateTime.now(),
+                  );
+              return RecommendationSummary(
+                bestNextTask: summary.bestNextTask,
+                nextStudyBlock: summary.nextStudyBlock,
+                workloadWarnings: summary.workloadWarnings,
+                goalFeasibilityReports: summary.goalFeasibilityReports,
+                suggestedActions: {
+                  ...summary.suggestedActions,
+                  ...routineActions,
+                }.toList(),
+              );
+            }(),
           ),
-        (AsyncError(:final error, :final stackTrace), _, _, _, _, _) =>
+        (AsyncError(:final error, :final stackTrace), _, _, _, _, _, _) =>
           AsyncError(error, stackTrace),
-        (_, AsyncError(:final error, :final stackTrace), _, _, _, _) =>
+        (_, AsyncError(:final error, :final stackTrace), _, _, _, _, _) =>
           AsyncError(error, stackTrace),
-        (_, _, AsyncError(:final error, :final stackTrace), _, _, _) =>
+        (_, _, AsyncError(:final error, :final stackTrace), _, _, _, _) =>
           AsyncError(error, stackTrace),
-        (_, _, _, AsyncError(:final error, :final stackTrace), _, _) =>
+        (_, _, _, AsyncError(:final error, :final stackTrace), _, _, _) =>
           AsyncError(error, stackTrace),
-        (_, _, _, _, AsyncError(:final error, :final stackTrace), _) =>
+        (_, _, _, _, AsyncError(:final error, :final stackTrace), _, _) =>
           AsyncError(error, stackTrace),
-        (_, _, _, _, _, AsyncError(:final error, :final stackTrace)) =>
+        (_, _, _, _, _, AsyncError(:final error, :final stackTrace), _) =>
+          AsyncError(error, stackTrace),
+        (_, _, _, _, _, _, AsyncError(:final error, :final stackTrace)) =>
           AsyncError(error, stackTrace),
         _ => const AsyncLoading(),
       };

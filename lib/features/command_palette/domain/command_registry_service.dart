@@ -44,6 +44,15 @@ class CommandRegistryService {
         priority: 90,
       ),
       const AppCommand(
+        id: AppCommandId.openRoutines,
+        title: 'Open Routines',
+        subtitle: 'Manage recurring routine and habit blocks',
+        keywords: ['routines', 'habits', 'repeating blocks', 'recurring'],
+        category: CommandCategory.navigation,
+        icon: Icons.repeat_rounded,
+        priority: 89,
+      ),
+      const AppCommand(
         id: AppCommandId.openAnalytics,
         title: 'Open Analytics',
         subtitle: 'See progress and workload insights',

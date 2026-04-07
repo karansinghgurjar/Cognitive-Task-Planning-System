@@ -24,6 +24,7 @@ void main() {
       expect(ids, contains(AppCommandId.openSearch));
       expect(ids, contains(AppCommandId.openTasks));
       expect(ids, contains(AppCommandId.openGoals));
+      expect(ids, contains(AppCommandId.openRoutines));
       expect(ids, contains(AppCommandId.openAnalytics));
       expect(ids, contains(AppCommandId.openWeeklyReview));
       expect(ids, contains(AppCommandId.quickCapture));
