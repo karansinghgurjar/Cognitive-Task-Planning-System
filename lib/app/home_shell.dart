@@ -146,7 +146,17 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   }
 
   Widget? _buildFloatingActionButton() {
+    final compact = MediaQuery.sizeOf(context).width < 720;
     final primaryFab = _buildPrimaryFloatingActionButton();
+    if (compact) {
+      return primaryFab ??
+          FloatingActionButton(
+            heroTag: 'quick-capture-mobile-fab',
+            tooltip: 'Quick Capture',
+            onPressed: () => QuickCaptureSheet.show(context),
+            child: const Icon(Icons.bolt_rounded),
+          );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,

@@ -75,7 +75,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final dailyStatsAsync = ref.watch(dailyStatsProvider);
     final streakSummaryAsync = ref.watch(streakSummaryProvider);
     final routinesAsync = ref.watch(watchAllRoutinesProvider);
-    final routineOccurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+    final routineOccurrencesAsync = ref.watch(
+      watchAllRoutineOccurrencesProvider,
+    );
 
     return Column(
       children: [
@@ -194,26 +196,25 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           ..sort((left, right) => left.start.compareTo(right.start));
 
     final groupedUpcomingSessions = _groupSessionsByDate(upcomingSessions);
-    final missedRoutineOccurrences = routineOccurrences
-        .where(
-          (occurrence) =>
-              occurrence.effectiveStatusAt(now) == RoutineOccurrenceStatus.missed,
-        )
-        .toList()
-      ..sort(
-        (left, right) =>
-            right.scheduledEnd.compareTo(left.scheduledEnd),
-      );
-    final upcomingRoutineOccurrences = routineOccurrences
-        .where((occurrence) {
-          return occurrence.effectiveStatusAt(now) == RoutineOccurrenceStatus.pending &&
+    final missedRoutineOccurrences =
+        routineOccurrences
+            .where(
+              (occurrence) =>
+                  occurrence.effectiveStatusAt(now) ==
+                  RoutineOccurrenceStatus.missed,
+            )
+            .toList()
+          ..sort(
+            (left, right) => right.scheduledEnd.compareTo(left.scheduledEnd),
+          );
+    final upcomingRoutineOccurrences =
+        routineOccurrences.where((occurrence) {
+          return occurrence.effectiveStatusAt(now) ==
+                  RoutineOccurrenceStatus.pending &&
               occurrence.scheduledEnd.isAfter(now);
-        })
-        .toList()
-      ..sort(
-        (left, right) =>
-            left.scheduledStart.compareTo(right.scheduledStart),
-      );
+        }).toList()..sort(
+          (left, right) => left.scheduledStart.compareTo(right.scheduledStart),
+        );
     final groupedRoutineOccurrences = _groupRoutineOccurrencesByDate(
       upcomingRoutineOccurrences,
     );
@@ -318,12 +319,17 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
-          for (var index = 0; index < missedRoutineOccurrences.length; index++) ...[
+          for (
+            var index = 0;
+            index < missedRoutineOccurrences.length;
+            index++
+          ) ...[
             _RoutineOccurrenceTile(
               occurrence: missedRoutineOccurrences[index],
               routineTitle:
-                  routineById[missedRoutineOccurrences[index].routineId]?.title ??
-                      'Routine',
+                  routineById[missedRoutineOccurrences[index].routineId]
+                      ?.title ??
+                  'Routine',
             ),
             if (index < missedRoutineOccurrences.length - 1)
               const SizedBox(height: 12),
@@ -345,7 +351,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
               _RoutineOccurrenceTile(
                 occurrence: entry.value[index],
                 routineTitle:
-                    routineById[entry.value[index].routineId]?.title ?? 'Routine',
+                    routineById[entry.value[index].routineId]?.title ??
+                    'Routine',
               ),
               if (index < entry.value.length - 1) const SizedBox(height: 12),
             ],
@@ -639,9 +646,7 @@ class _TodayHeader extends ConsumerWidget {
         FilledButton.tonalIcon(
           onPressed: () {
             Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const RoutinesScreen(),
-              ),
+              MaterialPageRoute<void>(builder: (_) => const RoutinesScreen()),
             );
           },
           icon: const Icon(Icons.repeat_rounded),
@@ -1307,12 +1312,14 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
                     children: [
                       Text(
                         routineTitle,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.w700,
                               decoration:
-                                  effectiveStatus == RoutineOccurrenceStatus.completed
-                                      ? TextDecoration.lineThrough
-                                      : null,
+                                  effectiveStatus ==
+                                      RoutineOccurrenceStatus.completed
+                                  ? TextDecoration.lineThrough
+                                  : null,
                             ),
                       ),
                       const SizedBox(height: 8),
@@ -1558,48 +1565,72 @@ class _QuickCaptureTodayCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final inboxCount =
         ref.watch(unprocessedCaptureCountProvider).valueOrNull ?? 0;
+    final compact = MediaQuery.sizeOf(context).width < 720;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Text(
+              'Quick Capture',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              inboxCount == 0
+                  ? 'Capture ideas, tasks, and goals before they disappear.'
+                  : '$inboxCount item${inboxCount == 1 ? '' : 's'} waiting in your inbox.',
+            ),
+            const SizedBox(height: 16),
+            if (compact)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Quick Capture',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  FilledButton.tonalIcon(
+                    onPressed: () => QuickCaptureSheet.show(context),
+                    icon: const Icon(Icons.bolt_rounded),
+                    label: const Text('Quick Capture'),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    inboxCount == 0
-                        ? 'Capture ideas, tasks, and goals before they disappear.'
-                        : '$inboxCount item${inboxCount == 1 ? '' : 's'} waiting in your inbox.',
+                  const SizedBox(height: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const QuickCaptureInboxScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.inbox_rounded),
+                    label: Text('Inbox ($inboxCount)'),
+                  ),
+                ],
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: () => QuickCaptureSheet.show(context),
+                    icon: const Icon(Icons.bolt_rounded),
+                    label: const Text('Quick Capture'),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const QuickCaptureInboxScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.inbox_rounded),
+                    label: Text('Inbox ($inboxCount)'),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            FilledButton.tonalIcon(
-              onPressed: () => QuickCaptureSheet.show(context),
-              icon: const Icon(Icons.bolt_rounded),
-              label: const Text('Quick Capture'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.tonalIcon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const QuickCaptureInboxScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.inbox_rounded),
-              label: Text('Inbox ($inboxCount)'),
-            ),
           ],
         ),
       ),
