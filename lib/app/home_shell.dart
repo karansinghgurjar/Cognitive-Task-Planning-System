@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/navigation/app_navigation.dart';
+import '../features/command_palette/presentation/command_palette_dialog.dart';
 import '../features/analytics/presentation/analytics_dashboard_screen.dart';
 import '../features/goals/presentation/add_goal_screen.dart';
 import '../features/quick_capture/presentation/quick_capture_inbox_screen.dart';
@@ -54,8 +55,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         SingleActivator(LogicalKeyboardKey.comma, control: true):
             _OpenSettingsIntent(),
         SingleActivator(LogicalKeyboardKey.keyK, control: true):
-            _OpenQuickCaptureIntent(),
+            _OpenCommandPaletteIntent(),
         SingleActivator(LogicalKeyboardKey.keyK, meta: true):
+            _OpenCommandPaletteIntent(),
+        SingleActivator(LogicalKeyboardKey.keyK, shift: true, control: true):
+            _OpenQuickCaptureIntent(),
+        SingleActivator(LogicalKeyboardKey.keyK, shift: true, meta: true):
             _OpenQuickCaptureIntent(),
       },
       child: Actions(
@@ -69,6 +74,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           _OpenSettingsIntent: CallbackAction<_OpenSettingsIntent>(
             onInvoke: (_) {
               AppRouter.openSettings(context);
+              return null;
+            },
+          ),
+          _OpenCommandPaletteIntent: CallbackAction<_OpenCommandPaletteIntent>(
+            onInvoke: (_) {
+              CommandPaletteDialog.show(context);
               return null;
             },
           ),
@@ -129,6 +140,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
+        FloatingActionButton.small(
+          heroTag: 'command-palette-fab',
+          tooltip: 'Open Command Palette',
+          onPressed: () => CommandPaletteDialog.show(context),
+          child: const Icon(Icons.search_rounded),
+        ),
+        const SizedBox(height: 12),
         FloatingActionButton.small(
           heroTag: 'quick-capture-inbox-fab',
           tooltip: 'Open Quick Capture inbox',
@@ -204,6 +222,10 @@ class _ChangeTabIntent extends Intent {
 
 class _OpenSettingsIntent extends Intent {
   const _OpenSettingsIntent();
+}
+
+class _OpenCommandPaletteIntent extends Intent {
+  const _OpenCommandPaletteIntent();
 }
 
 class _OpenQuickCaptureIntent extends Intent {
