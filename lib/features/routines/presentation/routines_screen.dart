@@ -23,7 +23,7 @@ class RoutinesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Routines'),
+        title: const Text('Routine Blocks'),
         actions: [
           IconButton(
             tooltip: 'Generate next 7 days',
@@ -75,55 +75,68 @@ class RoutinesScreen extends ConsumerWidget {
           () {
             final goalsById = {for (final goal in goals) goal.id: goal};
             return routines.isEmpty
-              ? const AppEmptyState(
-                  icon: Icons.repeat_rounded,
-                  title: 'No routines yet',
-                  message:
-                      'Routines create repeatable blocks like daily revision, weekly review, or recurring deep-work time.',
-                )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
-                  children: [
-                    _RoutineSummaryCard(
-                      totalRoutines: routines.length,
-                      activeRoutines:
-                          routines.where((routine) => routine.isActive).length,
-                      generatedCount: previews.generatedCount,
-                      skippedCount: previews.skippedCount,
-                    ),
-                    const SizedBox(height: 16),
-                    for (final routine in routines) ...[
-                      _RoutineCard(
-                        routine: routine,
-                        linkedGoalTitle: routine.linkedGoalId == null
-                            ? null
-                            : goalsById[routine.linkedGoalId!]?.title,
-                        nextOccurrence:
-                            previews.nextOccurrenceByRoutineId[routine.id],
-                        onToggleActive: (value) => _runAction(
-                          context,
-                          ref,
-                          () => ref
-                              .read(routineActionControllerProvider.notifier)
-                              .setActive(routine, value),
-                          successMessage: value
-                              ? 'Routine activated.'
-                              : 'Routine deactivated.',
-                        ),
-                        onEdit: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  AddEditRoutineScreen(routine: routine),
-                            ),
-                          );
-                        },
-                        onDelete: () => _deleteRoutine(context, ref, routine),
+                ? const AppEmptyState(
+                    icon: Icons.repeat_rounded,
+                    title: 'No routine blocks yet',
+                    message:
+                        'Routine blocks protect recurring work like workouts, weekly reviews, reading, or project sessions.',
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
+                    children: [
+                      _RoutineSummaryCard(
+                        totalRoutines: routines.length,
+                        activeRoutines: routines
+                            .where((routine) => routine.generatesOccurrences)
+                            .length,
+                        archivedRoutines:
+                            routines.where((routine) => routine.isArchived).length,
+                        generatedCount: previews.generatedCount,
+                        skippedCount: previews.skippedCount,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
+                      for (final routine in routines) ...[
+                        _RoutineCard(
+                          routine: routine,
+                          linkedGoalTitle: routine.linkedGoalId == null
+                              ? null
+                              : goalsById[routine.linkedGoalId!]?.title,
+                          nextOccurrence:
+                              previews.nextOccurrenceByRoutineId[routine.id],
+                          onToggleEnabled: (value) => _runAction(
+                            context,
+                            ref,
+                            () => ref
+                                .read(routineActionControllerProvider.notifier)
+                                .setActive(routine, value),
+                            successMessage: value
+                                ? 'Routine enabled.'
+                                : 'Routine disabled.',
+                          ),
+                          onToggleArchived: (value) => _runAction(
+                            context,
+                            ref,
+                            () => ref
+                                .read(routineActionControllerProvider.notifier)
+                                .setArchived(routine, value),
+                            successMessage: value
+                                ? 'Routine archived.'
+                                : 'Routine restored.',
+                          ),
+                          onEdit: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    AddEditRoutineScreen(routine: routine),
+                              ),
+                            );
+                          },
+                          onDelete: () => _deleteRoutine(context, ref, routine),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                  ],
-                );
+                  );
           }(),
         (AsyncError(:final error), _, _) => Center(
           child: Text(ErrorHandler.mapError(error).message),
@@ -150,7 +163,7 @@ class RoutinesScreen extends ConsumerWidget {
         return AlertDialog(
           title: const Text('Delete routine?'),
           content: Text(
-            'This removes ${routine.title} and its saved routine blocks.',
+            'This removes ${routine.title} and its saved routine occurrences.',
           ),
           actions: [
             TextButton(
@@ -210,12 +223,14 @@ class _RoutineSummaryCard extends StatelessWidget {
   const _RoutineSummaryCard({
     required this.totalRoutines,
     required this.activeRoutines,
+    required this.archivedRoutines,
     required this.generatedCount,
     required this.skippedCount,
   });
 
   final int totalRoutines;
   final int activeRoutines;
+  final int archivedRoutines;
   final int generatedCount;
   final int skippedCount;
 
@@ -224,20 +239,15 @@ class _RoutineSummaryCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Row(
+        child: Wrap(
+          spacing: 24,
+          runSpacing: 16,
           children: [
-            Expanded(
-              child: _SummaryStat(label: 'Routines', value: '$totalRoutines'),
-            ),
-            Expanded(
-              child: _SummaryStat(label: 'Active', value: '$activeRoutines'),
-            ),
-            Expanded(
-              child: _SummaryStat(label: 'Previewed', value: '$generatedCount'),
-            ),
-            Expanded(
-              child: _SummaryStat(label: 'Blocked', value: '$skippedCount'),
-            ),
+            _SummaryStat(label: 'Routines', value: '$totalRoutines'),
+            _SummaryStat(label: 'Generating', value: '$activeRoutines'),
+            _SummaryStat(label: 'Archived', value: '$archivedRoutines'),
+            _SummaryStat(label: 'Previewed', value: '$generatedCount'),
+            _SummaryStat(label: 'Blocked', value: '$skippedCount'),
           ],
         ),
       ),
@@ -248,7 +258,8 @@ class _RoutineSummaryCard extends StatelessWidget {
 class _RoutineCard extends StatelessWidget {
   const _RoutineCard({
     required this.routine,
-    required this.onToggleActive,
+    required this.onToggleEnabled,
+    required this.onToggleArchived,
     required this.onEdit,
     required this.onDelete,
     this.nextOccurrence,
@@ -256,7 +267,8 @@ class _RoutineCard extends StatelessWidget {
   });
 
   final Routine routine;
-  final ValueChanged<bool> onToggleActive;
+  final ValueChanged<bool> onToggleEnabled;
+  final ValueChanged<bool> onToggleArchived;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final RoutineOccurrence? nextOccurrence;
@@ -291,9 +303,18 @@ class _RoutineCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Switch.adaptive(
-                  value: routine.isActive,
-                  onChanged: onToggleActive,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Switch.adaptive(
+                      value: routine.isActive,
+                      onChanged: routine.isArchived ? null : onToggleEnabled,
+                    ),
+                    Text(
+                      routine.isArchived ? 'Archived' : 'Enabled',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -303,14 +324,22 @@ class _RoutineCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 AppStatusChip(label: routine.routineType.label),
+                if ((routine.categoryTag ?? '').trim().isNotEmpty)
+                  AppStatusChip(label: routine.categoryTag!),
                 AppStatusChip(label: routine.cadenceType.label),
                 AppStatusChip(label: '${routine.durationMinutes} min'),
+                AppStatusChip(
+                  label: routine.isFlexible ? 'Flexible' : 'Fixed',
+                ),
                 if (routine.hasPreferredStartTime)
                   AppStatusChip(
                     label:
                         '${routine.preferredStartHour!.toString().padLeft(2, '0')}:${routine.preferredStartMinute!.toString().padLeft(2, '0')}',
                   ),
-                if (!routine.isActive) const AppStatusChip(label: 'Inactive'),
+                if (routine.autoRescheduleMissed)
+                  const AppStatusChip(label: 'Auto-Reschedule'),
+                if (routine.countsTowardConsistency)
+                  const AppStatusChip(label: 'Consistency'),
               ],
             ),
             const SizedBox(height: 12),
@@ -318,6 +347,16 @@ class _RoutineCard extends StatelessWidget {
               _cadenceDescription(routine),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            if (routine.hasTimeWindow) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Time window: ${_formatMinute(routine.timeWindowStartMinute!)} to ${_formatMinute(routine.timeWindowEndMinute!)}',
+              ),
+            ],
+            if ((routine.energyType ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text('Energy/context: ${routine.energyType}'),
+            ],
             if (linkedGoalTitle != null) ...[
               const SizedBox(height: 6),
               Text('Linked goal: $linkedGoalTitle'),
@@ -329,15 +368,21 @@ class _RoutineCard extends StatelessWidget {
                   : 'Next occurrence: ${formatter.format(nextOccurrence!.scheduledStart)}',
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
               children: [
+                FilterChip(
+                  label: const Text('Archived'),
+                  selected: routine.isArchived,
+                  onSelected: onToggleArchived,
+                ),
                 TextButton.icon(
                   onPressed: onEdit,
                   icon: const Icon(Icons.edit_outlined),
                   label: const Text('Edit'),
                 ),
-                const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline_rounded),
@@ -352,28 +397,43 @@ class _RoutineCard extends StatelessWidget {
   }
 
   String _cadenceDescription(Routine routine) {
-    if (routine.cadenceType == RoutineCadenceType.daily) {
-      return 'Runs every day.';
+    switch (routine.cadenceType) {
+      case RoutineCadenceType.daily:
+        return 'Runs every day.';
+      case RoutineCadenceType.weekdays:
+        return 'Runs every weekday.';
+      case RoutineCadenceType.monthly:
+        return 'Runs monthly on day ${routine.dayOfMonth ?? routine.anchorDate?.day ?? 1}.';
+      case RoutineCadenceType.weekly:
+      case RoutineCadenceType.customWeekdays:
+      case RoutineCadenceType.custom:
+        final labels = routine.weekdays.map((weekday) {
+          switch (weekday) {
+            case DateTime.monday:
+              return 'Mon';
+            case DateTime.tuesday:
+              return 'Tue';
+            case DateTime.wednesday:
+              return 'Wed';
+            case DateTime.thursday:
+              return 'Thu';
+            case DateTime.friday:
+              return 'Fri';
+            case DateTime.saturday:
+              return 'Sat';
+            default:
+              return 'Sun';
+          }
+        }).join(', ');
+        return labels.isEmpty ? 'Custom recurrence.' : 'Runs on $labels.';
     }
-    final labels = routine.weekdays.map((weekday) {
-      switch (weekday) {
-        case DateTime.monday:
-          return 'Mon';
-        case DateTime.tuesday:
-          return 'Tue';
-        case DateTime.wednesday:
-          return 'Wed';
-        case DateTime.thursday:
-          return 'Thu';
-        case DateTime.friday:
-          return 'Fri';
-        case DateTime.saturday:
-          return 'Sat';
-        default:
-          return 'Sun';
-      }
-    }).join(', ');
-    return 'Runs on $labels.';
+  }
+
+  String _formatMinute(int minuteOfDay) {
+    final hour = minuteOfDay ~/ 60;
+    final minute = minuteOfDay % 60;
+    final date = DateTime(2000, 1, 1, hour, minute);
+    return DateFormat.jm().format(date);
   }
 }
 
@@ -385,18 +445,21 @@ class _SummaryStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(label),
-      ],
+    return SizedBox(
+      width: 120,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(label),
+        ],
+      ),
     );
   }
 }
