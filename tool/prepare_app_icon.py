@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sys
+import argparse
 from pathlib import Path
 
 from PIL import Image
@@ -60,13 +60,22 @@ def render_icon_canvas(
     return canvas
 
 
-def main() -> int:
-    if len(sys.argv) != 3:
-        print("Usage: python prepare_app_icon.py <source> <output>")
-        return 1
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Prepare a square launcher icon canvas from a transparent source mark.",
+    )
+    parser.add_argument("source", type=Path)
+    parser.add_argument("output", type=Path)
+    parser.add_argument("--output-size", type=int, default=1024)
+    parser.add_argument("--inset-ratio", type=float, default=0.14)
+    return parser.parse_args()
 
-    source = Path(sys.argv[1])
-    output = Path(sys.argv[2])
+
+def main() -> int:
+    args = parse_args()
+
+    source = args.source
+    output = args.output
 
     if not source.exists():
         print(f"Source image not found: {source}")
@@ -76,7 +85,12 @@ def main() -> int:
 
     with Image.open(source) as image:
         bbox = find_subject_bbox(image)
-        prepared = render_icon_canvas(image, bbox)
+        prepared = render_icon_canvas(
+            image,
+            bbox,
+            output_size=args.output_size,
+            inset_ratio=args.inset_ratio,
+        )
         prepared.save(output, format="PNG")
 
     print(f"Prepared icon source: {output}")
