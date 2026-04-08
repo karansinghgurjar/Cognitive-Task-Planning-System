@@ -3,6 +3,10 @@ import '../../notes/data/notes_repository.dart';
 import '../../notes/data/resources_repository.dart';
 import '../../notes/models/entity_note.dart';
 import '../../review/data/weekly_review_repository.dart';
+import '../../routines/data/routine_group_repository.dart';
+import '../../routines/data/routine_occurrence_repository.dart';
+import '../../routines/data/routine_repository.dart';
+import '../../routines/data/routine_template_repository.dart';
 import '../../schedule/data/planned_session_repository.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../tasks/data/task_repository.dart';
@@ -19,6 +23,10 @@ class AppStateSnapshotService {
     required this.resourcesRepository,
     required this.weeklyReviewRepository,
     required this.settingsRepository,
+    required this.routineRepository,
+    required this.routineOccurrenceRepository,
+    required this.routineTemplateRepository,
+    required this.routineGroupRepository,
   });
 
   final TaskRepository taskRepository;
@@ -29,6 +37,10 @@ class AppStateSnapshotService {
   final ResourcesRepository resourcesRepository;
   final WeeklyReviewRepository weeklyReviewRepository;
   final SettingsRepository settingsRepository;
+  final RoutineRepository routineRepository;
+  final RoutineOccurrenceRepository routineOccurrenceRepository;
+  final RoutineTemplateRepository routineTemplateRepository;
+  final RoutineGroupRepository routineGroupRepository;
 
   Future<ExistingAppStateSnapshot> createSnapshot() async {
     final tasks = await taskRepository.getAllTasks();
@@ -39,6 +51,10 @@ class AppStateSnapshotService {
     final dependencies = await goalRepository.getAllDependencies();
     final entityNotes = await notesRepository.getAllNotes();
     final entityResources = await resourcesRepository.getAllResources();
+    final routines = await routineRepository.getAllRoutines();
+    final routineOccurrences = await routineOccurrenceRepository.getAllOccurrences();
+    final routineTemplates = await routineTemplateRepository.getAllTemplates();
+    final routineGroups = await routineGroupRepository.getAllGroups();
     final weeklyReviews = await weeklyReviewRepository.getAllReviews();
     final preferences = await settingsRepository.getPreferences();
 
@@ -51,6 +67,10 @@ class AppStateSnapshotService {
       dependencies: dependencies,
       entityNotes: entityNotes,
       entityResources: entityResources,
+      routines: routines,
+      routineOccurrences: routineOccurrences,
+      routineTemplates: routineTemplates,
+      routineGroups: routineGroups,
       weeklyReviews: weeklyReviews,
       preferences: preferences,
     );
@@ -67,6 +87,7 @@ class AppStateSnapshotService {
     final goalIds = snapshot.goals.map((item) => item.id).toSet();
     final milestoneIds = snapshot.milestones.map((item) => item.id).toSet();
     final taskIds = snapshot.tasks.map((item) => item.id).toSet();
+    final routineIds = snapshot.routines.map((item) => item.id).toSet();
 
     for (final milestone in snapshot.milestones) {
       if (!goalIds.contains(milestone.goalId)) {
@@ -90,6 +111,22 @@ class AppStateSnapshotService {
         warnings.add(
           'Session ${session.id} references missing task ${session.taskId}.',
         );
+      }
+    }
+    for (final occurrence in snapshot.routineOccurrences) {
+      if (!routineIds.contains(occurrence.routineId)) {
+        warnings.add(
+          'Routine occurrence ${occurrence.id} references missing routine ${occurrence.routineId}.',
+        );
+      }
+    }
+    for (final group in snapshot.routineGroups) {
+      for (final routineId in group.routineIds) {
+        if (!routineIds.contains(routineId)) {
+          warnings.add(
+            'Routine group ${group.id} references missing routine $routineId.',
+          );
+        }
       }
     }
     for (final note in snapshot.entityNotes) {

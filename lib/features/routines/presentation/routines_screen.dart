@@ -7,9 +7,11 @@ import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../models/routine.dart';
 import '../providers/routine_providers.dart';
+import 'routine_diagnostics_screen.dart';
 import 'add_edit_routine_screen.dart';
 import 'routine_detail_screen.dart';
 import 'routine_groups_screen.dart';
+import 'routine_onboarding_hint.dart';
 import 'routine_templates_screen.dart';
 import 'routine_widgets.dart';
 
@@ -70,6 +72,17 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen>
             },
             icon: const Icon(Icons.account_tree_rounded),
           ),
+          IconButton(
+            tooltip: 'Diagnostics',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const RoutineDiagnosticsScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.bug_report_outlined),
+          ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -95,6 +108,10 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen>
               description:
                   'Recurring structures for work, study, and personal systems.',
             ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 12, 24, 0),
+            child: RoutineOnboardingHint(),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),

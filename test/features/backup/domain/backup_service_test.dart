@@ -9,6 +9,10 @@ import 'package:study_flow/features/goals/models/task_dependency.dart';
 import 'package:study_flow/features/notes/models/entity_note.dart';
 import 'package:study_flow/features/notes/models/entity_resource.dart';
 import 'package:study_flow/features/review/models/weekly_review.dart';
+import 'package:study_flow/features/routines/models/routine.dart';
+import 'package:study_flow/features/routines/models/routine_group.dart';
+import 'package:study_flow/features/routines/models/routine_occurrence.dart';
+import 'package:study_flow/features/routines/models/routine_template.dart';
 import 'package:study_flow/features/schedule/models/planned_session.dart';
 import 'package:study_flow/features/settings/models/notification_preferences.dart';
 import 'package:study_flow/features/tasks/models/task.dart';
@@ -113,6 +117,10 @@ class _FakeRestoreStore implements BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<Routine> routines,
+    required List<RoutineOccurrence> routineOccurrences,
+    required List<RoutineTemplate> routineTemplates,
+    required List<RoutineGroup> routineGroups,
     required List<WeeklyReview> weeklyReviews,
     NotificationPreferences? preferences,
   }) async {
@@ -147,6 +155,10 @@ ExistingAppStateSnapshot _existingSnapshot() {
     dependencies: const [],
     entityNotes: const <EntityNote>[],
     entityResources: const <EntityResource>[],
+    routines: const <Routine>[],
+    routineOccurrences: const <RoutineOccurrence>[],
+    routineTemplates: const <RoutineTemplate>[],
+    routineGroups: const <RoutineGroup>[],
     preferences: NotificationPreferences(),
   );
 }
@@ -201,6 +213,10 @@ AppBackupBundle _importBundle() {
     dependencies: const [],
     entityNotes: const <EntityNote>[],
     entityResources: const <EntityResource>[],
+    routines: const <Routine>[],
+    routineOccurrences: const <RoutineOccurrence>[],
+    routineTemplates: const <RoutineTemplate>[],
+    routineGroups: const <RoutineGroup>[],
     preferences: NotificationPreferences(
       backupReminderEnabled: true,
       backupReminderCadence: BackupReminderCadence.monthly,

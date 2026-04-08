@@ -7,6 +7,10 @@ enum SyncEntityType {
   learningGoal,
   goalMilestone,
   taskDependency,
+  routine,
+  routineOccurrence,
+  routineTemplate,
+  routineGroup,
   notificationPreferences,
 }
 

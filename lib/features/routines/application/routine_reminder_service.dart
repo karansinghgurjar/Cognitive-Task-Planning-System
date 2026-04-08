@@ -3,22 +3,35 @@ import '../domain/routine_enums.dart';
 import '../models/routine.dart';
 import '../models/routine_occurrence.dart';
 
+class RoutineReminderSyncResult {
+  const RoutineReminderSyncResult({
+    required this.scheduledCount,
+    required this.cancelledCount,
+  });
+
+  final int scheduledCount;
+  final int cancelledCount;
+}
+
 class RoutineReminderService {
   const RoutineReminderService({required NotificationService notificationService})
       : _notificationService = notificationService;
 
   final NotificationService _notificationService;
 
-  Future<void> syncRoutineReminders({
+  Future<RoutineReminderSyncResult> syncRoutineReminders({
     required List<Routine> routines,
     required List<RoutineOccurrence> occurrences,
     required DateTime now,
   }) async {
     final routineById = {for (final routine in routines) routine.id: routine};
+    var scheduledCount = 0;
+    var cancelledCount = 0;
     for (final occurrence in occurrences) {
       final routine = routineById[occurrence.routineId];
       if (routine == null || !_isEligible(routine: routine, occurrence: occurrence, now: now)) {
         await _notificationService.cancelRoutineReminder(occurrence.id);
+        cancelledCount += 1;
         continue;
       }
 
@@ -27,6 +40,7 @@ class RoutineReminderService {
       final reminderTime = scheduledStart.subtract(Duration(minutes: leadMinutes));
       if (!reminderTime.isAfter(now)) {
         await _notificationService.cancelRoutineReminder(occurrence.id);
+        cancelledCount += 1;
         continue;
       }
 
@@ -39,7 +53,12 @@ class RoutineReminderService {
             ? 'It is time for your routine block.'
             : 'Starts in $leadMinutes minutes.',
       );
+      scheduledCount += 1;
     }
+    return RoutineReminderSyncResult(
+      scheduledCount: scheduledCount,
+      cancelledCount: cancelledCount,
+    );
   }
 
   Future<void> cancelRemovedRoutineReminders({

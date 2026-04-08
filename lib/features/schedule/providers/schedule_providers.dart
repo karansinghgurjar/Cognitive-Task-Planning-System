@@ -169,40 +169,15 @@ class ScheduleActionController extends AsyncNotifier<SchedulingResult?> {
         startDate: horizonStart,
         endDate: horizonEnd,
       );
-      final routineOccurrences = await routineOccurrenceRepository.getOccurrencesInRange(
-        horizonStart,
-        horizonEnd,
-      );
-      final missedUpdates = ref.read(routineRecoveryServiceProvider).detectMissedOccurrences(
-            occurrences: routineOccurrences,
-            now: now,
-          );
-      if (missedUpdates.isNotEmpty) {
-        await routineOccurrenceRepository.saveOccurrences(missedUpdates);
-      }
-      final refreshedOccurrences =
-          missedUpdates.isEmpty
-              ? routineOccurrences
-              : await routineOccurrenceRepository.getOccurrencesInRange(
-                  horizonStart,
-                  horizonEnd,
-                );
-      final integrationResult = ref
-          .read(routineSchedulerIntegrationServiceProvider)
-          .integrate(
+      final pipelineResult = await ref.read(routinePlannerPipelineServiceProvider).run(
             routines: allRoutines,
-            occurrences: refreshedOccurrences,
+            occurrenceRepository: routineOccurrenceRepository,
             weeklyAvailability: weeklyAvailability,
             plannedSessions: [...blockedSessions, ...result.generatedSessions],
-            startDate: horizonStart,
-            endDate: horizonEnd,
             now: now,
           );
-      if (integrationResult.updatedOccurrences.isNotEmpty) {
-        await routineOccurrenceRepository.saveOccurrences(
-          integrationResult.updatedOccurrences,
-        );
-      }
+      ref.read(routinePlannerDiagnosticsProvider.notifier).state =
+          pipelineResult.diagnostics;
 
       debugPrint(
         'Schedule generation: sessions=${result.generatedSessions.length} scheduledMinutes=${result.totalScheduledMinutes} failures=${result.failures.length}',

@@ -6,6 +6,11 @@ import 'package:study_flow/features/goals/models/learning_goal.dart';
 import 'package:study_flow/features/goals/models/task_dependency.dart';
 import 'package:study_flow/features/notes/models/entity_note.dart';
 import 'package:study_flow/features/notes/models/entity_resource.dart';
+import 'package:study_flow/features/routines/domain/routine_repeat_rule.dart';
+import 'package:study_flow/features/routines/models/routine.dart';
+import 'package:study_flow/features/routines/models/routine_group.dart';
+import 'package:study_flow/features/routines/models/routine_occurrence.dart';
+import 'package:study_flow/features/routines/models/routine_template.dart';
 import 'package:study_flow/features/schedule/models/planned_session.dart';
 import 'package:study_flow/features/settings/models/notification_preferences.dart';
 import 'package:study_flow/features/tasks/models/task.dart';
@@ -24,6 +29,8 @@ void main() {
       expect(validation.bundle, isNotNull);
       expect(validation.bundle!.tasks, hasLength(1));
       expect(validation.bundle!.goals.single.title, 'Learn Flutter');
+      expect(validation.bundle!.routines.single.title, 'Morning Review');
+      expect(validation.bundle!.routineTemplates.single.items, hasLength(1));
       expect(
         validation.bundle!.preferences.backupReminderCadence,
         BackupReminderCadence.everyTwoWeeks,
@@ -135,6 +142,10 @@ AppBackupBundle _sampleBundle() {
         'goals': 1,
         'milestones': 1,
         'dependencies': 1,
+        'routines': 1,
+        'routineOccurrences': 1,
+        'routineTemplates': 1,
+        'routineGroups': 1,
         'settings': 1,
       },
     ),
@@ -198,6 +209,48 @@ AppBackupBundle _sampleBundle() {
     ],
     entityNotes: const <EntityNote>[],
     entityResources: const <EntityResource>[],
+    routines: [
+      Routine(
+        id: 'routine-1',
+        title: 'Morning Review',
+        createdAt: DateTime(2026, 3, 1, 6),
+        anchorDate: DateTime(2026, 3, 1),
+        repeatRule: RoutineRepeatRule(),
+        preferredStartMinuteOfDay: 420,
+        preferredDurationMinutes: 30,
+      ),
+    ],
+    routineOccurrences: [
+      RoutineOccurrence(
+        id: 'occ-1',
+        routineId: 'routine-1',
+        occurrenceDate: DateTime(2026, 3, 16),
+        scheduledStart: DateTime(2026, 3, 16, 7),
+        scheduledEnd: DateTime(2026, 3, 16, 7, 30),
+        createdAt: DateTime(2026, 3, 1, 6),
+      ),
+    ],
+    routineTemplates: [
+      RoutineTemplate(
+        id: 'template-1',
+        name: 'Review Template',
+        createdAt: DateTime(2026, 3, 1, 6),
+        items: [
+          RoutineTemplateItem(
+            title: 'Morning Review',
+            initialRepeatRule: RoutineRepeatRule(),
+          ),
+        ],
+      ),
+    ],
+    routineGroups: [
+      RoutineGroup(
+        id: 'group-1',
+        name: 'Study System',
+        routineIds: const ['routine-1'],
+        createdAt: DateTime(2026, 3, 1, 6),
+      ),
+    ],
     preferences: NotificationPreferences(
       backupReminderEnabled: true,
       backupReminderCadence: BackupReminderCadence.everyTwoWeeks,

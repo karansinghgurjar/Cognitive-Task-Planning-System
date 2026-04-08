@@ -56,6 +56,10 @@ class BackupService {
       dependencies: snapshot.dependencies,
       entityNotes: snapshot.entityNotes,
       entityResources: snapshot.entityResources,
+      routines: snapshot.routines,
+      routineOccurrences: snapshot.routineOccurrences,
+      routineTemplates: snapshot.routineTemplates,
+      routineGroups: snapshot.routineGroups,
       weeklyReviews: snapshot.weeklyReviews,
       preferences: snapshot.preferences,
     );
@@ -132,6 +136,30 @@ class BackupService {
       (item) => item.id,
     );
     collectConflicts(
+      'routines',
+      bundle.routines,
+      existing.routines,
+      (item) => item.id,
+    );
+    collectConflicts(
+      'routineOccurrences',
+      bundle.routineOccurrences,
+      existing.routineOccurrences,
+      (item) => item.id,
+    );
+    collectConflicts(
+      'routineTemplates',
+      bundle.routineTemplates,
+      existing.routineTemplates,
+      (item) => item.id,
+    );
+    collectConflicts(
+      'routineGroups',
+      bundle.routineGroups,
+      existing.routineGroups,
+      (item) => item.id,
+    );
+    collectConflicts(
       'weeklyReviews',
       bundle.weeklyReviews,
       existing.weeklyReviews,
@@ -147,6 +175,10 @@ class BackupService {
       'dependencies': bundle.dependencies.length,
       'entityNotes': bundle.entityNotes.length,
       'entityResources': bundle.entityResources.length,
+      'routines': bundle.routines.length,
+      'routineOccurrences': bundle.routineOccurrences.length,
+      'routineTemplates': bundle.routineTemplates.length,
+      'routineGroups': bundle.routineGroups.length,
       'weeklyReviews': bundle.weeklyReviews.length,
       'settings': 1,
     };
@@ -265,6 +297,30 @@ class BackupService {
       'entityResources',
       (item) => item.id,
     );
+    final routines = filterForMode(
+      bundle.routines,
+      existing.routines.map((item) => item.id).toSet(),
+      'routines',
+      (item) => item.id,
+    );
+    final routineOccurrences = filterForMode(
+      bundle.routineOccurrences,
+      existing.routineOccurrences.map((item) => item.id).toSet(),
+      'routineOccurrences',
+      (item) => item.id,
+    );
+    final routineTemplates = filterForMode(
+      bundle.routineTemplates,
+      existing.routineTemplates.map((item) => item.id).toSet(),
+      'routineTemplates',
+      (item) => item.id,
+    );
+    final routineGroups = filterForMode(
+      bundle.routineGroups,
+      existing.routineGroups.map((item) => item.id).toSet(),
+      'routineGroups',
+      (item) => item.id,
+    );
     final weeklyReviews = filterForMode(
       bundle.weeklyReviews,
       existing.weeklyReviews.map((item) => item.id).toSet(),
@@ -281,6 +337,10 @@ class BackupService {
       dependencies: dependencies,
       entityNotes: entityNotes,
       entityResources: entityResources,
+      routines: routines,
+      routineOccurrences: routineOccurrences,
+      routineTemplates: routineTemplates,
+      routineGroups: routineGroups,
       weeklyReviews: weeklyReviews,
       preferences: preferImported ? bundle.preferences : null,
     );
@@ -311,6 +371,10 @@ class BackupService {
       'dependencies': bundle.dependencies.length,
       'entityNotes': bundle.entityNotes.length,
       'entityResources': bundle.entityResources.length,
+      'routines': bundle.routines.length,
+      'routineOccurrences': bundle.routineOccurrences.length,
+      'routineTemplates': bundle.routineTemplates.length,
+      'routineGroups': bundle.routineGroups.length,
       'weeklyReviews': bundle.weeklyReviews.length,
       'settings': 1,
     };

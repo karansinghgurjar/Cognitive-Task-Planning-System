@@ -6,6 +6,10 @@ import '../../goals/models/task_dependency.dart';
 import '../../notes/models/entity_note.dart';
 import '../../notes/models/entity_resource.dart';
 import '../../review/models/weekly_review.dart';
+import '../../routines/models/routine.dart';
+import '../../routines/models/routine_group.dart';
+import '../../routines/models/routine_occurrence.dart';
+import '../../routines/models/routine_template.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../settings/models/notification_preferences.dart';
 import '../../tasks/models/task.dart';
@@ -24,6 +28,10 @@ abstract class BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<Routine> routines,
+    required List<RoutineOccurrence> routineOccurrences,
+    required List<RoutineTemplate> routineTemplates,
+    required List<RoutineGroup> routineGroups,
     required List<WeeklyReview> weeklyReviews,
     NotificationPreferences? preferences,
   });
@@ -45,6 +53,10 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
       await _isar.taskDependencys.clear();
       await _isar.entityNotes.clear();
       await _isar.entityResources.clear();
+      await _isar.routines.clear();
+      await _isar.routineOccurrences.clear();
+      await _isar.routineTemplates.clear();
+      await _isar.routineGroups.clear();
       await _isar.weeklyReviews.clear();
       await _isar.notificationPreferences.clear();
       await _mergeBundleInCurrentTransaction(
@@ -56,6 +68,10 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
         dependencies: bundle.dependencies,
         entityNotes: bundle.entityNotes,
         entityResources: bundle.entityResources,
+        routines: bundle.routines,
+        routineOccurrences: bundle.routineOccurrences,
+        routineTemplates: bundle.routineTemplates,
+        routineGroups: bundle.routineGroups,
         weeklyReviews: bundle.weeklyReviews,
         preferences: bundle.preferences,
       );
@@ -72,6 +88,10 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<Routine> routines,
+    required List<RoutineOccurrence> routineOccurrences,
+    required List<RoutineTemplate> routineTemplates,
+    required List<RoutineGroup> routineGroups,
     required List<WeeklyReview> weeklyReviews,
     NotificationPreferences? preferences,
   }) {
@@ -85,6 +105,10 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
         dependencies: dependencies,
         entityNotes: entityNotes,
         entityResources: entityResources,
+        routines: routines,
+        routineOccurrences: routineOccurrences,
+        routineTemplates: routineTemplates,
+        routineGroups: routineGroups,
         weeklyReviews: weeklyReviews,
         preferences: preferences,
       );
@@ -100,6 +124,10 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<Routine> routines,
+    required List<RoutineOccurrence> routineOccurrences,
+    required List<RoutineTemplate> routineTemplates,
+    required List<RoutineGroup> routineGroups,
     required List<WeeklyReview> weeklyReviews,
     NotificationPreferences? preferences,
   }) async {
@@ -126,6 +154,18 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     }
     if (entityResources.isNotEmpty) {
       await _isar.entityResources.putAll(entityResources);
+    }
+    if (routines.isNotEmpty) {
+      await _isar.routines.putAll(routines);
+    }
+    if (routineOccurrences.isNotEmpty) {
+      await _isar.routineOccurrences.putAll(routineOccurrences);
+    }
+    if (routineTemplates.isNotEmpty) {
+      await _isar.routineTemplates.putAll(routineTemplates);
+    }
+    if (routineGroups.isNotEmpty) {
+      await _isar.routineGroups.putAll(routineGroups);
     }
     if (weeklyReviews.isNotEmpty) {
       await _isar.weeklyReviews.putAll(weeklyReviews);

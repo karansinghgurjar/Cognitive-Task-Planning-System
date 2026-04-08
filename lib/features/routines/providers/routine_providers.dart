@@ -5,12 +5,16 @@ import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../application/routine_form_controller.dart';
 import '../application/routine_bulk_action_service.dart';
+import '../application/routine_diagnostics_service.dart';
 import '../application/routine_calendar_export_service.dart';
+import '../application/routine_history_policy_service.dart';
+import '../application/routine_backup_restore_service.dart';
 import '../application/routine_focus_bridge_service.dart';
 import '../application/routine_group_service.dart';
 import '../application/routine_occurrence_controller.dart';
 import '../application/routine_orchestration_service.dart';
 import '../application/routine_starter_pack_service.dart';
+import '../application/routine_sync_readiness_service.dart';
 import '../application/routine_template_service.dart';
 import '../data/routine_group_repository.dart';
 import '../data/routine_occurrence_repository.dart';
@@ -71,6 +75,11 @@ final routineTemplateServiceProvider = Provider<RoutineTemplateService>((ref) {
   );
 });
 
+final routineHistoryPolicyServiceProvider =
+    Provider<RoutineHistoryPolicyService>((ref) {
+      return const RoutineHistoryPolicyService();
+    });
+
 final routineStarterPackServiceProvider = Provider<RoutineStarterPackService>((ref) {
   return const RoutineStarterPackService();
 });
@@ -97,6 +106,31 @@ final routineFocusBridgeServiceProvider = Provider<RoutineFocusBridgeService>((r
   return RoutineFocusBridgeService();
 });
 
+final routineDiagnosticsServiceProvider = Provider<RoutineDiagnosticsService>((ref) {
+  return const RoutineDiagnosticsService();
+});
+
+final routineSyncReadinessServiceProvider =
+    Provider<RoutineSyncReadinessService>((ref) {
+      return const RoutineSyncReadinessService();
+    });
+
+final routineBackupRestoreServiceProvider =
+    FutureProvider<RoutineBackupRestoreService>((ref) async {
+      final syncService = await ref.watch(routineSyncServiceProvider.future);
+      final occurrenceRepository = await ref.watch(
+        routineOccurrenceRepositoryProvider.future,
+      );
+      return RoutineBackupRestoreService(
+        syncService: syncService,
+        occurrenceRepository: occurrenceRepository,
+        reminderService: ref.read(routineReminderServiceProvider),
+      );
+    });
+
+final routinePlannerDiagnosticsProvider =
+    StateProvider<RoutineDiagnosticsSnapshot?>((ref) => null);
+
 final routineSyncServiceProvider = FutureProvider<RoutineSyncService>((ref) async {
   final repository = await ref.watch(routineRepositoryProvider.future);
   return RoutineSyncService(
@@ -119,6 +153,20 @@ final watchAllRoutineOccurrencesProvider =
     StreamProvider<List<RoutineOccurrence>>((ref) async* {
       final repository = await ref.watch(routineOccurrenceRepositoryProvider.future);
       yield* repository.watchAllOccurrences();
+    });
+
+final planningHorizonRoutineOccurrencesProvider =
+    FutureProvider<List<RoutineOccurrence>>((ref) async {
+      final repository = await ref.watch(routineOccurrenceRepositoryProvider.future);
+      final window = ref.read(routineHistoryPolicyServiceProvider).activePlanningWindow();
+      return repository.getOccurrencesInRange(window.startDate, window.endDate);
+    });
+
+final recentHistoryRoutineOccurrencesProvider =
+    FutureProvider<List<RoutineOccurrence>>((ref) async {
+      final repository = await ref.watch(routineOccurrenceRepositoryProvider.future);
+      final window = ref.read(routineHistoryPolicyServiceProvider).recentHistoryWindow();
+      return repository.getOccurrencesInRange(window.startDate, window.endDate);
     });
 
 final watchRoutineTemplatesProvider =
@@ -177,7 +225,7 @@ class RoutineWeekRange {
 final todayRoutineOccurrencesProvider =
     Provider<AsyncValue<List<RoutineOccurrenceItem>>>((ref) {
       final routinesAsync = ref.watch(watchAllRoutinesProvider);
-      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+      final occurrencesAsync = ref.watch(planningHorizonRoutineOccurrencesProvider);
       final today = _normalize(DateTime.now());
 
       return switch ((routinesAsync, occurrencesAsync)) {
@@ -210,7 +258,7 @@ final weeklyRoutineOccurrencesProvider =
     Provider.family<AsyncValue<Map<int, List<RoutineOccurrenceItem>>>, RoutineWeekRange>(
       (ref, range) {
         final routinesAsync = ref.watch(watchAllRoutinesProvider);
-        final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+        final occurrencesAsync = ref.watch(planningHorizonRoutineOccurrencesProvider);
         return switch ((routinesAsync, occurrencesAsync)) {
           (
             AsyncData(value: final routines),
@@ -317,7 +365,7 @@ class RoutinePreviewState {
 
 final routinePreviewProvider = Provider<AsyncValue<RoutinePreviewState>>((ref) {
   final routinesAsync = ref.watch(watchAllRoutinesProvider);
-  final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+  final occurrencesAsync = ref.watch(planningHorizonRoutineOccurrencesProvider);
 
   return switch ((routinesAsync, occurrencesAsync)) {
     (
@@ -378,7 +426,7 @@ RoutineOccurrence? _findNextOccurrence(
 final routineRecommendationActionsProvider =
     Provider<AsyncValue<List<String>>>((ref) {
       final routinesAsync = ref.watch(watchActiveRoutinesProvider);
-      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+      final occurrencesAsync = ref.watch(planningHorizonRoutineOccurrencesProvider);
 
       return switch ((routinesAsync, occurrencesAsync)) {
         (
@@ -401,7 +449,7 @@ final routineRecommendationActionsProvider =
 final todayRoutinePlanningSummaryProvider =
     Provider<AsyncValue<RoutinePlanningSummary>>((ref) {
       final routinesAsync = ref.watch(watchAllRoutinesProvider);
-      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+      final occurrencesAsync = ref.watch(planningHorizonRoutineOccurrencesProvider);
 
       return switch ((routinesAsync, occurrencesAsync)) {
         (
@@ -430,7 +478,7 @@ final todayRoutinePlanningSummaryProvider =
 final weeklyRoutinePlanningSummaryProvider =
     Provider<AsyncValue<RoutinePlanningSummary>>((ref) {
       final routinesAsync = ref.watch(watchAllRoutinesProvider);
-      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+      final occurrencesAsync = ref.watch(planningHorizonRoutineOccurrencesProvider);
 
       return switch ((routinesAsync, occurrencesAsync)) {
         (

@@ -7,6 +7,12 @@ import '../../goals/models/task_dependency.dart';
 import '../../notes/models/entity_note.dart';
 import '../../notes/models/entity_resource.dart';
 import '../../review/models/weekly_review.dart';
+import '../../routines/domain/routine_enums.dart';
+import '../../routines/domain/routine_repeat_rule.dart';
+import '../../routines/models/routine.dart';
+import '../../routines/models/routine_group.dart';
+import '../../routines/models/routine_occurrence.dart';
+import '../../routines/models/routine_template.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../settings/models/notification_preferences.dart';
 import '../../tasks/models/task.dart';
@@ -43,6 +49,14 @@ class BackupSerialization {
         'dependencies': bundle.dependencies.map(_dependencyToJson).toList(),
         'entityNotes': bundle.entityNotes.map(_entityNoteToJson).toList(),
         'entityResources': bundle.entityResources.map(_entityResourceToJson).toList(),
+        'routines': bundle.routines.map(_routineToJson).toList(),
+        'routineOccurrences': bundle.routineOccurrences
+            .map(_routineOccurrenceToJson)
+            .toList(),
+        'routineTemplates': bundle.routineTemplates
+            .map(_routineTemplateToJson)
+            .toList(),
+        'routineGroups': bundle.routineGroups.map(_routineGroupToJson).toList(),
         'weeklyReviews': bundle.weeklyReviews.map(_weeklyReviewToJson).toList(),
         'settings': _preferencesToJson(bundle.preferences),
       },
@@ -170,6 +184,36 @@ class BackupSerialization {
       parser: (json, itemWarnings) =>
           _entityResourceFromJson(json, itemWarnings),
     );
+    final routines = _parseOptionalCollection<Routine>(
+      name: 'routines',
+      source: validCollections,
+      warnings: warnings,
+      idOf: (item) => item.id,
+      parser: (json, itemWarnings) => _routineFromJson(json, itemWarnings),
+    );
+    final routineOccurrences = _parseOptionalCollection<RoutineOccurrence>(
+      name: 'routineOccurrences',
+      source: validCollections,
+      warnings: warnings,
+      idOf: (item) => item.id,
+      parser: (json, itemWarnings) =>
+          _routineOccurrenceFromJson(json, itemWarnings),
+    );
+    final routineTemplates = _parseOptionalCollection<RoutineTemplate>(
+      name: 'routineTemplates',
+      source: validCollections,
+      warnings: warnings,
+      idOf: (item) => item.id,
+      parser: (json, itemWarnings) =>
+          _routineTemplateFromJson(json, itemWarnings),
+    );
+    final routineGroups = _parseOptionalCollection<RoutineGroup>(
+      name: 'routineGroups',
+      source: validCollections,
+      warnings: warnings,
+      idOf: (item) => item.id,
+      parser: (json, itemWarnings) => _routineGroupFromJson(json, itemWarnings),
+    );
     final weeklyReviews = _parseOptionalCollection<WeeklyReview>(
       name: 'weeklyReviews',
       source: validCollections,
@@ -200,6 +244,10 @@ class BackupSerialization {
         dependencies: dependencies,
         entityNotes: entityNotes,
         entityResources: entityResources,
+        routines: routines,
+        routineOccurrences: routineOccurrences,
+        routineTemplates: routineTemplates,
+        routineGroups: routineGroups,
         weeklyReviews: weeklyReviews,
         preferences: preferences,
       ),
@@ -346,6 +394,8 @@ class BackupSerialization {
     final milestoneIds = bundle.milestones.map((item) => item.id).toSet();
     final taskIds = bundle.tasks.map((item) => item.id).toSet();
     final goalIdsForAttachments = bundle.goals.map((item) => item.id).toSet();
+    final routineIds = bundle.routines.map((item) => item.id).toSet();
+    final templateIds = bundle.routineTemplates.map((item) => item.id).toSet();
 
     final normalizedMilestones = <GoalMilestone>[];
     for (final milestone in bundle.milestones) {
@@ -431,6 +481,49 @@ class BackupSerialization {
       normalizedResources.add(resource);
     }
 
+    final normalizedRoutines = <Routine>[];
+    for (final routine in bundle.routines) {
+      var normalized = routine;
+      if (routine.linkedGoalId != null && !goalIds.contains(routine.linkedGoalId)) {
+        warnings.add(
+          'Routine ${routine.id} references missing goal ${routine.linkedGoalId}; goal link will be cleared.',
+        );
+        normalized = normalized.copyWith(clearLinkedGoalId: true);
+      }
+      if (routine.sourceTemplateId != null &&
+          !templateIds.contains(routine.sourceTemplateId)) {
+        warnings.add(
+          'Routine ${routine.id} references missing template ${routine.sourceTemplateId}; template link will be cleared.',
+        );
+        normalized = normalized.copyWith(clearSourceTemplateId: true);
+      }
+      normalizedRoutines.add(normalized);
+    }
+
+    final normalizedOccurrences = <RoutineOccurrence>[];
+    for (final occurrence in bundle.routineOccurrences) {
+      if (!routineIds.contains(occurrence.routineId)) {
+        warnings.add(
+          'Routine occurrence ${occurrence.id} references missing routine ${occurrence.routineId} and will be skipped.',
+        );
+        continue;
+      }
+      normalizedOccurrences.add(occurrence);
+    }
+
+    final normalizedGroups = <RoutineGroup>[];
+    for (final group in bundle.routineGroups) {
+      final existingRoutineIds = group.routineIds
+          .where((routineId) => routineIds.contains(routineId))
+          .toList();
+      if (existingRoutineIds.length != group.routineIds.length) {
+        warnings.add(
+          'Routine group ${group.id} references missing routines; unavailable ids were removed.',
+        );
+      }
+      normalizedGroups.add(group.copyWith(routineIds: existingRoutineIds));
+    }
+
     final normalizedWeeklyReviews = <WeeklyReview>[];
     for (final review in bundle.weeklyReviews) {
       if (review.weekEnd.isBefore(review.weekStart)) {
@@ -452,6 +545,10 @@ class BackupSerialization {
       dependencies: normalizedDependencies,
       entityNotes: normalizedNotes,
       entityResources: normalizedResources,
+      routines: normalizedRoutines,
+      routineOccurrences: normalizedOccurrences,
+      routineTemplates: bundle.routineTemplates,
+      routineGroups: normalizedGroups,
       weeklyReviews: normalizedWeeklyReviews,
       preferences: bundle.preferences,
       warnings: List<String>.from(warnings),
@@ -913,6 +1010,359 @@ class BackupSerialization {
       challengesText: json['challengesText']?.toString(),
       nextWeekFocusText: json['nextWeekFocusText']?.toString(),
       isLocked: _asBool(json['isLocked']) ?? false,
+    );
+  }
+
+  Map<String, dynamic> _routineToJson(Routine routine) {
+    return {
+      'id': routine.id,
+      'title': routine.title,
+      'description': routine.description,
+      'isArchived': routine.isArchived,
+      'createdAt': routine.createdAt.toIso8601String(),
+      'updatedAt': routine.updatedAt?.toIso8601String(),
+      'anchorDate': routine.anchorDate.toIso8601String(),
+      'repeatRule': _repeatRuleToJson(routine.repeatRule),
+      'preferredStartMinuteOfDay': routine.preferredStartMinuteOfDay,
+      'preferredDurationMinutes': routine.preferredDurationMinutes,
+      'timeWindowStartMinuteOfDay': routine.timeWindowStartMinuteOfDay,
+      'timeWindowEndMinuteOfDay': routine.timeWindowEndMinuteOfDay,
+      'isFlexible': routine.isFlexible,
+      'autoRescheduleMissed': routine.autoRescheduleMissed,
+      'countsTowardConsistency': routine.countsTowardConsistency,
+      'linkedGoalId': routine.linkedGoalId,
+      'linkedProjectId': routine.linkedProjectId,
+      'sourceTemplateId': routine.sourceTemplateId,
+      'categoryId': routine.categoryId,
+      'tagIds': routine.tagIds,
+      'routineType': routine.routineType.name,
+      'isActive': routine.isActive,
+      'archivedAt': routine.archivedAt?.toIso8601String(),
+      'priority': routine.priority,
+      'energyType': routine.energyType,
+      'colorHex': routine.colorHex,
+      'iconName': routine.iconName,
+      'remindersEnabled': routine.remindersEnabled,
+      'reminderLeadMinutes': routine.reminderLeadMinutes,
+    };
+  }
+
+  Routine? _routineFromJson(Map<String, dynamic> json, List<String> warnings) {
+    final id = json['id']?.toString();
+    final title = json['title']?.toString();
+    final createdAt = _asDateTime(json['createdAt']);
+    final anchorDate = _asDateTime(json['anchorDate']);
+    final repeatRule = _repeatRuleFromJson(json['repeatRule'], warnings);
+    if ([id, title, createdAt, anchorDate, repeatRule].any((v) => v == null)) {
+      warnings.add('Routine is missing required fields and will be skipped.');
+      return null;
+    }
+    return Routine(
+      id: id!,
+      title: title!,
+      description: json['description']?.toString(),
+      isArchived: _asBool(json['isArchived']) ?? false,
+      createdAt: createdAt!,
+      updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
+      anchorDate: anchorDate!,
+      repeatRule: repeatRule!,
+      preferredStartMinuteOfDay: _asInt(json['preferredStartMinuteOfDay']),
+      preferredDurationMinutes: _asInt(json['preferredDurationMinutes']),
+      timeWindowStartMinuteOfDay: _asInt(json['timeWindowStartMinuteOfDay']),
+      timeWindowEndMinuteOfDay: _asInt(json['timeWindowEndMinuteOfDay']),
+      isFlexible: _asBool(json['isFlexible']) ?? true,
+      autoRescheduleMissed: _asBool(json['autoRescheduleMissed']) ?? false,
+      countsTowardConsistency: _asBool(json['countsTowardConsistency']) ?? true,
+      linkedGoalId: json['linkedGoalId']?.toString(),
+      linkedProjectId: json['linkedProjectId']?.toString(),
+      sourceTemplateId: json['sourceTemplateId']?.toString(),
+      categoryId: json['categoryId']?.toString(),
+      tagIds: (json['tagIds'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+      routineType: _enumByName<RoutineType>(
+            RoutineType.values,
+            json['routineType'],
+            warnings,
+            fallback: RoutineType.custom,
+            label: 'routine type',
+          ) ??
+          RoutineType.custom,
+      isActive: _asBool(json['isActive']) ?? true,
+      archivedAt: _asDateTime(json['archivedAt']),
+      priority: _asInt(json['priority']) ?? 3,
+      energyType: json['energyType']?.toString(),
+      colorHex: json['colorHex']?.toString(),
+      iconName: json['iconName']?.toString(),
+      remindersEnabled: _asBool(json['remindersEnabled']) ?? false,
+      reminderLeadMinutes: _asInt(json['reminderLeadMinutes']),
+    );
+  }
+
+  Map<String, dynamic> _routineOccurrenceToJson(RoutineOccurrence occurrence) {
+    return {
+      'id': occurrence.id,
+      'routineId': occurrence.routineId,
+      'occurrenceDate': occurrence.occurrenceDate.toIso8601String(),
+      'scheduledStart': occurrence.scheduledStart?.toIso8601String(),
+      'scheduledEnd': occurrence.scheduledEnd?.toIso8601String(),
+      'status': occurrence.status.name,
+      'createdAt': occurrence.createdAt.toIso8601String(),
+      'updatedAt': occurrence.updatedAt?.toIso8601String(),
+      'completedAt': occurrence.completedAt?.toIso8601String(),
+      'skippedAt': occurrence.skippedAt?.toIso8601String(),
+      'missedAt': occurrence.missedAt?.toIso8601String(),
+      'sourceTaskId': occurrence.sourceTaskId,
+      'notes': occurrence.notes,
+      'isRecoveryInstance': occurrence.isRecoveryInstance,
+      'recoveredFromOccurrenceId': occurrence.recoveredFromOccurrenceId,
+      'needsAttention': occurrence.needsAttention,
+      'isAutoScheduled': occurrence.isAutoScheduled,
+      'schedulingNote': occurrence.schedulingNote,
+      'isManualOverride': occurrence.isManualOverride,
+      'recoveryDismissedAt': occurrence.recoveryDismissedAt?.toIso8601String(),
+    };
+  }
+
+  RoutineOccurrence? _routineOccurrenceFromJson(
+    Map<String, dynamic> json,
+    List<String> warnings,
+  ) {
+    final id = json['id']?.toString();
+    final routineId = json['routineId']?.toString();
+    final occurrenceDate = _asDateTime(json['occurrenceDate']);
+    final createdAt = _asDateTime(json['createdAt']);
+    if ([id, routineId, occurrenceDate, createdAt].any((v) => v == null)) {
+      warnings.add('Routine occurrence is missing required fields and will be skipped.');
+      return null;
+    }
+    return RoutineOccurrence(
+      id: id!,
+      routineId: routineId!,
+      occurrenceDate: occurrenceDate!,
+      scheduledStart: _asDateTime(json['scheduledStart']),
+      scheduledEnd: _asDateTime(json['scheduledEnd']),
+      status: _enumByName<RoutineOccurrenceStatus>(
+            RoutineOccurrenceStatus.values,
+            json['status'],
+            warnings,
+            fallback: RoutineOccurrenceStatus.pending,
+            label: 'routine occurrence status',
+          ) ??
+          RoutineOccurrenceStatus.pending,
+      createdAt: createdAt!,
+      updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
+      completedAt: _asDateTime(json['completedAt']),
+      skippedAt: _asDateTime(json['skippedAt']),
+      missedAt: _asDateTime(json['missedAt']),
+      sourceTaskId: json['sourceTaskId']?.toString(),
+      notes: json['notes']?.toString(),
+      isRecoveryInstance: _asBool(json['isRecoveryInstance']) ?? false,
+      recoveredFromOccurrenceId: json['recoveredFromOccurrenceId']?.toString(),
+      needsAttention: _asBool(json['needsAttention']) ?? false,
+      isAutoScheduled: _asBool(json['isAutoScheduled']) ?? false,
+      schedulingNote: json['schedulingNote']?.toString(),
+      isManualOverride: _asBool(json['isManualOverride']) ?? false,
+      recoveryDismissedAt: _asDateTime(json['recoveryDismissedAt']),
+    );
+  }
+
+  Map<String, dynamic> _routineTemplateToJson(RoutineTemplate template) {
+    return {
+      'id': template.id,
+      'name': template.name,
+      'description': template.description,
+      'category': template.category,
+      'items': template.items.map(_routineTemplateItemToJson).toList(),
+      'createdAt': template.createdAt.toIso8601String(),
+      'updatedAt': template.updatedAt?.toIso8601String(),
+      'isBuiltIn': template.isBuiltIn,
+      'starterPackId': template.starterPackId,
+      'starterPackName': template.starterPackName,
+      'setupNotes': template.setupNotes,
+      'estimatedWeeklyMinutes': template.estimatedWeeklyMinutes,
+      'tags': template.tags,
+    };
+  }
+
+  RoutineTemplate? _routineTemplateFromJson(
+    Map<String, dynamic> json,
+    List<String> warnings,
+  ) {
+    final id = json['id']?.toString();
+    final name = json['name']?.toString();
+    final createdAt = _asDateTime(json['createdAt']);
+    if ([id, name, createdAt].any((v) => v == null)) {
+      warnings.add('Routine template is missing required fields and will be skipped.');
+      return null;
+    }
+    final rawItems = json['items'] as List? ?? const [];
+    final items = <RoutineTemplateItem>[];
+    for (final rawItem in rawItems) {
+      if (rawItem is! Map<String, dynamic>) {
+        continue;
+      }
+      final item = _routineTemplateItemFromJson(rawItem, warnings);
+      if (item != null) {
+        items.add(item);
+      }
+    }
+    return RoutineTemplate(
+      id: id!,
+      name: name!,
+      description: json['description']?.toString(),
+      category: json['category']?.toString() ?? 'general',
+      items: items,
+      createdAt: createdAt!,
+      updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
+      isBuiltIn: _asBool(json['isBuiltIn']) ?? false,
+      starterPackId: json['starterPackId']?.toString(),
+      starterPackName: json['starterPackName']?.toString(),
+      setupNotes: json['setupNotes']?.toString(),
+      estimatedWeeklyMinutes: _asInt(json['estimatedWeeklyMinutes']),
+      tags: (json['tags'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+    );
+  }
+
+  Map<String, dynamic> _routineTemplateItemToJson(RoutineTemplateItem item) {
+    return {
+      'title': item.title,
+      'description': item.description,
+      'repeatRule': _repeatRuleToJson(item.repeatRule),
+      'preferredStartMinuteOfDay': item.preferredStartMinuteOfDay,
+      'preferredDurationMinutes': item.preferredDurationMinutes,
+      'timeWindowStartMinuteOfDay': item.timeWindowStartMinuteOfDay,
+      'timeWindowEndMinuteOfDay': item.timeWindowEndMinuteOfDay,
+      'isFlexible': item.isFlexible,
+      'autoRescheduleMissed': item.autoRescheduleMissed,
+      'countsTowardConsistency': item.countsTowardConsistency,
+      'suggestedGoalTag': item.suggestedGoalTag,
+      'suggestedProjectTag': item.suggestedProjectTag,
+      'categoryId': item.categoryId,
+      'tagIds': item.tagIds,
+      'routineType': item.routineType.name,
+      'priority': item.priority,
+      'energyType': item.energyType,
+      'colorHex': item.colorHex,
+      'iconName': item.iconName,
+      'remindersEnabled': item.remindersEnabled,
+      'reminderLeadMinutes': item.reminderLeadMinutes,
+    };
+  }
+
+  RoutineTemplateItem? _routineTemplateItemFromJson(
+    Map<String, dynamic> json,
+    List<String> warnings,
+  ) {
+    final title = json['title']?.toString();
+    final repeatRule = _repeatRuleFromJson(json['repeatRule'], warnings);
+    if ([title, repeatRule].any((v) => v == null)) {
+      warnings.add('Routine template item is missing required fields and will be skipped.');
+      return null;
+    }
+    return RoutineTemplateItem(
+      title: title!,
+      description: json['description']?.toString(),
+      initialRepeatRule: repeatRule!,
+      preferredStartMinuteOfDay: _asInt(json['preferredStartMinuteOfDay']),
+      preferredDurationMinutes: _asInt(json['preferredDurationMinutes']),
+      timeWindowStartMinuteOfDay: _asInt(json['timeWindowStartMinuteOfDay']),
+      timeWindowEndMinuteOfDay: _asInt(json['timeWindowEndMinuteOfDay']),
+      isFlexible: _asBool(json['isFlexible']) ?? true,
+      autoRescheduleMissed: _asBool(json['autoRescheduleMissed']) ?? false,
+      countsTowardConsistency: _asBool(json['countsTowardConsistency']) ?? true,
+      suggestedGoalTag: json['suggestedGoalTag']?.toString(),
+      suggestedProjectTag: json['suggestedProjectTag']?.toString(),
+      categoryId: json['categoryId']?.toString(),
+      tagIds: (json['tagIds'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+      routineType: _enumByName<RoutineType>(
+            RoutineType.values,
+            json['routineType'],
+            warnings,
+            fallback: RoutineType.custom,
+            label: 'routine type',
+          ) ??
+          RoutineType.custom,
+      priority: _asInt(json['priority']) ?? 3,
+      energyType: json['energyType']?.toString(),
+      colorHex: json['colorHex']?.toString(),
+      iconName: json['iconName']?.toString(),
+      remindersEnabled: _asBool(json['remindersEnabled']) ?? false,
+      reminderLeadMinutes: _asInt(json['reminderLeadMinutes']),
+    );
+  }
+
+  Map<String, dynamic> _routineGroupToJson(RoutineGroup group) {
+    return {
+      'id': group.id,
+      'name': group.name,
+      'description': group.description,
+      'routineIds': group.routineIds,
+      'createdAt': group.createdAt.toIso8601String(),
+      'updatedAt': group.updatedAt?.toIso8601String(),
+      'colorHex': group.colorHex,
+      'iconName': group.iconName,
+      'linkedGoalId': group.linkedGoalId,
+      'linkedProjectId': group.linkedProjectId,
+      'isArchived': group.isArchived,
+    };
+  }
+
+  RoutineGroup? _routineGroupFromJson(
+    Map<String, dynamic> json,
+    List<String> warnings,
+  ) {
+    final id = json['id']?.toString();
+    final name = json['name']?.toString();
+    final createdAt = _asDateTime(json['createdAt']);
+    if ([id, name, createdAt].any((v) => v == null)) {
+      warnings.add('Routine group is missing required fields and will be skipped.');
+      return null;
+    }
+    return RoutineGroup(
+      id: id!,
+      name: name!,
+      description: json['description']?.toString(),
+      routineIds: (json['routineIds'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+      createdAt: createdAt!,
+      updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
+      colorHex: json['colorHex']?.toString(),
+      iconName: json['iconName']?.toString(),
+      linkedGoalId: json['linkedGoalId']?.toString(),
+      linkedProjectId: json['linkedProjectId']?.toString(),
+      isArchived: _asBool(json['isArchived']) ?? false,
+    );
+  }
+
+  Map<String, dynamic> _repeatRuleToJson(RoutineRepeatRule rule) {
+    return {
+      'type': rule.type.name,
+      'interval': rule.interval,
+      'weekdays': rule.weekdays,
+      'dayOfMonth': rule.dayOfMonth,
+    };
+  }
+
+  RoutineRepeatRule? _repeatRuleFromJson(Object? raw, List<String> warnings) {
+    if (raw is! Map<String, dynamic>) {
+      warnings.add('Routine repeat rule is missing or invalid.');
+      return null;
+    }
+    return RoutineRepeatRule(
+      type: _enumByName<RoutineRepeatType>(
+            RoutineRepeatType.values,
+            raw['type'],
+            warnings,
+            fallback: RoutineRepeatType.daily,
+            label: 'routine repeat type',
+          ) ??
+          RoutineRepeatType.daily,
+      interval: _asInt(raw['interval']) ?? 1,
+      weekdays: (raw['weekdays'] as List?)?.map((item) => _asInt(item) ?? 0).where((item) => item > 0).toList() ??
+          const [],
+      dayOfMonth: _asInt(raw['dayOfMonth']),
     );
   }
 

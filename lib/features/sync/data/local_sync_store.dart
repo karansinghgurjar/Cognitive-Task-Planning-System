@@ -5,6 +5,10 @@ import 'package:isar/isar.dart';
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
 import '../../goals/models/task_dependency.dart';
+import '../../routines/models/routine.dart';
+import '../../routines/models/routine_group.dart';
+import '../../routines/models/routine_occurrence.dart';
+import '../../routines/models/routine_template.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../settings/models/notification_preferences.dart';
 import '../../tasks/models/task.dart';
@@ -27,6 +31,10 @@ class LocalSyncStore implements LocalSyncStoreContract {
     final goals = await _isar.learningGoals.count();
     final milestones = await _isar.goalMilestones.count();
     final dependencies = await _isar.taskDependencys.count();
+    final routines = await _isar.routines.count();
+    final routineOccurrences = await _isar.routineOccurrences.count();
+    final routineTemplates = await _isar.routineTemplates.count();
+    final routineGroups = await _isar.routineGroups.count();
     final settings = await _isar.notificationPreferences.count();
     return tasks +
         timetableSlots +
@@ -34,6 +42,10 @@ class LocalSyncStore implements LocalSyncStoreContract {
         goals +
         milestones +
         dependencies +
+        routines +
+        routineOccurrences +
+        routineTemplates +
+        routineGroups +
         settings;
   }
 
@@ -48,6 +60,10 @@ class LocalSyncStore implements LocalSyncStoreContract {
     final goals = await _isar.learningGoals.where().findAll();
     final milestones = await _isar.goalMilestones.where().findAll();
     final dependencies = await _isar.taskDependencys.where().findAll();
+    final routines = await _isar.routines.where().findAll();
+    final routineOccurrences = await _isar.routineOccurrences.where().findAll();
+    final routineTemplates = await _isar.routineTemplates.where().findAll();
+    final routineGroups = await _isar.routineGroups.where().findAll();
     final preferences = await _isar.notificationPreferences.get(1);
 
     for (final task in tasks) {
@@ -122,6 +138,57 @@ class LocalSyncStore implements LocalSyncStoreContract {
             dependency,
           ),
           fallbackModifiedAt: dependency.createdAt,
+        ),
+      );
+    }
+    for (final routine in routines) {
+      envelopes.add(
+        await _buildEnvelope(
+          entityType: SyncEntityType.routine,
+          entityId: routine.id,
+          userId: userId,
+          deviceId: deviceId,
+          payload: codec.encodeEntity(SyncEntityType.routine, routine),
+          fallbackModifiedAt: routine.updatedAt ?? routine.createdAt,
+        ),
+      );
+    }
+    for (final occurrence in routineOccurrences) {
+      envelopes.add(
+        await _buildEnvelope(
+          entityType: SyncEntityType.routineOccurrence,
+          entityId: occurrence.id,
+          userId: userId,
+          deviceId: deviceId,
+          payload: codec.encodeEntity(
+            SyncEntityType.routineOccurrence,
+            occurrence,
+          ),
+          fallbackModifiedAt: occurrence.updatedAt ?? occurrence.createdAt,
+        ),
+      );
+    }
+    for (final template in routineTemplates) {
+      envelopes.add(
+        await _buildEnvelope(
+          entityType: SyncEntityType.routineTemplate,
+          entityId: template.id,
+          userId: userId,
+          deviceId: deviceId,
+          payload: codec.encodeEntity(SyncEntityType.routineTemplate, template),
+          fallbackModifiedAt: template.updatedAt ?? template.createdAt,
+        ),
+      );
+    }
+    for (final group in routineGroups) {
+      envelopes.add(
+        await _buildEnvelope(
+          entityType: SyncEntityType.routineGroup,
+          entityId: group.id,
+          userId: userId,
+          deviceId: deviceId,
+          payload: codec.encodeEntity(SyncEntityType.routineGroup, group),
+          fallbackModifiedAt: group.updatedAt ?? group.createdAt,
         ),
       );
     }
@@ -222,6 +289,10 @@ class LocalSyncStore implements LocalSyncStoreContract {
       await _isar.learningGoals.clear();
       await _isar.goalMilestones.clear();
       await _isar.taskDependencys.clear();
+      await _isar.routines.clear();
+      await _isar.routineOccurrences.clear();
+      await _isar.routineTemplates.clear();
+      await _isar.routineGroups.clear();
       await _isar.notificationPreferences.clear();
       await _isar.syncEntityMetadatas.clear();
 
@@ -252,6 +323,18 @@ class LocalSyncStore implements LocalSyncStoreContract {
           break;
         case SyncEntityType.taskDependency:
           await _isar.taskDependencys.put(decoded as TaskDependency);
+          break;
+        case SyncEntityType.routine:
+          await _isar.routines.put(decoded as Routine);
+          break;
+        case SyncEntityType.routineOccurrence:
+          await _isar.routineOccurrences.put(decoded as RoutineOccurrence);
+          break;
+        case SyncEntityType.routineTemplate:
+          await _isar.routineTemplates.put(decoded as RoutineTemplate);
+          break;
+        case SyncEntityType.routineGroup:
+          await _isar.routineGroups.put(decoded as RoutineGroup);
           break;
         case SyncEntityType.notificationPreferences:
           await _isar.notificationPreferences.put(
@@ -330,6 +413,31 @@ class LocalSyncStore implements LocalSyncStoreContract {
         return dependency == null
             ? null
             : codec.encodeEntity(entityType, dependency);
+      case SyncEntityType.routine:
+        final routine = await _isar.routines.filter().idEqualTo(entityId).findFirst();
+        return routine == null ? null : codec.encodeEntity(entityType, routine);
+      case SyncEntityType.routineOccurrence:
+        final occurrence = await _isar.routineOccurrences
+            .filter()
+            .idEqualTo(entityId)
+            .findFirst();
+        return occurrence == null
+            ? null
+            : codec.encodeEntity(entityType, occurrence);
+      case SyncEntityType.routineTemplate:
+        final template = await _isar.routineTemplates
+            .filter()
+            .idEqualTo(entityId)
+            .findFirst();
+        return template == null
+            ? null
+            : codec.encodeEntity(entityType, template);
+      case SyncEntityType.routineGroup:
+        final group = await _isar.routineGroups
+            .filter()
+            .idEqualTo(entityId)
+            .findFirst();
+        return group == null ? null : codec.encodeEntity(entityType, group);
       case SyncEntityType.notificationPreferences:
         final preferences = await _isar.notificationPreferences.get(1);
         return preferences == null
@@ -392,6 +500,39 @@ class LocalSyncStore implements LocalSyncStoreContract {
             .findFirst();
         if (dependency != null) {
           await _isar.taskDependencys.delete(dependency.isarId);
+        }
+        break;
+      case SyncEntityType.routine:
+        final routine = await _isar.routines.filter().idEqualTo(entityId).findFirst();
+        if (routine != null) {
+          await _isar.routines.delete(routine.isarId);
+        }
+        break;
+      case SyncEntityType.routineOccurrence:
+        final occurrence = await _isar.routineOccurrences
+            .filter()
+            .idEqualTo(entityId)
+            .findFirst();
+        if (occurrence != null) {
+          await _isar.routineOccurrences.delete(occurrence.isarId);
+        }
+        break;
+      case SyncEntityType.routineTemplate:
+        final template = await _isar.routineTemplates
+            .filter()
+            .idEqualTo(entityId)
+            .findFirst();
+        if (template != null) {
+          await _isar.routineTemplates.delete(template.isarId);
+        }
+        break;
+      case SyncEntityType.routineGroup:
+        final group = await _isar.routineGroups
+            .filter()
+            .idEqualTo(entityId)
+            .findFirst();
+        if (group != null) {
+          await _isar.routineGroups.delete(group.isarId);
         }
         break;
       case SyncEntityType.notificationPreferences:

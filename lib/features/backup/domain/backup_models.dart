@@ -6,6 +6,10 @@ import '../../notes/models/entity_note.dart';
 import '../../notes/models/entity_resource.dart';
 import '../../recommendations/domain/recommendation_models.dart';
 import '../../review/models/weekly_review.dart';
+import '../../routines/models/routine.dart';
+import '../../routines/models/routine_group.dart';
+import '../../routines/models/routine_occurrence.dart';
+import '../../routines/models/routine_template.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../settings/models/notification_preferences.dart';
 import '../../tasks/models/task.dart';
@@ -40,6 +44,10 @@ class AppBackupBundle {
     required this.dependencies,
     required this.entityNotes,
     required this.entityResources,
+    this.routines = const [],
+    this.routineOccurrences = const [],
+    this.routineTemplates = const [],
+    this.routineGroups = const [],
     this.weeklyReviews = const [],
     required this.preferences,
     this.warnings = const [],
@@ -54,6 +62,10 @@ class AppBackupBundle {
   final List<TaskDependency> dependencies;
   final List<EntityNote> entityNotes;
   final List<EntityResource> entityResources;
+  final List<Routine> routines;
+  final List<RoutineOccurrence> routineOccurrences;
+  final List<RoutineTemplate> routineTemplates;
+  final List<RoutineGroup> routineGroups;
   final List<WeeklyReview> weeklyReviews;
   final NotificationPreferences preferences;
   final List<String> warnings;
@@ -69,6 +81,10 @@ class ExistingAppStateSnapshot {
     required this.dependencies,
     required this.entityNotes,
     required this.entityResources,
+    this.routines = const [],
+    this.routineOccurrences = const [],
+    this.routineTemplates = const [],
+    this.routineGroups = const [],
     this.weeklyReviews = const [],
     required this.preferences,
   });
@@ -81,6 +97,10 @@ class ExistingAppStateSnapshot {
   final List<TaskDependency> dependencies;
   final List<EntityNote> entityNotes;
   final List<EntityResource> entityResources;
+  final List<Routine> routines;
+  final List<RoutineOccurrence> routineOccurrences;
+  final List<RoutineTemplate> routineTemplates;
+  final List<RoutineGroup> routineGroups;
   final List<WeeklyReview> weeklyReviews;
   final NotificationPreferences preferences;
 
@@ -93,6 +113,10 @@ class ExistingAppStateSnapshot {
     'dependencies': dependencies.length,
     'entityNotes': entityNotes.length,
     'entityResources': entityResources.length,
+    'routines': routines.length,
+    'routineOccurrences': routineOccurrences.length,
+    'routineTemplates': routineTemplates.length,
+    'routineGroups': routineGroups.length,
     'weeklyReviews': weeklyReviews.length,
     'settings': 1,
   };

@@ -1,11 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/notifications/notification_providers.dart';
 import '../../schedule/providers/schedule_providers.dart';
 import '../../timetable/providers/timetable_providers.dart';
 import '../application/routine_consistency_service.dart';
 import '../application/routine_reconciliation_service.dart';
 import '../application/routine_goal_link_service.dart';
+import '../application/routine_planner_pipeline_service.dart';
 import '../application/routine_recovery_service.dart';
+import '../application/routine_reminder_service.dart';
 import '../application/routine_scheduler_integration_service.dart';
 import '../domain/routine_enums.dart';
 import '../models/routine_occurrence.dart';
@@ -17,6 +20,12 @@ final routineConsistencyServiceProvider = Provider<RoutineConsistencyService>((r
 
 final routineRecoveryServiceProvider = Provider<RoutineRecoveryService>((ref) {
   return RoutineRecoveryService();
+});
+
+final routineReminderServiceProvider = Provider<RoutineReminderService>((ref) {
+  return RoutineReminderService(
+    notificationService: ref.read(notificationServiceProvider),
+  );
 });
 
 final routineSchedulerIntegrationServiceProvider =
@@ -34,6 +43,19 @@ final routineReconciliationServiceProvider =
       return RoutineReconciliationService();
     });
 
+final routinePlannerPipelineServiceProvider =
+    Provider<RoutinePlannerPipelineService>((ref) {
+      return RoutinePlannerPipelineService(
+        historyPolicyService: ref.read(routineHistoryPolicyServiceProvider),
+        recoveryService: ref.read(routineRecoveryServiceProvider),
+        schedulerIntegrationService: ref.read(
+          routineSchedulerIntegrationServiceProvider,
+        ),
+        reminderService: ref.read(routineReminderServiceProvider),
+        diagnosticsService: ref.read(routineDiagnosticsServiceProvider),
+      );
+    });
+
 final routineAnalyticsRangeProvider = StateProvider<RoutineAnalyticsRange>((ref) {
   return RoutineAnalyticsRange.last7Days;
 });
@@ -41,7 +63,7 @@ final routineAnalyticsRangeProvider = StateProvider<RoutineAnalyticsRange>((ref)
 final routineConsistencySummaryProvider =
     Provider.family<AsyncValue<RoutineConsistencySummary>, String>((ref, routineId) {
       final routinesAsync = ref.watch(watchAllRoutinesProvider);
-      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+      final occurrencesAsync = ref.watch(recentHistoryRoutineOccurrencesProvider);
       final range = ref.watch(routineAnalyticsRangeProvider);
 
       return switch ((routinesAsync, occurrencesAsync)) {
@@ -74,7 +96,7 @@ final routineConsistencySummaryProvider =
 final missedRoutineOccurrencesProvider =
     Provider<AsyncValue<List<RoutineOccurrenceItem>>>((ref) {
       final routinesAsync = ref.watch(watchAllRoutinesProvider);
-      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+      final occurrencesAsync = ref.watch(recentHistoryRoutineOccurrencesProvider);
 
       return switch ((routinesAsync, occurrencesAsync)) {
         (
@@ -111,7 +133,7 @@ final missedRoutineOccurrencesProvider =
 final routineRecoverySuggestionsProvider =
     Provider<AsyncValue<List<RoutineRecoverySuggestion>>>((ref) {
       final routinesAsync = ref.watch(watchAllRoutinesProvider);
-      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+      final occurrencesAsync = ref.watch(planningHorizonRoutineOccurrencesProvider);
 
       return switch ((routinesAsync, occurrencesAsync)) {
         (
@@ -140,7 +162,7 @@ final routineRecoverySuggestionsProvider =
 final unscheduledFlexibleRoutineOccurrencesProvider =
     Provider<AsyncValue<List<RoutineOccurrenceItem>>>((ref) {
       final routinesAsync = ref.watch(watchAllRoutinesProvider);
-      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+      final occurrencesAsync = ref.watch(planningHorizonRoutineOccurrencesProvider);
 
       return switch ((routinesAsync, occurrencesAsync)) {
         (
@@ -188,7 +210,11 @@ class RoutineIntelligenceController extends AsyncNotifier<void> {
       final occurrenceRepository = await ref.read(
         routineOccurrenceRepositoryProvider.future,
       );
-      final occurrences = await occurrenceRepository.getAllOccurrences();
+      final window = ref.read(routineHistoryPolicyServiceProvider).activePlanningWindow();
+      final occurrences = await occurrenceRepository.getOccurrencesInRange(
+        window.startDate,
+        window.endDate,
+      );
       final missedUpdates = ref.read(routineRecoveryServiceProvider).detectMissedOccurrences(
             occurrences: occurrences,
             now: DateTime.now(),
@@ -255,24 +281,21 @@ class RoutineIntelligenceController extends AsyncNotifier<void> {
     state = const AsyncLoading();
     try {
       final routines = await ref.read(watchAllRoutinesProvider.future);
-      final occurrences = await ref.read(watchAllRoutineOccurrencesProvider.future);
       final sessions = await ref.read(watchAllSessionsProvider.future);
       final timetableSlots = await ref.read(watchTimetableSlotsProvider.future);
       final weeklyAvailability = ref
           .read(availabilityServiceProvider)
           .computeWeeklyAvailability(timetableSlots);
       final now = DateTime.now();
-      final result = ref.read(routineSchedulerIntegrationServiceProvider).integrate(
+      final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
+      final result = await ref.read(routinePlannerPipelineServiceProvider).run(
             routines: routines,
-            occurrences: occurrences,
+            occurrenceRepository: repository,
             weeklyAvailability: weeklyAvailability,
             plannedSessions: sessions,
-            startDate: now,
-            endDate: now.add(const Duration(days: 7)),
             now: now,
           );
-      final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
-      await repository.saveOccurrences(result.updatedOccurrences);
+      ref.read(routinePlannerDiagnosticsProvider.notifier).state = result.diagnostics;
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -287,7 +310,7 @@ class RoutineIntelligenceController extends AsyncNotifier<void> {
     state = const AsyncLoading();
     try {
       final routines = await ref.read(watchAllRoutinesProvider.future);
-      final occurrences = await ref.read(watchAllRoutineOccurrencesProvider.future);
+      final occurrences = await ref.read(planningHorizonRoutineOccurrencesProvider.future);
       final sessions = await ref.read(watchAllSessionsProvider.future);
       final timetableSlots = await ref.read(watchTimetableSlotsProvider.future);
       final weeklyAvailability = ref

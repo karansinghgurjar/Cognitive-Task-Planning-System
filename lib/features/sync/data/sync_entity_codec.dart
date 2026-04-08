@@ -3,6 +3,12 @@ import 'dart:convert';
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
 import '../../goals/models/task_dependency.dart';
+import '../../routines/domain/routine_enums.dart';
+import '../../routines/domain/routine_repeat_rule.dart';
+import '../../routines/models/routine.dart';
+import '../../routines/models/routine_group.dart';
+import '../../routines/models/routine_occurrence.dart';
+import '../../routines/models/routine_template.dart';
 import '../../schedule/models/planned_session.dart';
 import '../../settings/models/notification_preferences.dart';
 import '../../tasks/models/task.dart';
@@ -26,6 +32,14 @@ class SyncEntityCodec {
         return _milestoneToJson(entity as GoalMilestone);
       case SyncEntityType.taskDependency:
         return _dependencyToJson(entity as TaskDependency);
+      case SyncEntityType.routine:
+        return _routineToJson(entity as Routine);
+      case SyncEntityType.routineOccurrence:
+        return _routineOccurrenceToJson(entity as RoutineOccurrence);
+      case SyncEntityType.routineTemplate:
+        return _routineTemplateToJson(entity as RoutineTemplate);
+      case SyncEntityType.routineGroup:
+        return _routineGroupToJson(entity as RoutineGroup);
       case SyncEntityType.notificationPreferences:
         return _preferencesToJson(entity as NotificationPreferences);
     }
@@ -45,6 +59,14 @@ class SyncEntityCodec {
         return (entity as GoalMilestone).id;
       case SyncEntityType.taskDependency:
         return (entity as TaskDependency).id;
+      case SyncEntityType.routine:
+        return (entity as Routine).id;
+      case SyncEntityType.routineOccurrence:
+        return (entity as RoutineOccurrence).id;
+      case SyncEntityType.routineTemplate:
+        return (entity as RoutineTemplate).id;
+      case SyncEntityType.routineGroup:
+        return (entity as RoutineGroup).id;
       case SyncEntityType.notificationPreferences:
         return 'preferences';
     }
@@ -64,6 +86,14 @@ class SyncEntityCodec {
         return _milestoneFromJson(json);
       case SyncEntityType.taskDependency:
         return _dependencyFromJson(json);
+      case SyncEntityType.routine:
+        return _routineFromJson(json);
+      case SyncEntityType.routineOccurrence:
+        return _routineOccurrenceFromJson(json);
+      case SyncEntityType.routineTemplate:
+        return _routineTemplateFromJson(json);
+      case SyncEntityType.routineGroup:
+        return _routineGroupFromJson(json);
       case SyncEntityType.notificationPreferences:
         return _preferencesFromJson(json);
     }
@@ -238,6 +268,275 @@ class SyncEntityCodec {
       taskId: json['taskId'] as String,
       dependsOnTaskId: json['dependsOnTaskId'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
+    );
+  }
+
+  Map<String, dynamic> _routineToJson(Routine routine) => {
+    'id': routine.id,
+    'title': routine.title,
+    'description': routine.description,
+    'isArchived': routine.isArchived,
+    'createdAt': routine.createdAt.toIso8601String(),
+    'updatedAt': routine.updatedAt?.toIso8601String(),
+    'anchorDate': routine.anchorDate.toIso8601String(),
+    'repeatRule': _repeatRuleToJson(routine.repeatRule),
+    'preferredStartMinuteOfDay': routine.preferredStartMinuteOfDay,
+    'preferredDurationMinutes': routine.preferredDurationMinutes,
+    'timeWindowStartMinuteOfDay': routine.timeWindowStartMinuteOfDay,
+    'timeWindowEndMinuteOfDay': routine.timeWindowEndMinuteOfDay,
+    'isFlexible': routine.isFlexible,
+    'autoRescheduleMissed': routine.autoRescheduleMissed,
+    'countsTowardConsistency': routine.countsTowardConsistency,
+    'linkedGoalId': routine.linkedGoalId,
+    'linkedProjectId': routine.linkedProjectId,
+    'sourceTemplateId': routine.sourceTemplateId,
+    'categoryId': routine.categoryId,
+    'tagIds': routine.tagIds,
+    'routineType': routine.routineType.name,
+    'isActive': routine.isActive,
+    'archivedAt': routine.archivedAt?.toIso8601String(),
+    'priority': routine.priority,
+    'energyType': routine.energyType,
+    'colorHex': routine.colorHex,
+    'iconName': routine.iconName,
+    'remindersEnabled': routine.remindersEnabled,
+    'reminderLeadMinutes': routine.reminderLeadMinutes,
+  };
+
+  Routine _routineFromJson(Map<String, dynamic> json) {
+    return Routine(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String?,
+      isArchived: json['isArchived'] as bool? ?? false,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: _dateTimeOrNull(json['updatedAt']) ??
+          DateTime.parse(json['createdAt'] as String),
+      anchorDate: DateTime.parse(json['anchorDate'] as String),
+      repeatRule: _repeatRuleFromJson(json['repeatRule'] as Map<String, dynamic>),
+      preferredStartMinuteOfDay: json['preferredStartMinuteOfDay'] as int?,
+      preferredDurationMinutes: json['preferredDurationMinutes'] as int?,
+      timeWindowStartMinuteOfDay: json['timeWindowStartMinuteOfDay'] as int?,
+      timeWindowEndMinuteOfDay: json['timeWindowEndMinuteOfDay'] as int?,
+      isFlexible: json['isFlexible'] as bool? ?? true,
+      autoRescheduleMissed: json['autoRescheduleMissed'] as bool? ?? false,
+      countsTowardConsistency: json['countsTowardConsistency'] as bool? ?? true,
+      linkedGoalId: json['linkedGoalId'] as String?,
+      linkedProjectId: json['linkedProjectId'] as String?,
+      sourceTemplateId: json['sourceTemplateId'] as String?,
+      categoryId: json['categoryId'] as String?,
+      tagIds:
+          (json['tagIds'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+      routineType: RoutineType.values.byName(
+        json['routineType'] as String? ?? RoutineType.custom.name,
+      ),
+      isActive: json['isActive'] as bool? ?? true,
+      archivedAt: _dateTimeOrNull(json['archivedAt']),
+      priority: json['priority'] as int? ?? 3,
+      energyType: json['energyType'] as String?,
+      colorHex: json['colorHex'] as String?,
+      iconName: json['iconName'] as String?,
+      remindersEnabled: json['remindersEnabled'] as bool? ?? false,
+      reminderLeadMinutes: json['reminderLeadMinutes'] as int?,
+    );
+  }
+
+  Map<String, dynamic> _routineOccurrenceToJson(RoutineOccurrence occurrence) => {
+    'id': occurrence.id,
+    'routineId': occurrence.routineId,
+    'occurrenceDate': occurrence.occurrenceDate.toIso8601String(),
+    'scheduledStart': occurrence.scheduledStart?.toIso8601String(),
+    'scheduledEnd': occurrence.scheduledEnd?.toIso8601String(),
+    'status': occurrence.status.name,
+    'createdAt': occurrence.createdAt.toIso8601String(),
+    'updatedAt': occurrence.updatedAt?.toIso8601String(),
+    'completedAt': occurrence.completedAt?.toIso8601String(),
+    'skippedAt': occurrence.skippedAt?.toIso8601String(),
+    'missedAt': occurrence.missedAt?.toIso8601String(),
+    'sourceTaskId': occurrence.sourceTaskId,
+    'notes': occurrence.notes,
+    'isRecoveryInstance': occurrence.isRecoveryInstance,
+    'recoveredFromOccurrenceId': occurrence.recoveredFromOccurrenceId,
+    'needsAttention': occurrence.needsAttention,
+    'isAutoScheduled': occurrence.isAutoScheduled,
+    'schedulingNote': occurrence.schedulingNote,
+    'isManualOverride': occurrence.isManualOverride,
+    'recoveryDismissedAt': occurrence.recoveryDismissedAt?.toIso8601String(),
+  };
+
+  RoutineOccurrence _routineOccurrenceFromJson(Map<String, dynamic> json) {
+    return RoutineOccurrence(
+      id: json['id'] as String,
+      routineId: json['routineId'] as String,
+      occurrenceDate: DateTime.parse(json['occurrenceDate'] as String),
+      scheduledStart: _dateTimeOrNull(json['scheduledStart']),
+      scheduledEnd: _dateTimeOrNull(json['scheduledEnd']),
+      status: RoutineOccurrenceStatus.values.byName(
+        json['status'] as String? ?? RoutineOccurrenceStatus.pending.name,
+      ),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: _dateTimeOrNull(json['updatedAt']) ??
+          DateTime.parse(json['createdAt'] as String),
+      completedAt: _dateTimeOrNull(json['completedAt']),
+      skippedAt: _dateTimeOrNull(json['skippedAt']),
+      missedAt: _dateTimeOrNull(json['missedAt']),
+      sourceTaskId: json['sourceTaskId'] as String?,
+      notes: json['notes'] as String?,
+      isRecoveryInstance: json['isRecoveryInstance'] as bool? ?? false,
+      recoveredFromOccurrenceId: json['recoveredFromOccurrenceId'] as String?,
+      needsAttention: json['needsAttention'] as bool? ?? false,
+      isAutoScheduled: json['isAutoScheduled'] as bool? ?? false,
+      schedulingNote: json['schedulingNote'] as String?,
+      isManualOverride: json['isManualOverride'] as bool? ?? false,
+      recoveryDismissedAt: _dateTimeOrNull(json['recoveryDismissedAt']),
+    );
+  }
+
+  Map<String, dynamic> _routineTemplateToJson(RoutineTemplate template) => {
+    'id': template.id,
+    'name': template.name,
+    'description': template.description,
+    'category': template.category,
+    'items': template.items.map(_routineTemplateItemToJson).toList(),
+    'createdAt': template.createdAt.toIso8601String(),
+    'updatedAt': template.updatedAt?.toIso8601String(),
+    'isBuiltIn': template.isBuiltIn,
+    'starterPackId': template.starterPackId,
+    'starterPackName': template.starterPackName,
+    'setupNotes': template.setupNotes,
+    'estimatedWeeklyMinutes': template.estimatedWeeklyMinutes,
+    'tags': template.tags,
+  };
+
+  RoutineTemplate _routineTemplateFromJson(Map<String, dynamic> json) {
+    return RoutineTemplate(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String?,
+      category: json['category'] as String? ?? 'general',
+      items: (json['items'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(_routineTemplateItemFromJson)
+          .toList(),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: _dateTimeOrNull(json['updatedAt']) ??
+          DateTime.parse(json['createdAt'] as String),
+      isBuiltIn: json['isBuiltIn'] as bool? ?? false,
+      starterPackId: json['starterPackId'] as String?,
+      starterPackName: json['starterPackName'] as String?,
+      setupNotes: json['setupNotes'] as String?,
+      estimatedWeeklyMinutes: json['estimatedWeeklyMinutes'] as int?,
+      tags: (json['tags'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+    );
+  }
+
+  Map<String, dynamic> _routineTemplateItemToJson(RoutineTemplateItem item) => {
+    'title': item.title,
+    'description': item.description,
+    'repeatRule': _repeatRuleToJson(item.repeatRule),
+    'preferredStartMinuteOfDay': item.preferredStartMinuteOfDay,
+    'preferredDurationMinutes': item.preferredDurationMinutes,
+    'timeWindowStartMinuteOfDay': item.timeWindowStartMinuteOfDay,
+    'timeWindowEndMinuteOfDay': item.timeWindowEndMinuteOfDay,
+    'isFlexible': item.isFlexible,
+    'autoRescheduleMissed': item.autoRescheduleMissed,
+    'countsTowardConsistency': item.countsTowardConsistency,
+    'suggestedGoalTag': item.suggestedGoalTag,
+    'suggestedProjectTag': item.suggestedProjectTag,
+    'categoryId': item.categoryId,
+    'tagIds': item.tagIds,
+    'routineType': item.routineType.name,
+    'priority': item.priority,
+    'energyType': item.energyType,
+    'colorHex': item.colorHex,
+    'iconName': item.iconName,
+    'remindersEnabled': item.remindersEnabled,
+    'reminderLeadMinutes': item.reminderLeadMinutes,
+  };
+
+  RoutineTemplateItem _routineTemplateItemFromJson(Map<String, dynamic> json) {
+    return RoutineTemplateItem(
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String?,
+      initialRepeatRule: _repeatRuleFromJson(
+        (json['repeatRule'] as Map?)?.cast<String, dynamic>() ?? const {},
+      ),
+      preferredStartMinuteOfDay: json['preferredStartMinuteOfDay'] as int?,
+      preferredDurationMinutes: json['preferredDurationMinutes'] as int?,
+      timeWindowStartMinuteOfDay: json['timeWindowStartMinuteOfDay'] as int?,
+      timeWindowEndMinuteOfDay: json['timeWindowEndMinuteOfDay'] as int?,
+      isFlexible: json['isFlexible'] as bool? ?? true,
+      autoRescheduleMissed: json['autoRescheduleMissed'] as bool? ?? false,
+      countsTowardConsistency: json['countsTowardConsistency'] as bool? ?? true,
+      suggestedGoalTag: json['suggestedGoalTag'] as String?,
+      suggestedProjectTag: json['suggestedProjectTag'] as String?,
+      categoryId: json['categoryId'] as String?,
+      tagIds:
+          (json['tagIds'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+      routineType: RoutineType.values.byName(
+        json['routineType'] as String? ?? RoutineType.custom.name,
+      ),
+      priority: json['priority'] as int? ?? 3,
+      energyType: json['energyType'] as String?,
+      colorHex: json['colorHex'] as String?,
+      iconName: json['iconName'] as String?,
+      remindersEnabled: json['remindersEnabled'] as bool? ?? false,
+      reminderLeadMinutes: json['reminderLeadMinutes'] as int?,
+    );
+  }
+
+  Map<String, dynamic> _routineGroupToJson(RoutineGroup group) => {
+    'id': group.id,
+    'name': group.name,
+    'description': group.description,
+    'routineIds': group.routineIds,
+    'createdAt': group.createdAt.toIso8601String(),
+    'updatedAt': group.updatedAt?.toIso8601String(),
+    'colorHex': group.colorHex,
+    'iconName': group.iconName,
+    'linkedGoalId': group.linkedGoalId,
+    'linkedProjectId': group.linkedProjectId,
+    'isArchived': group.isArchived,
+  };
+
+  RoutineGroup _routineGroupFromJson(Map<String, dynamic> json) {
+    return RoutineGroup(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String?,
+      routineIds:
+          (json['routineIds'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: _dateTimeOrNull(json['updatedAt']) ??
+          DateTime.parse(json['createdAt'] as String),
+      colorHex: json['colorHex'] as String?,
+      iconName: json['iconName'] as String?,
+      linkedGoalId: json['linkedGoalId'] as String?,
+      linkedProjectId: json['linkedProjectId'] as String?,
+      isArchived: json['isArchived'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> _repeatRuleToJson(RoutineRepeatRule rule) => {
+    'type': rule.type.name,
+    'interval': rule.interval,
+    'weekdays': rule.weekdays,
+    'dayOfMonth': rule.dayOfMonth,
+  };
+
+  RoutineRepeatRule _repeatRuleFromJson(Map<String, dynamic> json) {
+    return RoutineRepeatRule(
+      type: RoutineRepeatType.values.byName(
+        json['type'] as String? ?? RoutineRepeatType.daily.name,
+      ),
+      interval: json['interval'] as int? ?? 1,
+      weekdays:
+          (json['weekdays'] as List?)?.whereType<int>().toList() ?? const [],
+      dayOfMonth: json['dayOfMonth'] as int?,
     );
   }
 
