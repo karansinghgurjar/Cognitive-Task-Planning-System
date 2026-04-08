@@ -39,7 +39,7 @@ class RoutineRepository {
 
   Future<List<Routine>> getActiveRoutines() async {
     final routines = await getAllRoutines();
-    return routines.where((routine) => routine.isActive).toList();
+    return routines.where((routine) => routine.generatesOccurrences).toList();
   }
 
   Stream<List<Routine>> watchAllRoutines() {
@@ -50,14 +50,17 @@ class RoutineRepository {
 
   Stream<List<Routine>> watchActiveRoutines() {
     return watchAllRoutines().map((routines) {
-      return routines.where((routine) => routine.isActive).toList();
+      return routines.where((routine) => routine.generatesOccurrences).toList();
     });
   }
 }
 
 int sortRoutines(Routine left, Routine right) {
-  if (left.isActive != right.isActive) {
-    return left.isActive ? -1 : 1;
+  if (left.generatesOccurrences != right.generatesOccurrences) {
+    return left.generatesOccurrences ? -1 : 1;
+  }
+  if (left.isArchived != right.isArchived) {
+    return left.isArchived ? 1 : -1;
   }
   final priorityCompare = left.priority.compareTo(right.priority);
   if (priorityCompare != 0) {

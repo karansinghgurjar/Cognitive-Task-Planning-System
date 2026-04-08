@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/isar_providers.dart';
 import '../../schedule/providers/schedule_providers.dart';
+import '../../tasks/models/task.dart';
+import '../../tasks/providers/task_providers.dart';
 import '../../timetable/providers/timetable_providers.dart';
 import '../data/routine_occurrence_repository.dart';
 import '../data/routine_repository.dart';
@@ -83,7 +85,7 @@ final routinePreviewProvider = Provider<AsyncValue<RoutinePreviewState>>((ref) {
           nextOccurrenceByRoutineId[routine.id] = preview;
           if (preview != null) {
             generatedCount += 1;
-          } else if (routine.isActive) {
+          } else if (routine.generatesOccurrences) {
             skippedCount += 1;
           }
         }
@@ -195,9 +197,14 @@ int _weeklyOccurrences(Routine routine) {
   switch (routine.cadenceType) {
     case RoutineCadenceType.daily:
       return 7;
+    case RoutineCadenceType.weekdays:
+      return 5;
     case RoutineCadenceType.weekly:
     case RoutineCadenceType.customWeekdays:
+    case RoutineCadenceType.custom:
       return routine.weekdays.length;
+    case RoutineCadenceType.monthly:
+      return 1;
   }
 }
 
@@ -245,6 +252,16 @@ class RoutineActionController extends AsyncNotifier<void> {
     await updateRoutine(routine.copyWith(isActive: isActive));
   }
 
+  Future<void> setArchived(Routine routine, bool isArchived) async {
+    await updateRoutine(
+      routine.copyWith(
+        isArchived: isArchived,
+        archivedAt: isArchived ? DateTime.now() : null,
+        clearArchivedAt: !isArchived,
+      ),
+    );
+  }
+
   Future<void> generateNext7Days() =>
       _run(() => _regenerateFutureOccurrences(days: 7));
 
@@ -255,18 +272,82 @@ class RoutineActionController extends AsyncNotifier<void> {
     await _run(() async {
       final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
       await repository.updateOccurrence(
-        occurrence.copyWith(status: RoutineOccurrenceStatus.completed),
+        occurrence.copyWith(
+          status: RoutineOccurrenceStatus.completed,
+          completedAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
       );
     });
   }
 
-  Future<void> markOccurrenceCancelled(RoutineOccurrence occurrence) async {
+  Future<void> markOccurrenceSkipped(RoutineOccurrence occurrence) async {
     await _run(() async {
       final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
       await repository.updateOccurrence(
-        occurrence.copyWith(status: RoutineOccurrenceStatus.cancelled),
+        occurrence.copyWith(
+          status: RoutineOccurrenceStatus.skipped,
+          clearCompletedAt: true,
+          updatedAt: DateTime.now(),
+        ),
       );
     });
+  }
+
+  Future<void> snoozeOccurrence(
+    RoutineOccurrence occurrence,
+    DateTime newStart, {
+    String? notes,
+  }) async {
+    await _run(() async {
+      final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
+      final service = ref.read(routineSchedulingServiceProvider);
+      await repository.updateOccurrence(
+        service.rescheduleOccurrence(
+          occurrence: occurrence,
+          newStart: newStart,
+          notes: notes,
+          now: DateTime.now(),
+        ),
+      );
+    });
+  }
+
+  Future<Task> convertOccurrenceToTask({
+    required Routine routine,
+    required RoutineOccurrence occurrence,
+  }) async {
+    late Task createdTask;
+    await _run(() async {
+      final taskRepository = await ref.read(taskRepositoryProvider.future);
+      final occurrenceRepository = await ref.read(
+        routineOccurrenceRepositoryProvider.future,
+      );
+      final now = DateTime.now();
+      createdTask = Task(
+        id: occurrence.id,
+        title: routine.title,
+        description: routine.description,
+        type: _taskTypeForRoutine(routine),
+        estimatedDurationMinutes: occurrence.durationMinutes,
+        dueDate: occurrence.scheduledEnd,
+        priority: routine.priority,
+        goalId: routine.linkedGoalId,
+        resourceTag: routine.categoryTag,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await taskRepository.addTask(createdTask);
+      await occurrenceRepository.updateOccurrence(
+        occurrence.copyWith(
+          status: RoutineOccurrenceStatus.skipped,
+          linkedTaskId: createdTask.id,
+          notes: 'Converted to task',
+          updatedAt: now,
+        ),
+      );
+    });
+    return createdTask;
   }
 
   Future<void> _regenerateFutureOccurrences({required int days}) async {
@@ -302,6 +383,7 @@ class RoutineActionController extends AsyncNotifier<void> {
       end: rangeEnd,
       newOccurrences: result.generatedOccurrences,
       keepCompleted: true,
+      keepSkipped: true,
     );
   }
 
@@ -321,5 +403,19 @@ class RoutineActionController extends AsyncNotifier<void> {
     if (state.isLoading) {
       throw StateError('Another routine action is already in progress.');
     }
+  }
+}
+
+TaskType _taskTypeForRoutine(Routine routine) {
+  switch (routine.routineType) {
+    case RoutineType.study:
+      return TaskType.study;
+    case RoutineType.project:
+      return TaskType.project;
+    case RoutineType.review:
+      return TaskType.reading;
+    case RoutineType.health:
+    case RoutineType.custom:
+      return TaskType.misc;
   }
 }

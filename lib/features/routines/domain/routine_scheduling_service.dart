@@ -43,7 +43,9 @@ class RoutineSchedulingService {
       return const RoutineGenerationResult();
     }
 
-    final activeRoutines = routines.where((routine) => routine.isActive).toList()
+    final activeRoutines = routines
+        .where((routine) => routine.generatesOccurrences)
+        .toList()
       ..sort((left, right) {
         final priorityCompare = left.priority.compareTo(right.priority);
         if (priorityCompare != 0) {
@@ -52,13 +54,30 @@ class RoutineSchedulingService {
         return left.createdAt.compareTo(right.createdAt);
       });
 
+    final existingByRoutineAndDay = <String, RoutineOccurrence>{};
+    for (final occurrence in existingOccurrences) {
+      final key = _occurrenceKey(
+        occurrence.routineId,
+        DateTime(
+          occurrence.scheduledStart.year,
+          occurrence.scheduledStart.month,
+          occurrence.scheduledStart.day,
+        ),
+      );
+      existingByRoutineAndDay[key] = occurrence;
+    }
+
     final blockedRanges = <_DateTimeRange>[
       ...plannedSessions
           .where((session) => !session.isCancelled && !session.isMissed)
           .where((session) => session.end.isAfter(normalizedStart))
           .map((session) => _DateTimeRange(session.start, session.end)),
       ...existingOccurrences
-          .where((occurrence) => occurrence.isCompleted)
+          .where((occurrence) {
+            final effectiveStatus = occurrence.effectiveStatusAt(now);
+            return effectiveStatus == RoutineOccurrenceStatus.completed ||
+                effectiveStatus == RoutineOccurrenceStatus.pending;
+          })
           .where((occurrence) => occurrence.scheduledEnd.isAfter(normalizedStart))
           .map(
             (occurrence) => _DateTimeRange(
@@ -76,10 +95,11 @@ class RoutineSchedulingService {
       normalizedStart.month,
       normalizedStart.day,
     );
+    final lastMoment = normalizedEnd.subtract(const Duration(minutes: 1));
     final lastDate = DateTime(
-      normalizedEnd.year,
-      normalizedEnd.month,
-      normalizedEnd.day,
+      lastMoment.year,
+      lastMoment.month,
+      lastMoment.day,
     );
 
     for (final routine in activeRoutines) {
@@ -88,31 +108,33 @@ class RoutineSchedulingService {
         !date.isAfter(lastDate);
         date = date.add(const Duration(days: 1))
       ) {
-        if (!routine.occursOnWeekday(date.weekday)) {
+        if (!routine.occursOnDate(date)) {
+          continue;
+        }
+
+        final existingKey = _occurrenceKey(routine.id, date);
+        final existing = existingByRoutineAndDay[existingKey];
+        if (existing != null &&
+            existing.effectiveStatusAt(now) != RoutineOccurrenceStatus.missed) {
+          generatedOccurrences.add(existing);
           continue;
         }
 
         final freeRanges = _freeRangesForDate(
           date: date,
+          routine: routine,
           timetableSlots: timetableSlots,
           blockedRanges: blockedRanges,
           now: now,
         );
 
-        final scheduledRange = routine.hasPreferredStartTime
-            ? _scheduleAtPreferredTime(
-                routine: routine,
-                date: date,
-                freeRanges: freeRanges,
-                start: normalizedStart,
-                end: normalizedEnd,
-              )
-            : _scheduleAtFirstAvailableTime(
-                routine: routine,
-                freeRanges: freeRanges,
-                start: normalizedStart,
-                end: normalizedEnd,
-              );
+        final scheduledRange = _scheduleOccurrence(
+          routine: routine,
+          date: date,
+          freeRanges: freeRanges,
+          start: normalizedStart,
+          end: normalizedEnd,
+        );
 
         if (scheduledRange == null) {
           skippedOccurrences.add(
@@ -120,21 +142,19 @@ class RoutineSchedulingService {
               routineId: routine.id,
               routineTitle: routine.title,
               date: date,
-              reason: routine.hasPreferredStartTime
-                  ? RoutineSkipReason.conflictAtPreferredTime
-                  : RoutineSkipReason.noAvailableSlot,
+              reason: _skipReasonFor(routine),
             ),
           );
           continue;
         }
 
-        final occurrence = RoutineOccurrence(
-          id: _idGenerator(),
-          routineId: routine.id,
+        final occurrence = (existing ?? _newOccurrence(routine.id, now)).copyWith(
           scheduledStart: scheduledRange.start,
           scheduledEnd: scheduledRange.end,
           status: RoutineOccurrenceStatus.pending,
-          createdAt: now,
+          generatedFromRule: true,
+          clearCompletedAt: true,
+          updatedAt: now,
         );
         generatedOccurrences.add(occurrence);
         blockedRanges.add(
@@ -176,8 +196,28 @@ class RoutineSchedulingService {
     return result.generatedOccurrences.first;
   }
 
+  RoutineOccurrence rescheduleOccurrence({
+    required RoutineOccurrence occurrence,
+    required DateTime newStart,
+    String? notes,
+    DateTime? now,
+  }) {
+    final updatedAt = now ?? DateTime.now();
+    return occurrence.copyWith(
+      scheduledStart: newStart,
+      scheduledEnd: newStart.add(Duration(minutes: occurrence.durationMinutes)),
+      status: RoutineOccurrenceStatus.pending,
+      generatedFromRule: false,
+      clearCompletedAt: true,
+      notes: notes,
+      clearNotes: notes == null || notes.trim().isEmpty,
+      updatedAt: updatedAt,
+    );
+  }
+
   List<_DateTimeRange> _freeRangesForDate({
     required DateTime date,
+    required Routine routine,
     required List<TimetableSlot> timetableSlots,
     required List<_DateTimeRange> blockedRanges,
     required DateTime now,
@@ -207,8 +247,15 @@ class RoutineSchedulingService {
       return _DateTimeRange(adjustedStart, end);
     }).where((range) => range.start.isBefore(range.end)).toList();
 
+    final constrainedRanges = routine.hasTimeWindow
+        ? concreteRanges
+              .map((range) => _applyRoutineWindow(range, date, routine))
+              .whereType<_DateTimeRange>()
+              .toList()
+        : concreteRanges;
+
     final freeRanges = <_DateTimeRange>[];
-    for (final range in concreteRanges) {
+    for (final range in constrainedRanges) {
       var segments = <_DateTimeRange>[range];
       for (final blockedRange in blockedRanges) {
         if (!blockedRange.start.isBefore(range.end) ||
@@ -229,6 +276,58 @@ class RoutineSchedulingService {
 
     freeRanges.sort((left, right) => left.start.compareTo(right.start));
     return freeRanges;
+  }
+
+  _DateTimeRange? _applyRoutineWindow(
+    _DateTimeRange range,
+    DateTime date,
+    Routine routine,
+  ) {
+    final windowStartMinute = routine.timeWindowStartMinute!;
+    final windowEndMinute = routine.timeWindowEndMinute!;
+    final windowStart = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).add(Duration(minutes: windowStartMinute));
+    final windowEnd = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).add(Duration(minutes: windowEndMinute));
+    final boundedStart = range.start.isAfter(windowStart) ? range.start : windowStart;
+    final boundedEnd = range.end.isBefore(windowEnd) ? range.end : windowEnd;
+    if (!boundedStart.isBefore(boundedEnd)) {
+      return null;
+    }
+    return _DateTimeRange(boundedStart, boundedEnd);
+  }
+
+  _DateTimeRange? _scheduleOccurrence({
+    required Routine routine,
+    required DateTime date,
+    required List<_DateTimeRange> freeRanges,
+    required DateTime start,
+    required DateTime end,
+  }) {
+    final preferred = routine.hasPreferredStartTime
+        ? _scheduleAtPreferredTime(
+            routine: routine,
+            date: date,
+            freeRanges: freeRanges,
+            start: start,
+            end: end,
+          )
+        : null;
+    if (preferred != null || !routine.isFlexible) {
+      return preferred;
+    }
+    return _scheduleAtFirstAvailableTime(
+      routine: routine,
+      freeRanges: freeRanges,
+      start: start,
+      end: end,
+    );
   }
 
   _DateTimeRange? _scheduleAtPreferredTime({
@@ -314,6 +413,31 @@ class RoutineSchedulingService {
     return segments;
   }
 
+  RoutineOccurrence _newOccurrence(String routineId, DateTime now) {
+    return RoutineOccurrence(
+      id: _idGenerator(),
+      routineId: routineId,
+      scheduledStart: now,
+      scheduledEnd: now,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  String _occurrenceKey(String routineId, DateTime date) {
+    return '$routineId|${date.year}-${date.month}-${date.day}';
+  }
+
+  RoutineSkipReason _skipReasonFor(Routine routine) {
+    if (!routine.isFlexible && routine.hasPreferredStartTime) {
+      return RoutineSkipReason.conflictAtPreferredTime;
+    }
+    if (routine.hasTimeWindow) {
+      return RoutineSkipReason.noAvailableSlotInWindow;
+    }
+    return RoutineSkipReason.noAvailableSlot;
+  }
+
   bool _isSameDate(DateTime left, DateTime right) {
     return left.year == right.year &&
         left.month == right.month &&
@@ -345,7 +469,11 @@ class SkippedRoutineOccurrence {
   final RoutineSkipReason reason;
 }
 
-enum RoutineSkipReason { conflictAtPreferredTime, noAvailableSlot }
+enum RoutineSkipReason {
+  conflictAtPreferredTime,
+  noAvailableSlot,
+  noAvailableSlotInWindow,
+}
 
 class _DateTimeRange {
   const _DateTimeRange(this.start, this.end);

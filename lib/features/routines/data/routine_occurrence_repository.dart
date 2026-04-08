@@ -68,15 +68,21 @@ class RoutineOccurrenceRepository {
     required DateTime end,
     required List<RoutineOccurrence> newOccurrences,
     bool keepCompleted = true,
+    bool keepSkipped = true,
   }) async {
     final existingOccurrences = await getOccurrencesInRange(start, end);
     final occurrencesToDelete = existingOccurrences.where((occurrence) {
       if (keepCompleted && occurrence.isCompleted) {
         return false;
       }
+      if (keepSkipped &&
+          occurrence.effectiveStatus == RoutineOccurrenceStatus.skipped) {
+        return false;
+      }
       return occurrence.status == RoutineOccurrenceStatus.pending ||
           occurrence.status == RoutineOccurrenceStatus.missed ||
-          occurrence.status == RoutineOccurrenceStatus.cancelled;
+          occurrence.status == RoutineOccurrenceStatus.cancelled ||
+          occurrence.status == RoutineOccurrenceStatus.skipped;
     }).toList();
 
     await _isar.writeTxn(() async {
