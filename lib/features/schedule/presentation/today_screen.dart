@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -22,10 +24,12 @@ import '../../quick_capture/presentation/quick_capture_inbox_screen.dart';
 import '../../quick_capture/presentation/quick_capture_sheet.dart';
 import '../../quick_capture/providers/quick_capture_providers.dart';
 import '../../review/presentation/weekly_review_screen.dart';
+import '../../routines/domain/routine_enums.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/models/routine_occurrence.dart';
-import '../../routines/domain/routine_enums.dart';
+import '../../routines/presentation/add_edit_routine_screen.dart';
 import '../../routines/presentation/routines_screen.dart';
+import '../../routines/presentation/routine_widgets.dart';
 import '../../routines/providers/routine_providers.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../domain/rescheduling_models.dart';
@@ -77,10 +81,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final recommendationSummaryAsync = ref.watch(recommendationSummaryProvider);
     final dailyStatsAsync = ref.watch(dailyStatsProvider);
     final streakSummaryAsync = ref.watch(streakSummaryProvider);
-    final routinesAsync = ref.watch(watchAllRoutinesProvider);
-    final routineOccurrencesAsync = ref.watch(
-      watchAllRoutineOccurrencesProvider,
-    );
+    final todayRoutineOccurrencesAsync = ref.watch(todayRoutineOccurrencesProvider);
 
     return Column(
       children: [
@@ -99,8 +100,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             recommendationSummaryAsync: recommendationSummaryAsync,
             dailyStatsAsync: dailyStatsAsync,
             streakSummaryAsync: streakSummaryAsync,
-            routinesAsync: routinesAsync,
-            routineOccurrencesAsync: routineOccurrencesAsync,
+            todayRoutineOccurrencesAsync: todayRoutineOccurrencesAsync,
           ),
         ),
       ],
@@ -119,8 +119,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     required AsyncValue<RecommendationSummary> recommendationSummaryAsync,
     required AsyncValue<DailyProductivityStats> dailyStatsAsync,
     required AsyncValue<StreakSummary> streakSummaryAsync,
-    required AsyncValue<List<Routine>> routinesAsync,
-    required AsyncValue<List<RoutineOccurrence>> routineOccurrencesAsync,
+    required AsyncValue<List<RoutineOccurrenceItem>> todayRoutineOccurrencesAsync,
   }) {
     final header = _TodayHeader(
       isGenerating: isGenerating,
@@ -177,10 +176,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final sessions = sessionsAsync.value ?? const <PlannedSession>[];
     final tasks = tasksAsync.value ?? const <Task>[];
     final taskById = {for (final task in tasks) task.id: task};
-    final routines = routinesAsync.valueOrNull ?? const <Routine>[];
-    final routineOccurrences =
-        routineOccurrencesAsync.valueOrNull ?? const <RoutineOccurrence>[];
-    final routineById = {for (final routine in routines) routine.id: routine};
+    final todayRoutineItems = todayRoutineOccurrencesAsync.valueOrNull ?? const <RoutineOccurrenceItem>[];
 
     final missedSessions =
         sessions.where((session) => session.isMissed).toList()
@@ -199,32 +195,12 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           ..sort((left, right) => left.start.compareTo(right.start));
 
     final groupedUpcomingSessions = _groupSessionsByDate(upcomingSessions);
-    final missedRoutineOccurrences =
-        routineOccurrences
-            .where(
-              (occurrence) =>
-                  occurrence.effectiveStatusAt(now) ==
-                  RoutineOccurrenceStatus.missed,
-            )
-            .toList()
-          ..sort(
-            (left, right) => right.occurrenceDate.compareTo(left.occurrenceDate),
-          );
-    final upcomingRoutineOccurrences =
-        routineOccurrences.where((occurrence) {
-          return occurrence.effectiveStatusAt(now) ==
-                  RoutineOccurrenceStatus.pending &&
-              !occurrence.occurrenceDate.isBefore(
-                DateTime(now.year, now.month, now.day),
-              );
-        }).toList()..sort(
-          (left, right) => left.occurrenceDate.compareTo(right.occurrenceDate),
-        );
-    final groupedRoutineOccurrences = _groupRoutineOccurrencesByDate(
-      upcomingRoutineOccurrences,
-    );
+    final pendingTodayRoutineItems =
+        todayRoutineItems.where((item) => item.isPending).toList();
+    final completedTodayRoutineItems =
+        todayRoutineItems.where((item) => !item.isPending).toList();
 
-    if (sessions.isEmpty && upcomingRoutineOccurrences.isEmpty) {
+    if (sessions.isEmpty && todayRoutineItems.isEmpty) {
       return ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
         children: [
@@ -315,48 +291,57 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           const SizedBox(height: 16),
           _RecoverySummaryCard(result: recoveryResult),
         ],
-        if (missedRoutineOccurrences.isNotEmpty) ...[
+        if (todayRoutineItems.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
-            'Missed Routine Blocks',
+            'Today\'s Routine Blocks',
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
-          for (
-            var index = 0;
-            index < missedRoutineOccurrences.length;
-            index++
-          ) ...[
-            _RoutineOccurrenceTile(
-              occurrence: missedRoutineOccurrences[index],
-              routine: routineById[missedRoutineOccurrences[index].routineId],
+          for (var index = 0; index < pendingTodayRoutineItems.length; index++) ...[
+            RoutineOccurrenceCard(
+              item: pendingTodayRoutineItems[index],
+              showInlineActions: true,
+              onOpenRoutine: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AddEditRoutineScreen(
+                      routine: pendingTodayRoutineItems[index].routine,
+                    ),
+                  ),
+                );
+              },
             ),
-            if (index < missedRoutineOccurrences.length - 1)
+            if (index < pendingTodayRoutineItems.length - 1)
               const SizedBox(height: 12),
           ],
-        ],
-        if (upcomingRoutineOccurrences.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text(
-            'Routine Blocks',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-          for (final entry in groupedRoutineOccurrences.entries) ...[
-            _DateGroupHeader(date: entry.key),
+          if (completedTodayRoutineItems.isNotEmpty) ...[
             const SizedBox(height: 12),
-            for (var index = 0; index < entry.value.length; index++) ...[
-              _RoutineOccurrenceTile(
-                occurrence: entry.value[index],
-                routine: routineById[entry.value[index].routineId],
+            Text(
+              'Completed / Skipped',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
-              if (index < entry.value.length - 1) const SizedBox(height: 12),
+            ),
+            const SizedBox(height: 8),
+            for (var index = 0; index < completedTodayRoutineItems.length; index++) ...[
+              RoutineOccurrenceCard(
+                item: completedTodayRoutineItems[index],
+                onOpenRoutine: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AddEditRoutineScreen(
+                        routine: completedTodayRoutineItems[index].routine,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              if (index < completedTodayRoutineItems.length - 1)
+                const SizedBox(height: 12),
             ],
-            const SizedBox(height: 20),
           ],
         ],
         const SizedBox(height: 16),
@@ -1295,8 +1280,8 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
                       ? (_) async {
                           try {
                             await ref
-                                .read(routineActionControllerProvider.notifier)
-                                .markOccurrenceCompleted(occurrence);
+                                .read(routineOccurrenceControllerProvider.notifier)
+                                .completeOccurrence(occurrence.id);
                           } catch (error) {
                             if (context.mounted) {
                               ErrorHandler.showSnackBar(
@@ -1360,8 +1345,8 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
                     onPressed: () async {
                       try {
                         await ref
-                            .read(routineActionControllerProvider.notifier)
-                            .markOccurrenceCompleted(occurrence);
+                            .read(routineOccurrenceControllerProvider.notifier)
+                            .completeOccurrence(occurrence.id);
                       } catch (error) {
                         if (context.mounted) {
                           ErrorHandler.showSnackBar(
@@ -1388,8 +1373,8 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
                     onPressed: () async {
                       try {
                         await ref
-                            .read(routineActionControllerProvider.notifier)
-                            .markOccurrenceSkipped(occurrence);
+                            .read(routineOccurrenceControllerProvider.notifier)
+                            .skipOccurrence(occurrence.id);
                       } catch (error) {
                         if (context.mounted) {
                           ErrorHandler.showSnackBar(
@@ -1488,8 +1473,10 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
       pickedTime.minute,
     );
     try {
-      await ref.read(routineActionControllerProvider.notifier).snoozeOccurrence(
-            occurrence,
+      await ref
+          .read(routineOccurrenceControllerProvider.notifier)
+          .snoozeOccurrence(
+            occurrence.id,
             newStart,
             notes: 'Snoozed from Today',
           );
@@ -1512,7 +1499,7 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
     }
     try {
       final task = await ref
-          .read(routineActionControllerProvider.notifier)
+          .read(routineCrudControllerProvider.notifier)
           .convertOccurrenceToTask(
             routine: sourceRoutine,
             occurrence: occurrence,

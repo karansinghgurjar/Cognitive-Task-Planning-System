@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/errors/error_handler.dart';
+import '../../../core/widgets/app_confirmation_dialog.dart';
+import '../application/routine_formatters.dart';
+import '../application/routine_form_controller.dart';
 import '../domain/routine_enums.dart';
-import '../domain/routine_repeat_rule.dart';
 import '../models/routine.dart';
 import '../providers/routine_providers.dart';
 
@@ -19,200 +20,339 @@ class AddEditRoutineScreen extends ConsumerStatefulWidget {
 }
 
 class _AddEditRoutineScreenState extends ConsumerState<AddEditRoutineScreen> {
-  static const _uuid = Uuid();
-
-  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
+  late final TextEditingController _intervalController;
   late final TextEditingController _durationController;
-  late final TextEditingController _startMinuteController;
-  late RoutineType _routineType;
-  late RoutineRepeatType _repeatType;
-  late Set<int> _weekdays;
 
   @override
   void initState() {
     super.initState();
-    final routine = widget.routine;
-    _titleController = TextEditingController(text: routine?.title ?? '');
-    _descriptionController = TextEditingController(
-      text: routine?.description ?? '',
-    );
+    final state = ref.read(routineFormControllerProvider(widget.routine));
+    _titleController = TextEditingController(text: state.title)
+      ..addListener(() {
+        ref
+            .read(routineFormControllerProvider(widget.routine).notifier)
+            .setTitle(_titleController.text);
+      });
+    _descriptionController = TextEditingController(text: state.description)
+      ..addListener(() {
+        ref
+            .read(routineFormControllerProvider(widget.routine).notifier)
+            .setDescription(_descriptionController.text);
+      });
+    _intervalController = TextEditingController(text: '${state.interval}');
     _durationController = TextEditingController(
-      text: '${routine?.preferredDurationMinutes ?? 60}',
+      text: state.preferredDurationMinutes?.toString() ?? '',
     );
-    _startMinuteController = TextEditingController(
-      text: '${routine?.preferredStartMinuteOfDay ?? 1080}',
-    );
-    _routineType = routine?.routineType ?? RoutineType.custom;
-    _repeatType = routine?.repeatRule.type ?? RoutineRepeatType.daily;
-    _weekdays = {...?routine?.repeatRule.weekdays};
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _intervalController.dispose();
     _durationController.dispose();
-    _startMinuteController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final actionState = ref.watch(routineActionControllerProvider);
+    final formState = ref.watch(routineFormControllerProvider(widget.routine));
+    final controller = ref.read(
+      routineFormControllerProvider(widget.routine).notifier,
+    );
+    _intervalController.value = _intervalController.value.copyWith(
+      text: '${formState.interval}',
+      selection: TextSelection.collapsed(
+        offset: '${formState.interval}'.length,
+      ),
+      composing: TextRange.empty,
+    );
+    _durationController.value = _durationController.value.copyWith(
+      text: formState.preferredDurationMinutes?.toString() ?? '',
+      selection: TextSelection.collapsed(
+        offset: (formState.preferredDurationMinutes?.toString() ?? '').length,
+      ),
+      composing: TextRange.empty,
+    );
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.routine == null ? 'Add Routine' : 'Edit Routine'),
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-              validator: (value) =>
-                  (value == null || value.trim().isEmpty) ? 'Required' : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<RoutineType>(
-              initialValue: _routineType,
-              decoration: const InputDecoration(labelText: 'Type'),
-              items: RoutineType.values
-                  .map((value) => DropdownMenuItem(
-                        value: value,
-                        child: Text(value.label),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _routineType = value);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<RoutineRepeatType>(
-              initialValue: _repeatType,
-              decoration: const InputDecoration(labelText: 'Repeat'),
-              items: RoutineRepeatType.values
-                  .map((value) => DropdownMenuItem(
-                        value: value,
-                        child: Text(value.label),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _repeatType = value);
-                }
-              },
-            ),
-            if (_repeatType == RoutineRepeatType.selectedWeekdays) ...[
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                children: List.generate(7, (index) {
-                  final weekday = index + 1;
-                  return FilterChip(
-                    label: Text(_weekdayLabel(weekday)),
-                    selected: _weekdays.contains(weekday),
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          _weekdays.add(weekday);
-                        } else {
-                          _weekdays.remove(weekday);
+        title: Text(formState.isEditMode ? 'Edit Routine' : 'New Routine'),
+        actions: [
+          if (formState.isEditMode)
+            IconButton(
+              onPressed: formState.isSaving
+                  ? null
+                  : () async {
+                      try {
+                        await controller.archive();
+                        if (!mounted) {
+                          return;
                         }
-                      });
+                        Navigator.of(this.context).pop();
+                      } catch (error) {
+                        if (mounted) {
+                          ErrorHandler.showSnackBar(
+                            this.context,
+                            error,
+                            fallbackTitle: 'Routine update failed',
+                            fallbackMessage:
+                                'The routine block could not be updated.',
+                          );
+                        }
+                      }
                     },
-                  );
-                }),
+              icon: Icon(
+                formState.initialRoutine?.isArchived == true
+                    ? Icons.unarchive_outlined
+                    : Icons.archive_outlined,
               ),
-            ],
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _durationController,
-              decoration: const InputDecoration(
-                labelText: 'Preferred Duration (minutes)',
-              ),
-              keyboardType: TextInputType.number,
+              tooltip: formState.initialRoutine?.isArchived == true
+                  ? 'Unarchive'
+                  : 'Archive',
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _startMinuteController,
-              decoration: const InputDecoration(
-                labelText: 'Preferred Start Minute Of Day',
-                helperText: 'Example: 1110 = 6:30 PM',
-              ),
-              keyboardType: TextInputType.number,
+          if (formState.isEditMode)
+            IconButton(
+              onPressed: formState.isSaving
+                  ? null
+                  : () => _deleteRoutine(controller),
+              icon: const Icon(Icons.delete_outline_rounded),
+              tooltip: 'Delete',
             ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: actionState.isLoading ? null : _save,
-              child: const Text('Save Routine'),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+        children: [
+          _SectionCard(
+            title: 'Basics',
+            child: Column(
+              children: [
+                TextField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Title',
+                    errorText: formState.validationErrors['title'],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _descriptionController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Description (optional)',
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: 'Repeat',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<RoutineRepeatType>(
+                  initialValue: formState.repeatType,
+                  decoration: const InputDecoration(labelText: 'Repeat type'),
+                  items: RoutineRepeatType.values
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(value.label),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      controller.setRepeatType(value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _intervalController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Interval',
+                    helperText: 'Use 1 for the standard cadence.',
+                    errorText: formState.validationErrors['interval'],
+                  ),
+                  onChanged: (value) =>
+                      controller.setInterval(int.tryParse(value.trim()) ?? 0),
+                ),
+                if (formState.repeatType == RoutineRepeatType.selectedWeekdays) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: List.generate(7, (index) {
+                      final weekday = index + 1;
+                      return FilterChip(
+                        label: Text(formatWeekdayShortLabel(weekday)),
+                        selected: formState.selectedWeekdays.contains(weekday),
+                        onSelected: (_) => controller.toggleWeekday(weekday),
+                      );
+                    }),
+                  ),
+                  if (formState.validationErrors['selectedWeekdays'] case final error?)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        error,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                ],
+                if (formState.repeatType == RoutineRepeatType.monthly) ...[
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    initialValue:
+                        formState.monthlyDayOfMonth ?? formState.anchorDate.day,
+                    decoration: const InputDecoration(
+                      labelText: 'Day of month',
+                    ),
+                    items: List.generate(
+                      31,
+                      (index) => DropdownMenuItem(
+                        value: index + 1,
+                        child: Text('Day ${index + 1}'),
+                      ),
+                    ),
+                    onChanged: controller.setMonthlyDayOfMonth,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: 'Timing',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _MinuteOfDayTile(
+                  label: 'Preferred start time',
+                  value: formState.preferredStartMinuteOfDay,
+                  onChanged: controller.setPreferredStartMinuteOfDay,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _durationController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Duration in minutes',
+                    errorText:
+                        formState.validationErrors['preferredDurationMinutes'],
+                  ),
+                  onChanged: (value) => controller.setPreferredDurationMinutes(
+                    int.tryParse(value.trim()),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _MinuteOfDayTile(
+                  label: 'Window start',
+                  value: formState.timeWindowStartMinuteOfDay,
+                  onChanged: controller.setTimeWindowStartMinuteOfDay,
+                ),
+                const SizedBox(height: 12),
+                _MinuteOfDayTile(
+                  label: 'Window end',
+                  value: formState.timeWindowEndMinuteOfDay,
+                  onChanged: controller.setTimeWindowEndMinuteOfDay,
+                ),
+                if (formState.validationErrors['timeWindow'] case final error?)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      error,
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: 'Behavior',
+            child: Column(
+              children: [
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment<bool>(value: true, label: Text('Flexible')),
+                    ButtonSegment<bool>(value: false, label: Text('Fixed')),
+                  ],
+                  selected: {formState.isFlexible},
+                  onSelectionChanged: (selection) =>
+                      controller.setFlexible(selection.first),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Auto-reschedule missed'),
+                  subtitle: const Text(
+                    'Store recovery intent now, refine the automation later.',
+                  ),
+                  value: formState.autoRescheduleMissed,
+                  onChanged: controller.setAutoRescheduleMissed,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Count toward consistency'),
+                  value: formState.countsTowardConsistency,
+                  onChanged: controller.setCountsTowardConsistency,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: formState.isSaving ? null : () => _save(controller),
+            child: Text(formState.isEditMode ? 'Save Changes' : 'Save Routine'),
+          ),
+        ],
       ),
     );
   }
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) {
+  Future<void> _save(RoutineFormController controller) async {
+    try {
+      final savedRoutine = await controller.save();
+      if (savedRoutine != null && mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (error) {
+      if (mounted) {
+        ErrorHandler.showSnackBar(
+          context,
+          error,
+          fallbackTitle: 'Routine save failed',
+          fallbackMessage: 'The routine block could not be saved.',
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteRoutine(RoutineFormController controller) async {
+    final confirmed = await AppConfirmationDialog.show(
+      context,
+      title: 'Delete routine?',
+      message:
+          'Delete this routine and its occurrence history? This cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    );
+    if (!confirmed || !mounted) {
       return;
     }
-    final now = DateTime.now();
-    final selectedWeekdays = _weekdays.toList()..sort();
-    final repeatRule = RoutineRepeatRule(
-      type: _repeatType,
-      weekdays: _repeatType == RoutineRepeatType.selectedWeekdays
-          ? selectedWeekdays
-          : const [],
-    );
-    final routine =
-        widget.routine?.copyWith(
-          title: _titleController.text.trim(),
-          description: _normalizeOptional(_descriptionController.text),
-          clearDescription: _normalizeOptional(_descriptionController.text) == null,
-          updatedAt: now,
-          repeatRule: repeatRule,
-          preferredDurationMinutes: int.tryParse(_durationController.text.trim()),
-          preferredStartMinuteOfDay: int.tryParse(
-            _startMinuteController.text.trim(),
-          ),
-          routineType: _routineType,
-          categoryId: _routineType.defaultCategoryTag,
-        ) ??
-        Routine(
-          id: _uuid.v4(),
-          title: _titleController.text.trim(),
-          description: _normalizeOptional(_descriptionController.text),
-          createdAt: now,
-          updatedAt: now,
-          anchorDate: now,
-          repeatRule: repeatRule,
-          preferredDurationMinutes: int.tryParse(_durationController.text.trim()),
-          preferredStartMinuteOfDay: int.tryParse(
-            _startMinuteController.text.trim(),
-          ),
-          routineType: _routineType,
-          categoryId: _routineType.defaultCategoryTag,
-        );
 
     try {
-      final controller = ref.read(routineActionControllerProvider.notifier);
-      if (widget.routine == null) {
-        await controller.addRoutine(routine);
-      } else {
-        await controller.updateRoutine(routine);
-      }
+      await controller.delete();
       if (!mounted) {
         return;
       }
@@ -224,33 +364,96 @@ class _AddEditRoutineScreenState extends ConsumerState<AddEditRoutineScreen> {
       ErrorHandler.showSnackBar(
         context,
         error,
-        fallbackTitle: 'Routine save failed',
-        fallbackMessage: 'The routine could not be saved.',
+        fallbackTitle: 'Routine delete failed',
+        fallbackMessage: 'The routine block could not be deleted.',
       );
     }
   }
+}
 
-  String? _normalizeOptional(String value) {
-    final trimmed = value.trim();
-    return trimmed.isEmpty ? null : trimmed;
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MinuteOfDayTile extends StatelessWidget {
+  const _MinuteOfDayTile({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int? value;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(label),
+      subtitle: Text(value == null ? 'Not set' : _formatMinuteOfDay(value!)),
+      trailing: Wrap(
+        spacing: 8,
+        children: [
+          if (value != null)
+            IconButton(
+              onPressed: () => onChanged(null),
+              icon: const Icon(Icons.clear_rounded),
+              tooltip: 'Clear',
+            ),
+          IconButton(
+            onPressed: () async {
+              final initialTime = value == null
+                  ? const TimeOfDay(hour: 18, minute: 0)
+                  : TimeOfDay(hour: value! ~/ 60, minute: value! % 60);
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: initialTime,
+              );
+              if (picked != null) {
+                onChanged(picked.hour * 60 + picked.minute);
+              }
+            },
+            icon: const Icon(Icons.access_time_rounded),
+            tooltip: 'Pick time',
+          ),
+        ],
+      ),
+    );
   }
 
-  String _weekdayLabel(int weekday) {
-    switch (weekday) {
-      case DateTime.monday:
-        return 'Mon';
-      case DateTime.tuesday:
-        return 'Tue';
-      case DateTime.wednesday:
-        return 'Wed';
-      case DateTime.thursday:
-        return 'Thu';
-      case DateTime.friday:
-        return 'Fri';
-      case DateTime.saturday:
-        return 'Sat';
-      default:
-        return 'Sun';
-    }
+  String _formatMinuteOfDay(int minuteOfDay) {
+    final hour = minuteOfDay ~/ 60;
+    final minute = minuteOfDay % 60;
+    final time = TimeOfDay(hour: hour, minute: minute);
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    final normalizedHour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final normalizedMinute = minute.toString().padLeft(2, '0');
+    return '$normalizedHour:$normalizedMinute $period';
   }
 }

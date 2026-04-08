@@ -11,6 +11,10 @@ import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/app_status_chip.dart';
+import '../../routines/application/routine_formatters.dart';
+import '../../routines/presentation/add_edit_routine_screen.dart';
+import '../../routines/presentation/routine_widgets.dart';
+import '../../routines/providers/routine_providers.dart';
 import '../domain/availability_service.dart';
 import '../models/timetable_slot.dart';
 import '../providers/timetable_providers.dart';
@@ -23,6 +27,13 @@ class TimetableScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final slotsAsync = ref.watch(watchTimetableSlotsProvider);
     final actionState = ref.watch(timetableActionControllerProvider);
+    final weekStart = _startOfCurrentWeek(DateTime.now());
+    final weekEnd = weekStart.add(const Duration(days: 6));
+    final weeklyRoutineOccurrencesAsync = ref.watch(
+      weeklyRoutineOccurrencesProvider(
+        RoutineWeekRange(startDate: weekStart, endDate: weekEnd),
+      ),
+    );
     const availabilityService = AvailabilityService();
 
     return LayoutBuilder(
@@ -55,6 +66,11 @@ class TimetableScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 20),
+                      Text(
+                        'Current week: ${formatWeekRangeLabel(weekStart)}',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 20),
                     ];
 
                     if (slots.isEmpty) {
@@ -80,6 +96,9 @@ class TimetableScreen extends ConsumerWidget {
                               slots: daySlots,
                               availability:
                                   weeklyAvailability[weekday] ?? const [],
+                              routineItems:
+                                  weeklyRoutineOccurrencesAsync.valueOrNull?[weekday] ??
+                                  const [],
                             ),
                           ),
                         );
@@ -110,11 +129,13 @@ class _DaySection extends ConsumerWidget {
     required this.weekday,
     required this.slots,
     required this.availability,
+    required this.routineItems,
   });
 
   final int weekday;
   final List<TimetableSlot> slots;
   final List<AvailabilityWindow> availability;
+  final List<RoutineOccurrenceItem> routineItems;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -141,9 +162,39 @@ class _DaySection extends ConsumerWidget {
           ),
         const SizedBox(height: 12),
         _AvailabilityCard(availability: availability),
+        if (routineItems.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Routine Blocks',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          for (var index = 0; index < routineItems.length; index++) ...[
+            RoutineOccurrenceCard(
+              item: routineItems[index],
+              onOpenRoutine: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AddEditRoutineScreen(
+                      routine: routineItems[index].routine,
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (index < routineItems.length - 1) const SizedBox(height: 12),
+          ],
+        ],
       ],
     );
   }
+}
+
+DateTime _startOfCurrentWeek(DateTime now) {
+  final normalized = DateTime(now.year, now.month, now.day);
+  return normalized.subtract(Duration(days: normalized.weekday - DateTime.monday));
 }
 
 class _TimetableSlotCard extends ConsumerWidget {
