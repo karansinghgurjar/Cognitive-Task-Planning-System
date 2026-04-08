@@ -12,10 +12,12 @@ import '../../analytics/providers/analytics_providers.dart';
 import '../../focus_session/domain/focus_session_state.dart';
 import '../../focus_session/presentation/focus_session_screen.dart';
 import '../../focus_session/providers/focus_session_providers.dart';
+import '../../goals/presentation/goal_detail_screen.dart';
 import '../../integrations/presentation/calendar_export_screen.dart';
 import '../../recommendations/domain/recommendation_models.dart';
 import '../../recommendations/providers/recommendation_providers.dart';
 import '../../tasks/models/task.dart';
+import '../../tasks/presentation/task_detail_screen.dart';
 import '../../quick_capture/presentation/quick_capture_inbox_screen.dart';
 import '../../quick_capture/presentation/quick_capture_sheet.dart';
 import '../../quick_capture/providers/quick_capture_providers.dart';
@@ -326,10 +328,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           ) ...[
             _RoutineOccurrenceTile(
               occurrence: missedRoutineOccurrences[index],
-              routineTitle:
-                  routineById[missedRoutineOccurrences[index].routineId]
-                      ?.title ??
-                  'Routine',
+              routine: routineById[missedRoutineOccurrences[index].routineId],
             ),
             if (index < missedRoutineOccurrences.length - 1)
               const SizedBox(height: 12),
@@ -350,9 +349,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             for (var index = 0; index < entry.value.length; index++) ...[
               _RoutineOccurrenceTile(
                 occurrence: entry.value[index],
-                routineTitle:
-                    routineById[entry.value[index].routineId]?.title ??
-                    'Routine',
+                routine: routineById[entry.value[index].routineId],
               ),
               if (index < entry.value.length - 1) const SizedBox(height: 12),
             ],
@@ -1263,17 +1260,19 @@ class _SessionTile extends ConsumerWidget {
 class _RoutineOccurrenceTile extends ConsumerWidget {
   const _RoutineOccurrenceTile({
     required this.occurrence,
-    required this.routineTitle,
+    required this.routine,
   });
 
   final RoutineOccurrence occurrence;
-  final String routineTitle;
+  final Routine? routine;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final timeFormat = DateFormat.jm();
     final effectiveStatus = occurrence.effectiveStatusAt(DateTime.now());
     final canComplete = effectiveStatus == RoutineOccurrenceStatus.pending;
+    final routineTitle = routine?.title ?? 'Routine';
+    final linkedTaskId = occurrence.linkedTaskId;
 
     return Card(
       child: Padding(
@@ -1328,6 +1327,14 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
                       ),
                       const SizedBox(height: 6),
                       Text('${occurrence.durationMinutes} min'),
+                      if ((routine?.categoryTag ?? '').trim().isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text('Tag: ${routine!.categoryTag}'),
+                      ],
+                      if ((routine?.energyType ?? '').trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text('Energy/context: ${routine!.energyType}'),
+                      ],
                     ],
                   ),
                 ),
@@ -1335,30 +1342,102 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
                 _RoutineStatusBadge(status: effectiveStatus),
               ],
             ),
-            if (canComplete) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (canComplete)
+                  FilledButton.tonalIcon(
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(routineActionControllerProvider.notifier)
+                            .markOccurrenceCompleted(occurrence);
+                      } catch (error) {
+                        if (context.mounted) {
+                          ErrorHandler.showSnackBar(
+                            context,
+                            error,
+                            fallbackTitle: 'Routine update failed',
+                            fallbackMessage:
+                                'The routine block could not be marked complete.',
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('Complete'),
+                  ),
+                if (canComplete)
+                  TextButton.icon(
+                    onPressed: () => _snoozeOccurrence(context, ref),
+                    icon: const Icon(Icons.schedule_rounded),
+                    label: const Text('Snooze'),
+                  ),
+                if (canComplete)
+                  TextButton.icon(
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(routineActionControllerProvider.notifier)
+                            .markOccurrenceSkipped(occurrence);
+                      } catch (error) {
+                        if (context.mounted) {
+                          ErrorHandler.showSnackBar(
+                            context,
+                            error,
+                            fallbackTitle: 'Routine update failed',
+                            fallbackMessage:
+                                'The routine block could not be skipped.',
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.skip_next_rounded),
+                    label: const Text('Skip'),
+                  ),
+                if (routine != null && canComplete)
+                  TextButton.icon(
+                    onPressed: () => _convertToTask(context, ref),
+                    icon: const Icon(Icons.task_alt_rounded),
+                    label: const Text('Convert To Task'),
+                  ),
+                if (routine?.linkedGoalId != null)
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              GoalDetailScreen(goalId: routine!.linkedGoalId!),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.track_changes_rounded),
+                    label: const Text('Open Goal'),
+                  ),
+                if (linkedTaskId != null)
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => TaskDetailScreen(taskId: linkedTaskId),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: const Text('Open Task'),
+                  ),
+              ],
+            ),
+            if ((occurrence.notes ?? '').trim().isNotEmpty) ...[
               const SizedBox(height: 12),
               Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () async {
-                    try {
-                      await ref
-                          .read(routineActionControllerProvider.notifier)
-                          .markOccurrenceCancelled(occurrence);
-                    } catch (error) {
-                      if (context.mounted) {
-                        ErrorHandler.showSnackBar(
-                          context,
-                          error,
-                          fallbackTitle: 'Routine update failed',
-                          fallbackMessage:
-                              'The routine block could not be cancelled.',
-                        );
-                      }
-                    }
-                  },
-                  icon: const Icon(Icons.close_rounded),
-                  label: const Text('Cancel Block'),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  occurrence.notes!,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
             ],
@@ -1366,6 +1445,82 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _snoozeOccurrence(BuildContext context, WidgetRef ref) async {
+    final initialDate = occurrence.scheduledStart;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+    );
+    if (date == null || !context.mounted) {
+      return;
+    }
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(occurrence.scheduledStart),
+    );
+    if (pickedTime == null || !context.mounted) {
+      return;
+    }
+    final newStart = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    try {
+      await ref.read(routineActionControllerProvider.notifier).snoozeOccurrence(
+            occurrence,
+            newStart,
+            notes: 'Snoozed from Today',
+          );
+    } catch (error) {
+      if (context.mounted) {
+        ErrorHandler.showSnackBar(
+          context,
+          error,
+          fallbackTitle: 'Routine update failed',
+          fallbackMessage: 'The routine block could not be rescheduled.',
+        );
+      }
+    }
+  }
+
+  Future<void> _convertToTask(BuildContext context, WidgetRef ref) async {
+    final sourceRoutine = routine;
+    if (sourceRoutine == null) {
+      return;
+    }
+    try {
+      final task = await ref
+          .read(routineActionControllerProvider.notifier)
+          .convertOccurrenceToTask(
+            routine: sourceRoutine,
+            occurrence: occurrence,
+          );
+      if (!context.mounted) {
+        return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => TaskDetailScreen(taskId: task.id),
+        ),
+      );
+    } catch (error) {
+      if (context.mounted) {
+        ErrorHandler.showSnackBar(
+          context,
+          error,
+          fallbackTitle: 'Routine conversion failed',
+          fallbackMessage:
+              'The routine block could not be converted into a normal task.',
+        );
+      }
+    }
   }
 }
 
@@ -1385,6 +1540,10 @@ class _RoutineStatusBadge extends StatelessWidget {
       RoutineOccurrenceStatus.completed => (
         colorScheme.secondaryContainer,
         colorScheme.onSecondaryContainer,
+      ),
+      RoutineOccurrenceStatus.skipped => (
+        colorScheme.surfaceContainerHighest,
+        colorScheme.onSurface,
       ),
       RoutineOccurrenceStatus.missed => (
         colorScheme.errorContainer,

@@ -41,10 +41,10 @@ void main() {
         now: now,
       );
 
-      expect(result.generatedOccurrences, hasLength(3));
+      expect(result.generatedOccurrences, hasLength(4));
       expect(
         result.generatedOccurrences.map((item) => item.scheduledStart.day).toList(),
-        [7, 8, 9],
+        [7, 8, 9, 10],
       );
     });
 
@@ -111,6 +111,7 @@ void main() {
             weekdays: const [DateTime.tuesday],
             preferredStartHour: 20,
             preferredStartMinute: 0,
+            isFlexible: false,
             createdAt: now,
           ),
         ],
@@ -158,6 +159,28 @@ void main() {
       expect(result.generatedOccurrences, isEmpty);
     });
 
+    test('excludes archived routines', () {
+      final result = service.generateOccurrences(
+        routines: [
+          Routine(
+            id: 'routine-1',
+            title: 'Archived',
+            isArchived: true,
+            durationMinutes: 30,
+            cadenceType: RoutineCadenceType.daily,
+            createdAt: now,
+          ),
+        ],
+        timetableSlots: allDayFreeSlots,
+        plannedSessions: const [],
+        start: now,
+        end: now.add(const Duration(days: 2)),
+        now: now,
+      );
+
+      expect(result.generatedOccurrences, isEmpty);
+    });
+
     test('places routines in the first available slot when no preferred time exists', () {
       final result = service.generateOccurrences(
         routines: [
@@ -189,6 +212,81 @@ void main() {
 
       expect(result.generatedOccurrences.single.scheduledStart.hour, 8);
       expect(result.generatedOccurrences.single.scheduledStart.minute, 0);
+    });
+
+    test('keeps flexible routines inside their preferred time window', () {
+      final result = service.generateOccurrences(
+        routines: [
+          Routine(
+            id: 'routine-1',
+            title: 'Reading',
+            durationMinutes: 45,
+            cadenceType: RoutineCadenceType.daily,
+            preferredStartHour: 21,
+            preferredStartMinute: 0,
+            timeWindowStartMinute: 20 * 60,
+            timeWindowEndMinute: 22 * 60,
+            createdAt: now,
+          ),
+        ],
+        timetableSlots: [
+          TimetableSlot(
+            id: 'busy-1',
+            weekday: DateTime.wednesday,
+            startHour: 20,
+            startMinute: 0,
+            endHour: 21,
+            endMinute: 15,
+            isBusy: true,
+            label: 'Busy',
+          ),
+        ],
+        plannedSessions: const [],
+        start: DateTime(2026, 4, 8, 0),
+        end: DateTime(2026, 4, 9, 0),
+        now: now,
+      );
+
+      expect(result.generatedOccurrences.single.scheduledStart.hour, 21);
+      expect(result.generatedOccurrences.single.scheduledStart.minute, 15);
+    });
+
+    test('skips flexible routines when no slot exists inside the time window', () {
+      final result = service.generateOccurrences(
+        routines: [
+          Routine(
+            id: 'routine-1',
+            title: 'Project Work',
+            durationMinutes: 60,
+            cadenceType: RoutineCadenceType.daily,
+            timeWindowStartMinute: 20 * 60,
+            timeWindowEndMinute: 21 * 60,
+            createdAt: now,
+          ),
+        ],
+        timetableSlots: [
+          TimetableSlot(
+            id: 'busy-1',
+            weekday: DateTime.wednesday,
+            startHour: 20,
+            startMinute: 0,
+            endHour: 21,
+            endMinute: 0,
+            isBusy: true,
+            label: 'Busy',
+          ),
+        ],
+        plannedSessions: const [],
+        start: DateTime(2026, 4, 8, 0),
+        end: DateTime(2026, 4, 9, 0),
+        now: now,
+      );
+
+      expect(result.generatedOccurrences, isEmpty);
+      expect(
+        result.skippedOccurrences.single.reason,
+        RoutineSkipReason.noAvailableSlotInWindow,
+      );
     });
 
     test('computes the next occurrence preview', () {
