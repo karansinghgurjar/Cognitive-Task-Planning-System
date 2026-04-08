@@ -27,9 +27,11 @@ import '../../review/presentation/weekly_review_screen.dart';
 import '../../routines/domain/routine_enums.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/models/routine_occurrence.dart';
+import '../../routines/application/routine_recovery_service.dart';
 import '../../routines/presentation/add_edit_routine_screen.dart';
 import '../../routines/presentation/routines_screen.dart';
 import '../../routines/presentation/routine_widgets.dart';
+import '../../routines/providers/routine_intelligence_providers.dart';
 import '../../routines/providers/routine_providers.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../domain/rescheduling_models.dart';
@@ -82,6 +84,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final dailyStatsAsync = ref.watch(dailyStatsProvider);
     final streakSummaryAsync = ref.watch(streakSummaryProvider);
     final todayRoutineOccurrencesAsync = ref.watch(todayRoutineOccurrencesProvider);
+    final recoverySuggestionsAsync = ref.watch(routineRecoverySuggestionsProvider);
+    final unscheduledRoutineItemsAsync = ref.watch(
+      unscheduledFlexibleRoutineOccurrencesProvider,
+    );
 
     return Column(
       children: [
@@ -101,6 +107,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             dailyStatsAsync: dailyStatsAsync,
             streakSummaryAsync: streakSummaryAsync,
             todayRoutineOccurrencesAsync: todayRoutineOccurrencesAsync,
+            recoverySuggestionsAsync: recoverySuggestionsAsync,
+            unscheduledRoutineItemsAsync: unscheduledRoutineItemsAsync,
           ),
         ),
       ],
@@ -120,6 +128,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     required AsyncValue<DailyProductivityStats> dailyStatsAsync,
     required AsyncValue<StreakSummary> streakSummaryAsync,
     required AsyncValue<List<RoutineOccurrenceItem>> todayRoutineOccurrencesAsync,
+    required AsyncValue<List<RoutineRecoverySuggestion>> recoverySuggestionsAsync,
+    required AsyncValue<List<RoutineOccurrenceItem>> unscheduledRoutineItemsAsync,
   }) {
     final header = _TodayHeader(
       isGenerating: isGenerating,
@@ -177,6 +187,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final tasks = tasksAsync.value ?? const <Task>[];
     final taskById = {for (final task in tasks) task.id: task};
     final todayRoutineItems = todayRoutineOccurrencesAsync.valueOrNull ?? const <RoutineOccurrenceItem>[];
+    final recoverySuggestions = recoverySuggestionsAsync.valueOrNull ?? const <RoutineRecoverySuggestion>[];
+    final unscheduledRoutineItems =
+        unscheduledRoutineItemsAsync.valueOrNull ?? const <RoutineOccurrenceItem>[];
 
     final missedSessions =
         sessions.where((session) => session.isMissed).toList()
@@ -290,6 +303,14 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
         if (recoveryResult != null) ...[
           const SizedBox(height: 16),
           _RecoverySummaryCard(result: recoveryResult),
+        ],
+        if (recoverySuggestions.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _RoutineRecoveryBanner(suggestions: recoverySuggestions),
+        ],
+        if (unscheduledRoutineItems.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _RoutineAttentionBanner(count: unscheduledRoutineItems.length),
         ],
         if (todayRoutineItems.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -510,6 +531,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
 
   void _refreshMissedDetection() {
     ref.invalidate(detectedMissedSessionsProvider);
+    ref.read(routineIntelligenceControllerProvider.notifier).refreshTodayIntelligence();
   }
 
   Future<void> _startRecommendedFocus(
@@ -1556,6 +1578,78 @@ class _RoutineStatusBadge extends StatelessWidget {
       label: status.label,
       backgroundColor: background,
       foregroundColor: foreground,
+    );
+  }
+}
+
+class _RoutineRecoveryBanner extends ConsumerWidget {
+  const _RoutineRecoveryBanner({required this.suggestions});
+
+  final List<RoutineRecoverySuggestion> suggestions;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final first = suggestions.first;
+    return Card(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Routine Recovery',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(first.reason),
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              onPressed: () async {
+                try {
+                  await ref
+                      .read(routineIntelligenceControllerProvider.notifier)
+                      .acceptRecoverySuggestion(first);
+                } catch (error) {
+                  if (context.mounted) {
+                    ErrorHandler.showSnackBar(
+                      context,
+                      error,
+                      fallbackTitle: 'Recovery failed',
+                      fallbackMessage:
+                          'The missed routine block could not be recovered.',
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.restore_rounded),
+              label: const Text('Recover suggested block'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoutineAttentionBanner extends StatelessWidget {
+  const _RoutineAttentionBanner({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Theme.of(context).colorScheme.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          '$count flexible routine block${count == 1 ? '' : 's'} need placement in the current schedule.',
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+      ),
     );
   }
 }

@@ -13,6 +13,7 @@ class GoalProgress {
     required this.totalPlannedMinutes,
     required this.totalCompletedMinutes,
     required this.percentComplete,
+    this.completedRoutineOccurrences = 0,
   });
 
   final int totalMilestones;
@@ -22,6 +23,7 @@ class GoalProgress {
   final int totalPlannedMinutes;
   final int totalCompletedMinutes;
   final double percentComplete;
+  final int completedRoutineOccurrences;
 }
 
 class GoalProgressService {
@@ -36,6 +38,8 @@ class GoalProgressService {
     required List<GoalMilestone> milestones,
     required List<Task> tasks,
     required List<PlannedSession> sessions,
+    int routineCompletedMinutes = 0,
+    int completedRoutineOccurrences = 0,
   }) {
     final linkedTasks = tasks.where((task) => task.goalId == goal.id).toList();
     final completedLinkedTasks = linkedTasks.where((task) {
@@ -65,10 +69,12 @@ class GoalProgressService {
         .where((item) => item.isCompleted)
         .length;
 
+    final combinedCompletedMinutes = totalCompletedMinutes + routineCompletedMinutes;
+
     final percentComplete = _computePercentComplete(
       goal: goal,
       totalPlannedMinutes: totalPlannedMinutes,
-      totalCompletedMinutes: totalCompletedMinutes,
+      totalCompletedMinutes: combinedCompletedMinutes,
       totalMilestones: totalMilestones,
       completedMilestones: completedMilestones,
       totalLinkedTasks: linkedTasks.length,
@@ -82,10 +88,11 @@ class GoalProgressService {
       completedLinkedTasks: completedLinkedTasks,
       totalPlannedMinutes: totalPlannedMinutes,
       totalCompletedMinutes:
-          totalCompletedMinutes > totalPlannedMinutes && totalPlannedMinutes > 0
+          combinedCompletedMinutes > totalPlannedMinutes && totalPlannedMinutes > 0
           ? totalPlannedMinutes
-          : totalCompletedMinutes,
+          : combinedCompletedMinutes,
       percentComplete: percentComplete,
+      completedRoutineOccurrences: completedRoutineOccurrences,
     );
   }
 

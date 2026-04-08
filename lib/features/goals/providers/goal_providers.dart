@@ -10,6 +10,8 @@ import '../../schedule/providers/schedule_providers.dart';
 import '../../tasks/data/task_repository.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
+import '../../routines/application/routine_goal_link_service.dart';
+import '../../routines/providers/routine_providers.dart';
 import '../data/goal_repository.dart';
 import '../domain/dependency_resolution_service.dart';
 import '../domain/goal_progress_service.dart';
@@ -60,6 +62,10 @@ final goalProgressServiceProvider = Provider<GoalProgressService>((ref) {
   return const GoalProgressService();
 });
 
+final routineGoalLinkServiceProvider = Provider<RoutineGoalLinkService>((ref) {
+  return const RoutineGoalLinkService();
+});
+
 final dependencyResolutionServiceProvider =
     Provider<DependencyResolutionService>((ref) {
       return const DependencyResolutionService();
@@ -71,13 +77,24 @@ final goalProgressByGoalProvider =
       final milestonesAsync = ref.watch(watchMilestonesForGoalProvider(goalId));
       final tasksAsync = ref.watch(watchTasksProvider);
       final sessionsAsync = ref.watch(watchAllSessionsProvider);
+      final routinesAsync = ref.watch(watchAllRoutinesProvider);
+      final routineOccurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
 
-      return switch ((goalsAsync, milestonesAsync, tasksAsync, sessionsAsync)) {
+      return switch ((
+        goalsAsync,
+        milestonesAsync,
+        tasksAsync,
+        sessionsAsync,
+        routinesAsync,
+        routineOccurrencesAsync,
+      )) {
         (
           AsyncData(value: final goals),
           AsyncData(value: final milestones),
           AsyncData(value: final tasks),
           AsyncData(value: final sessions),
+          AsyncData(value: final routines),
+          AsyncData(value: final routineOccurrences),
         ) =>
           AsyncData(() {
             LearningGoal? goal;
@@ -98,6 +115,13 @@ final goalProgressByGoalProvider =
                 percentComplete: 0,
               );
             }
+            final routineContribution = ref
+                .read(routineGoalLinkServiceProvider)
+                .contributionForGoal(
+                  goal: goal,
+                  routines: routines,
+                  occurrences: routineOccurrences,
+                );
             return ref
                 .read(goalProgressServiceProvider)
                 .computeGoalProgress(
@@ -105,21 +129,75 @@ final goalProgressByGoalProvider =
                   milestones: milestones,
                   tasks: tasks,
                   sessions: sessions,
+                  routineCompletedMinutes:
+                      routineContribution?.completedMinutes ?? 0,
+                  completedRoutineOccurrences:
+                      routineContribution?.completedOccurrenceCount ?? 0,
                 );
           }()),
-        (AsyncError(:final error, :final stackTrace), _, _, _) => AsyncError(
+        (
+          AsyncError(:final error, :final stackTrace),
+          _,
+          _,
+          _,
+          _,
+          _,
+        ) => AsyncError(
           error,
           stackTrace,
         ),
-        (_, AsyncError(:final error, :final stackTrace), _, _) => AsyncError(
+        (
+          _,
+          AsyncError(:final error, :final stackTrace),
+          _,
+          _,
+          _,
+          _,
+        ) => AsyncError(
           error,
           stackTrace,
         ),
-        (_, _, AsyncError(:final error, :final stackTrace), _) => AsyncError(
+        (
+          _,
+          _,
+          AsyncError(:final error, :final stackTrace),
+          _,
+          _,
+          _,
+        ) => AsyncError(
           error,
           stackTrace,
         ),
-        (_, _, _, AsyncError(:final error, :final stackTrace)) => AsyncError(
+        (
+          _,
+          _,
+          _,
+          AsyncError(:final error, :final stackTrace),
+          _,
+          _,
+        ) => AsyncError(
+          error,
+          stackTrace,
+        ),
+        (
+          _,
+          _,
+          _,
+          _,
+          AsyncError(:final error, :final stackTrace),
+          _,
+        ) => AsyncError(
+          error,
+          stackTrace,
+        ),
+        (
+          _,
+          _,
+          _,
+          _,
+          _,
+          AsyncError(:final error, :final stackTrace),
+        ) => AsyncError(
           error,
           stackTrace,
         ),

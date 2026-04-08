@@ -5,6 +5,8 @@ import '../../../core/database/isar_providers.dart';
 import '../../sync/providers/sync_providers.dart';
 import '../../goals/data/goal_repository.dart';
 import '../../goals/domain/dependency_resolution_service.dart';
+import '../../routines/providers/routine_providers.dart';
+import '../../routines/providers/routine_intelligence_providers.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../../timetable/domain/availability_service.dart';
 import '../../timetable/providers/timetable_providers.dart';
@@ -116,6 +118,11 @@ class ScheduleActionController extends AsyncNotifier<SchedulingResult?> {
       final sessionRepository = await ref.read(
         plannedSessionRepositoryProvider.future,
       );
+      final routineSyncService = await ref.read(routineSyncServiceProvider.future);
+      final routineOccurrenceRepository = await ref.read(
+        routineOccurrenceRepositoryProvider.future,
+      );
+      final allRoutines = await ref.read(watchAllRoutinesProvider.future);
 
       final allTasks = await taskRepository.getAllTasks(includeArchived: false);
       final incompleteTasks = allTasks
@@ -157,6 +164,45 @@ class ScheduleActionController extends AsyncNotifier<SchedulingResult?> {
         newSessions: result.generatedSessions,
         keepCompleted: true,
       );
+
+      await routineSyncService.syncAllRoutines(
+        startDate: horizonStart,
+        endDate: horizonEnd,
+      );
+      final routineOccurrences = await routineOccurrenceRepository.getOccurrencesInRange(
+        horizonStart,
+        horizonEnd,
+      );
+      final missedUpdates = ref.read(routineRecoveryServiceProvider).detectMissedOccurrences(
+            occurrences: routineOccurrences,
+            now: now,
+          );
+      if (missedUpdates.isNotEmpty) {
+        await routineOccurrenceRepository.saveOccurrences(missedUpdates);
+      }
+      final refreshedOccurrences =
+          missedUpdates.isEmpty
+              ? routineOccurrences
+              : await routineOccurrenceRepository.getOccurrencesInRange(
+                  horizonStart,
+                  horizonEnd,
+                );
+      final integrationResult = ref
+          .read(routineSchedulerIntegrationServiceProvider)
+          .integrate(
+            routines: allRoutines,
+            occurrences: refreshedOccurrences,
+            weeklyAvailability: weeklyAvailability,
+            plannedSessions: [...blockedSessions, ...result.generatedSessions],
+            startDate: horizonStart,
+            endDate: horizonEnd,
+            now: now,
+          );
+      if (integrationResult.updatedOccurrences.isNotEmpty) {
+        await routineOccurrenceRepository.saveOccurrences(
+          integrationResult.updatedOccurrences,
+        );
+      }
 
       debugPrint(
         'Schedule generation: sessions=${result.generatedSessions.length} scheduledMinutes=${result.totalScheduledMinutes} failures=${result.failures.length}',

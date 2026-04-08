@@ -7,9 +7,10 @@ import '../application/routine_formatters.dart';
 import '../domain/routine_enums.dart';
 import '../models/routine.dart';
 import '../models/routine_occurrence.dart';
+import '../providers/routine_intelligence_providers.dart';
 import '../providers/routine_providers.dart';
 
-class RoutineListCard extends StatelessWidget {
+class RoutineListCard extends ConsumerWidget {
   const RoutineListCard({
     required this.routine,
     required this.onEdit,
@@ -24,7 +25,8 @@ class RoutineListCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final consistencyAsync = ref.watch(routineConsistencySummaryProvider(routine.id));
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
@@ -56,6 +58,13 @@ class RoutineListCard extends StatelessWidget {
                     Text(formatRoutineRepeatSummary(routine)),
                     const SizedBox(height: 4),
                     Text(formatRoutineTimingSummary(routine)),
+                    if (consistencyAsync.valueOrNull case final summary?) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '${summary.completedCount}/${summary.closedOccurrences == 0 ? summary.totalOccurrences : summary.closedOccurrences} completed • '
+                        '${(summary.completionRate * 100).round()}% last window',
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
@@ -70,6 +79,9 @@ class RoutineListCard extends StatelessWidget {
                           const AppStatusChip(label: 'Consistency'),
                         if (routine.isArchived)
                           const AppStatusChip(label: 'Archived'),
+                        if (consistencyAsync.valueOrNull case final summary?
+                            when summary.lastCompletedAt != null)
+                          AppStatusChip(label: summary.insightLabel),
                       ],
                     ),
                   ],
@@ -152,6 +164,10 @@ class RoutineOccurrenceCard extends ConsumerWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(formatOccurrenceScheduleContext(occurrence)),
+                        if ((occurrence.schedulingNote ?? '').trim().isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(occurrence.schedulingNote!),
+                        ],
                         if (routine != null) ...[
                           const SizedBox(height: 4),
                           Text(formatRoutineRepeatSummary(routine)),
