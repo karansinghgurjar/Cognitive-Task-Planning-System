@@ -21,6 +21,11 @@ class RoutineOccurrence {
     this.missedAt,
     this.sourceTaskId,
     this.notes,
+    this.isRecoveryInstance = false,
+    this.recoveredFromOccurrenceId,
+    this.needsAttention = false,
+    this.isAutoScheduled = false,
+    this.schedulingNote,
   }) : occurrenceDate = normalizeDate(occurrenceDate),
        updatedAt = updatedAt ?? createdAt,
        occurrenceKey = buildOccurrenceKey(routineId, occurrenceDate) {
@@ -54,6 +59,11 @@ class RoutineOccurrence {
   DateTime? missedAt;
   String? sourceTaskId;
   String? notes;
+  late bool isRecoveryInstance;
+  String? recoveredFromOccurrenceId;
+  late bool needsAttention;
+  late bool isAutoScheduled;
+  String? schedulingNote;
 
   RoutineOccurrence copyWith({
     String? id,
@@ -76,6 +86,13 @@ class RoutineOccurrence {
     bool clearSourceTaskId = false,
     String? notes,
     bool clearNotes = false,
+    bool? isRecoveryInstance,
+    String? recoveredFromOccurrenceId,
+    bool clearRecoveredFromOccurrenceId = false,
+    bool? needsAttention,
+    bool? isAutoScheduled,
+    String? schedulingNote,
+    bool clearSchedulingNote = false,
   }) {
     final occurrence = RoutineOccurrence(
       id: id ?? this.id,
@@ -91,6 +108,15 @@ class RoutineOccurrence {
       missedAt: clearMissedAt ? null : missedAt ?? this.missedAt,
       sourceTaskId: clearSourceTaskId ? null : sourceTaskId ?? this.sourceTaskId,
       notes: clearNotes ? null : notes ?? this.notes,
+      isRecoveryInstance: isRecoveryInstance ?? this.isRecoveryInstance,
+      recoveredFromOccurrenceId: clearRecoveredFromOccurrenceId
+          ? null
+          : recoveredFromOccurrenceId ?? this.recoveredFromOccurrenceId,
+      needsAttention: needsAttention ?? this.needsAttention,
+      isAutoScheduled: isAutoScheduled ?? this.isAutoScheduled,
+      schedulingNote: clearSchedulingNote
+          ? null
+          : schedulingNote ?? this.schedulingNote,
     )..isarId = isarId;
     return occurrence;
   }
