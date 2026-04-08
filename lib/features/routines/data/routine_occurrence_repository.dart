@@ -1,5 +1,7 @@
 import 'package:isar/isar.dart';
 
+import '../domain/routine_date_utils.dart';
+import '../domain/routine_enums.dart';
 import '../models/routine_occurrence.dart';
 
 class RoutineOccurrenceRepository {
@@ -23,11 +25,13 @@ class RoutineOccurrenceRepository {
     DateTime start,
     DateTime end,
   ) async {
+    final normalizedStart = normalizeDate(start);
+    final normalizedEnd = normalizeDate(end);
     final occurrences = await _isar.routineOccurrences
         .filter()
-        .scheduledStartLessThan(end)
+        .occurrenceDateGreaterThan(normalizedStart, include: true)
         .and()
-        .scheduledEndGreaterThan(start)
+        .occurrenceDateLessThan(normalizedEnd, include: true)
         .findAll();
     occurrences.sort(_compareOccurrences);
     return occurrences;
@@ -45,6 +49,15 @@ class RoutineOccurrenceRepository {
   Future<void> updateOccurrence(RoutineOccurrence occurrence) async {
     await _isar.writeTxn(() async {
       await _isar.routineOccurrences.put(occurrence);
+    });
+  }
+
+  Future<void> saveOccurrences(List<RoutineOccurrence> occurrences) async {
+    if (occurrences.isEmpty) {
+      return;
+    }
+    await _isar.writeTxn(() async {
+      await _isar.routineOccurrences.putAll(occurrences);
     });
   }
 
@@ -81,7 +94,6 @@ class RoutineOccurrenceRepository {
       }
       return occurrence.status == RoutineOccurrenceStatus.pending ||
           occurrence.status == RoutineOccurrenceStatus.missed ||
-          occurrence.status == RoutineOccurrenceStatus.cancelled ||
           occurrence.status == RoutineOccurrenceStatus.skipped;
     }).toList();
 
@@ -98,6 +110,21 @@ class RoutineOccurrenceRepository {
   }
 
   int _compareOccurrences(RoutineOccurrence left, RoutineOccurrence right) {
-    return left.scheduledStart.compareTo(right.scheduledStart);
+    final dateCompare = left.occurrenceDate.compareTo(right.occurrenceDate);
+    if (dateCompare != 0) {
+      return dateCompare;
+    }
+    final leftStart = left.scheduledStart;
+    final rightStart = right.scheduledStart;
+    if (leftStart != null && rightStart != null) {
+      return leftStart.compareTo(rightStart);
+    }
+    if (leftStart == null && rightStart != null) {
+      return 1;
+    }
+    if (leftStart != null && rightStart == null) {
+      return -1;
+    }
+    return left.id.compareTo(right.id);
   }
 }

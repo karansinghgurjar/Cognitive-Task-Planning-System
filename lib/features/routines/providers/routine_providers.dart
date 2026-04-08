@@ -1,13 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/isar_providers.dart';
-import '../../schedule/providers/schedule_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
-import '../../timetable/providers/timetable_providers.dart';
 import '../data/routine_occurrence_repository.dart';
 import '../data/routine_repository.dart';
+import '../domain/routine_enums.dart';
+import '../domain/routine_generation_service.dart';
 import '../domain/routine_scheduling_service.dart';
+import '../domain/routine_sync_service.dart';
 import '../models/routine.dart';
 import '../models/routine_occurrence.dart';
 
@@ -18,12 +19,26 @@ final routineRepositoryProvider = FutureProvider<RoutineRepository>((ref) async 
 
 final routineOccurrenceRepositoryProvider =
     FutureProvider<RoutineOccurrenceRepository>((ref) async {
-  final isar = await ref.watch(isarInstanceProvider.future);
-  return RoutineOccurrenceRepository(isar);
+      final isar = await ref.watch(isarInstanceProvider.future);
+      return RoutineOccurrenceRepository(isar);
+    });
+
+final routineGenerationServiceProvider = Provider<RoutineGenerationService>((ref) {
+  return RoutineGenerationService();
 });
 
 final routineSchedulingServiceProvider = Provider<RoutineSchedulingService>((ref) {
-  return RoutineSchedulingService();
+  return RoutineSchedulingService(
+    generationService: ref.read(routineGenerationServiceProvider),
+  );
+});
+
+final routineSyncServiceProvider = FutureProvider<RoutineSyncService>((ref) async {
+  final repository = await ref.watch(routineRepositoryProvider.future);
+  return RoutineSyncService(
+    persistence: repository,
+    generationService: ref.read(routineGenerationServiceProvider),
+  );
 });
 
 final watchAllRoutinesProvider = StreamProvider<List<Routine>>((ref) async* {
@@ -38,9 +53,9 @@ final watchActiveRoutinesProvider = StreamProvider<List<Routine>>((ref) async* {
 
 final watchAllRoutineOccurrencesProvider =
     StreamProvider<List<RoutineOccurrence>>((ref) async* {
-  final repository = await ref.watch(routineOccurrenceRepositoryProvider.future);
-  yield* repository.watchAllOccurrences();
-});
+      final repository = await ref.watch(routineOccurrenceRepositoryProvider.future);
+      yield* repository.watchAllOccurrences();
+    });
 
 class RoutinePreviewState {
   const RoutinePreviewState({
@@ -56,32 +71,21 @@ class RoutinePreviewState {
 
 final routinePreviewProvider = Provider<AsyncValue<RoutinePreviewState>>((ref) {
   final routinesAsync = ref.watch(watchAllRoutinesProvider);
-  final slotsAsync = ref.watch(watchTimetableSlotsProvider);
-  final sessionsAsync = ref.watch(watchAllSessionsProvider);
   final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
 
-  return switch ((routinesAsync, slotsAsync, sessionsAsync, occurrencesAsync)) {
+  return switch ((routinesAsync, occurrencesAsync)) {
     (
       AsyncData(value: final routines),
-      AsyncData(value: final slots),
-      AsyncData(value: final sessions),
       AsyncData(value: final occurrences),
     ) =>
       AsyncData(() {
-        final service = ref.read(routineSchedulingServiceProvider);
         final now = DateTime.now();
         final nextOccurrenceByRoutineId = <String, RoutineOccurrence?>{};
         var generatedCount = 0;
         var skippedCount = 0;
 
         for (final routine in routines) {
-          final preview = service.nextOccurrencePreview(
-            routine: routine,
-            timetableSlots: slots,
-            plannedSessions: sessions,
-            existingOccurrences: occurrences,
-            now: now,
-          );
+          final preview = _findNextOccurrence(routine, occurrences, now);
           nextOccurrenceByRoutineId[routine.id] = preview;
           if (preview != null) {
             generatedCount += 1;
@@ -96,37 +100,6 @@ final routinePreviewProvider = Provider<AsyncValue<RoutinePreviewState>>((ref) {
           skippedCount: skippedCount,
         );
       }()),
-    (AsyncError(:final error, :final stackTrace), _, _, _) => AsyncError(
-      error,
-      stackTrace,
-    ),
-    (_, AsyncError(:final error, :final stackTrace), _, _) => AsyncError(
-      error,
-      stackTrace,
-    ),
-    (_, _, AsyncError(:final error, :final stackTrace), _) => AsyncError(
-      error,
-      stackTrace,
-    ),
-    (_, _, _, AsyncError(:final error, :final stackTrace)) => AsyncError(
-      error,
-      stackTrace,
-    ),
-    _ => const AsyncLoading(),
-  };
-});
-
-final routineRecommendationActionsProvider =
-    Provider<AsyncValue<List<String>>>((ref) {
-  final routinesAsync = ref.watch(watchActiveRoutinesProvider);
-  final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
-
-  return switch ((routinesAsync, occurrencesAsync)) {
-    (
-      AsyncData(value: final routines),
-      AsyncData(value: final occurrences),
-    ) =>
-      AsyncData(_buildRoutineActions(routines, occurrences, DateTime.now())),
     (AsyncError(:final error, :final stackTrace), _) => AsyncError(
       error,
       stackTrace,
@@ -139,6 +112,46 @@ final routineRecommendationActionsProvider =
   };
 });
 
+RoutineOccurrence? _findNextOccurrence(
+  Routine routine,
+  List<RoutineOccurrence> occurrences,
+  DateTime now,
+) {
+  final matching = occurrences
+      .where((item) => item.routineId == routine.id)
+      .where(
+        (item) =>
+            item.effectiveStatusAt(now) == RoutineOccurrenceStatus.pending &&
+            !item.occurrenceDate.isBefore(DateTime(now.year, now.month, now.day)),
+      )
+      .toList()
+    ..sort((left, right) => left.occurrenceDate.compareTo(right.occurrenceDate));
+  return matching.isEmpty ? null : matching.first;
+}
+
+final routineRecommendationActionsProvider =
+    Provider<AsyncValue<List<String>>>((ref) {
+      final routinesAsync = ref.watch(watchActiveRoutinesProvider);
+      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+
+      return switch ((routinesAsync, occurrencesAsync)) {
+        (
+          AsyncData(value: final routines),
+          AsyncData(value: final occurrences),
+        ) =>
+          AsyncData(_buildRoutineActions(routines, occurrences, DateTime.now())),
+        (AsyncError(:final error, :final stackTrace), _) => AsyncError(
+          error,
+          stackTrace,
+        ),
+        (_, AsyncError(:final error, :final stackTrace)) => AsyncError(
+          error,
+          stackTrace,
+        ),
+        _ => const AsyncLoading(),
+      };
+    });
+
 List<String> _buildRoutineActions(
   List<Routine> routines,
   List<RoutineOccurrence> occurrences,
@@ -149,10 +162,12 @@ List<String> _buildRoutineActions(
     return actions;
   }
 
-  final horizonEnd = now.add(const Duration(days: 7));
+  final horizonEnd = DateTime(now.year, now.month, now.day).add(
+    const Duration(days: 7),
+  );
   final upcomingOccurrences = occurrences.where((occurrence) {
-    return occurrence.scheduledStart.isBefore(horizonEnd) &&
-        occurrence.scheduledEnd.isAfter(now);
+    return !occurrence.occurrenceDate.isAfter(horizonEnd) &&
+        occurrence.effectiveStatusAt(now) == RoutineOccurrenceStatus.pending;
   }).toList();
 
   if (upcomingOccurrences.isEmpty) {
@@ -172,7 +187,7 @@ List<String> _buildRoutineActions(
     final weekEnd = now.add(Duration(days: DateTime.sunday - now.weekday + 1));
     final hasPendingReview = occurrences.any((occurrence) {
       return occurrence.routineId == weeklyReviewRoutine.id &&
-          occurrence.scheduledStart.isBefore(weekEnd) &&
+          occurrence.occurrenceDate.isBefore(weekEnd) &&
           occurrence.effectiveStatusAt(now) == RoutineOccurrenceStatus.pending;
     });
     if (!hasPendingReview) {
@@ -182,7 +197,8 @@ List<String> _buildRoutineActions(
 
   final totalWeeklyMinutes = routines.fold<int>(
     0,
-    (sum, routine) => sum + (routine.durationMinutes * _weeklyOccurrences(routine)),
+    (sum, routine) =>
+        sum + ((routine.preferredDurationMinutes ?? 0) * _weeklyOccurrences(routine)),
   );
   if (totalWeeklyMinutes > 16 * 60) {
     actions.add(
@@ -194,16 +210,16 @@ List<String> _buildRoutineActions(
 }
 
 int _weeklyOccurrences(Routine routine) {
-  switch (routine.cadenceType) {
-    case RoutineCadenceType.daily:
+  switch (routine.repeatRule.type) {
+    case RoutineRepeatType.daily:
       return 7;
-    case RoutineCadenceType.weekdays:
+    case RoutineRepeatType.weekdays:
       return 5;
-    case RoutineCadenceType.weekly:
-    case RoutineCadenceType.customWeekdays:
-    case RoutineCadenceType.custom:
-      return routine.weekdays.length;
-    case RoutineCadenceType.monthly:
+    case RoutineRepeatType.selectedWeekdays:
+      return routine.repeatRule.weekdays.length;
+    case RoutineRepeatType.weekly:
+      return 1;
+    case RoutineRepeatType.monthly:
       return 1;
   }
 }
@@ -224,8 +240,8 @@ class RoutineActionController extends AsyncNotifier<void> {
   Future<void> addRoutine(Routine routine) async {
     await _run(() async {
       final repository = await ref.read(routineRepositoryProvider.future);
-      await repository.addRoutine(routine);
-      await _regenerateFutureOccurrences(days: 7);
+      await repository.saveRoutine(routine);
+      await _syncFutureOccurrences(days: 30);
     });
   }
 
@@ -233,7 +249,7 @@ class RoutineActionController extends AsyncNotifier<void> {
     await _run(() async {
       final repository = await ref.read(routineRepositoryProvider.future);
       await repository.updateRoutine(routine);
-      await _regenerateFutureOccurrences(days: 7);
+      await _syncFutureOccurrences(days: 30);
     });
   }
 
@@ -262,11 +278,10 @@ class RoutineActionController extends AsyncNotifier<void> {
     );
   }
 
-  Future<void> generateNext7Days() =>
-      _run(() => _regenerateFutureOccurrences(days: 7));
+  Future<void> generateNext7Days() => _run(() => _syncFutureOccurrences(days: 7));
 
   Future<void> generateNext30Days() =>
-      _run(() => _regenerateFutureOccurrences(days: 30));
+      _run(() => _syncFutureOccurrences(days: 30));
 
   Future<void> markOccurrenceCompleted(RoutineOccurrence occurrence) async {
     await _run(() async {
@@ -275,6 +290,8 @@ class RoutineActionController extends AsyncNotifier<void> {
         occurrence.copyWith(
           status: RoutineOccurrenceStatus.completed,
           completedAt: DateTime.now(),
+          clearSkippedAt: true,
+          clearMissedAt: true,
           updatedAt: DateTime.now(),
         ),
       );
@@ -287,7 +304,9 @@ class RoutineActionController extends AsyncNotifier<void> {
       await repository.updateOccurrence(
         occurrence.copyWith(
           status: RoutineOccurrenceStatus.skipped,
+          skippedAt: DateTime.now(),
           clearCompletedAt: true,
+          clearMissedAt: true,
           updatedAt: DateTime.now(),
         ),
       );
@@ -329,11 +348,12 @@ class RoutineActionController extends AsyncNotifier<void> {
         title: routine.title,
         description: routine.description,
         type: _taskTypeForRoutine(routine),
-        estimatedDurationMinutes: occurrence.durationMinutes,
+        estimatedDurationMinutes:
+            occurrence.durationMinutes ?? routine.preferredDurationMinutes ?? 30,
         dueDate: occurrence.scheduledEnd,
         priority: routine.priority,
         goalId: routine.linkedGoalId,
-        resourceTag: routine.categoryTag,
+        resourceTag: routine.categoryId,
         createdAt: now,
         updatedAt: now,
       );
@@ -341,7 +361,8 @@ class RoutineActionController extends AsyncNotifier<void> {
       await occurrenceRepository.updateOccurrence(
         occurrence.copyWith(
           status: RoutineOccurrenceStatus.skipped,
-          linkedTaskId: createdTask.id,
+          sourceTaskId: createdTask.id,
+          skippedAt: now,
           notes: 'Converted to task',
           updatedAt: now,
         ),
@@ -350,40 +371,12 @@ class RoutineActionController extends AsyncNotifier<void> {
     return createdTask;
   }
 
-  Future<void> _regenerateFutureOccurrences({required int days}) async {
-    final routineRepository = await ref.read(routineRepositoryProvider.future);
-    final occurrenceRepository = await ref.read(
-      routineOccurrenceRepositoryProvider.future,
-    );
-    final timetableRepository = await ref.read(timetableRepositoryProvider.future);
-    final sessionRepository = await ref.read(plannedSessionRepositoryProvider.future);
-
-    final routines = await routineRepository.getActiveRoutines();
-    final slots = await timetableRepository.getAllSlots();
-    final sessions = await sessionRepository.getAllSessions();
+  Future<void> _syncFutureOccurrences({required int days}) async {
+    final syncService = await ref.read(routineSyncServiceProvider.future);
     final now = DateTime.now();
-    final rangeEnd = now.add(Duration(days: days));
-    final existingOccurrences = await occurrenceRepository.getOccurrencesInRange(
-      now,
-      rangeEnd,
-    );
-
-    final result = ref.read(routineSchedulingServiceProvider).generateOccurrences(
-          routines: routines,
-          timetableSlots: slots,
-          plannedSessions: sessions,
-          existingOccurrences: existingOccurrences,
-          start: now,
-          end: rangeEnd,
-          now: now,
-        );
-
-    await occurrenceRepository.replaceFutureOccurrencesInRange(
-      start: now,
-      end: rangeEnd,
-      newOccurrences: result.generatedOccurrences,
-      keepCompleted: true,
-      keepSkipped: true,
+    await syncService.syncAllRoutines(
+      startDate: now.subtract(const Duration(days: 7)),
+      endDate: now.add(Duration(days: days)),
     );
   }
 

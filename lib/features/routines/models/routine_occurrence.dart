@@ -1,31 +1,31 @@
 import 'package:isar/isar.dart';
 
-part 'routine_occurrence.g.dart';
+import '../domain/routine_date_utils.dart';
+import '../domain/routine_enums.dart';
 
-enum RoutineOccurrenceStatus {
-  pending,
-  completed,
-  skipped,
-  missed,
-  cancelled,
-}
+part 'routine_occurrence.g.dart';
 
 @collection
 class RoutineOccurrence {
   RoutineOccurrence({
     required this.id,
     required this.routineId,
-    required this.scheduledStart,
-    required this.scheduledEnd,
+    required DateTime occurrenceDate,
+    this.scheduledStart,
+    this.scheduledEnd,
     this.status = RoutineOccurrenceStatus.pending,
-    this.generatedFromRule = true,
-    this.linkedPlannedSessionId,
-    this.linkedTaskId,
-    this.completedAt,
-    this.notes,
     required this.createdAt,
     DateTime? updatedAt,
-  }) : updatedAt = updatedAt ?? createdAt;
+    this.completedAt,
+    this.skippedAt,
+    this.missedAt,
+    this.sourceTaskId,
+    this.notes,
+  }) : occurrenceDate = normalizeDate(occurrenceDate),
+       updatedAt = updatedAt ?? createdAt,
+       occurrenceKey = buildOccurrenceKey(routineId, occurrenceDate) {
+    _validate();
+  }
 
   Id isarId = Isar.autoIncrement;
 
@@ -35,105 +35,110 @@ class RoutineOccurrence {
   @Index()
   late String routineId;
 
-  late DateTime scheduledStart;
-  late DateTime scheduledEnd;
+  @Index(unique: true, replace: true)
+  late String occurrenceKey;
+
+  @Index()
+  late DateTime occurrenceDate;
+
+  DateTime? scheduledStart;
+  DateTime? scheduledEnd;
 
   @Enumerated(EnumType.name)
   late RoutineOccurrenceStatus status;
 
-  late bool generatedFromRule;
-  String? linkedPlannedSessionId;
-  String? linkedTaskId;
-  DateTime? completedAt;
-  String? notes;
   late DateTime createdAt;
   DateTime? updatedAt;
+  DateTime? completedAt;
+  DateTime? skippedAt;
+  DateTime? missedAt;
+  String? sourceTaskId;
+  String? notes;
 
   RoutineOccurrence copyWith({
     String? id,
     String? routineId,
+    DateTime? occurrenceDate,
     DateTime? scheduledStart,
+    bool clearScheduledStart = false,
     DateTime? scheduledEnd,
+    bool clearScheduledEnd = false,
     RoutineOccurrenceStatus? status,
-    bool? generatedFromRule,
-    String? linkedPlannedSessionId,
-    bool clearLinkedPlannedSessionId = false,
-    String? linkedTaskId,
-    bool clearLinkedTaskId = false,
-    DateTime? completedAt,
-    bool clearCompletedAt = false,
-    String? notes,
-    bool clearNotes = false,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? completedAt,
+    bool clearCompletedAt = false,
+    DateTime? skippedAt,
+    bool clearSkippedAt = false,
+    DateTime? missedAt,
+    bool clearMissedAt = false,
+    String? sourceTaskId,
+    bool clearSourceTaskId = false,
+    String? notes,
+    bool clearNotes = false,
   }) {
     final occurrence = RoutineOccurrence(
       id: id ?? this.id,
       routineId: routineId ?? this.routineId,
-      scheduledStart: scheduledStart ?? this.scheduledStart,
-      scheduledEnd: scheduledEnd ?? this.scheduledEnd,
+      occurrenceDate: occurrenceDate ?? this.occurrenceDate,
+      scheduledStart: clearScheduledStart ? null : scheduledStart ?? this.scheduledStart,
+      scheduledEnd: clearScheduledEnd ? null : scheduledEnd ?? this.scheduledEnd,
       status: status ?? this.status,
-      generatedFromRule: generatedFromRule ?? this.generatedFromRule,
-      linkedPlannedSessionId: clearLinkedPlannedSessionId
-          ? null
-          : linkedPlannedSessionId ?? this.linkedPlannedSessionId,
-      linkedTaskId: clearLinkedTaskId ? null : linkedTaskId ?? this.linkedTaskId,
-      completedAt: clearCompletedAt ? null : completedAt ?? this.completedAt,
-      notes: clearNotes ? null : notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      completedAt: clearCompletedAt ? null : completedAt ?? this.completedAt,
+      skippedAt: clearSkippedAt ? null : skippedAt ?? this.skippedAt,
+      missedAt: clearMissedAt ? null : missedAt ?? this.missedAt,
+      sourceTaskId: clearSourceTaskId ? null : sourceTaskId ?? this.sourceTaskId,
+      notes: clearNotes ? null : notes ?? this.notes,
     )..isarId = isarId;
-
     return occurrence;
   }
 
-  int get durationMinutes => scheduledEnd.difference(scheduledStart).inMinutes;
-
-  bool get isCompleted => effectiveStatus == RoutineOccurrenceStatus.completed;
-
   @ignore
-  DateTime get scheduledDate => DateTime(
-    scheduledStart.year,
-    scheduledStart.month,
-    scheduledStart.day,
-  );
-
-  @ignore
-  RoutineOccurrenceStatus get effectiveStatus {
-    if (status == RoutineOccurrenceStatus.cancelled) {
-      return RoutineOccurrenceStatus.skipped;
+  int? get durationMinutes {
+    final start = scheduledStart;
+    final end = scheduledEnd;
+    if (start == null || end == null) {
+      return null;
     }
-    return status;
+    return end.difference(start).inMinutes;
   }
+
+  @ignore
+  bool get isCompleted => status == RoutineOccurrenceStatus.completed;
+
+  @ignore
+  String? get linkedTaskId => sourceTaskId;
+
+  @ignore
+  DateTime get scheduledDate => occurrenceDate;
+
+  @ignore
+  RoutineOccurrenceStatus get effectiveStatus => status;
 
   bool isMissedAt(DateTime now) {
-    return effectiveStatus == RoutineOccurrenceStatus.pending &&
-        scheduledEnd.isBefore(now);
+    return status == RoutineOccurrenceStatus.pending &&
+        ((scheduledEnd ?? composeDateAndMinute(occurrenceDate, 23 * 60 + 59))
+            .isBefore(now));
   }
-}
 
-extension RoutineOccurrenceStatusX on RoutineOccurrenceStatus {
-  String get label {
-    switch (this) {
-      case RoutineOccurrenceStatus.pending:
-        return 'Pending';
-      case RoutineOccurrenceStatus.completed:
-        return 'Completed';
-      case RoutineOccurrenceStatus.skipped:
-        return 'Skipped';
-      case RoutineOccurrenceStatus.missed:
-        return 'Missed';
-      case RoutineOccurrenceStatus.cancelled:
-        return 'Skipped';
+  void _validate() {
+    final start = scheduledStart;
+    final end = scheduledEnd;
+    if (start != null && end != null && !start.isBefore(end)) {
+      throw ArgumentError(
+        'Scheduled end must be after scheduled start for an occurrence.',
+      );
     }
   }
 }
 
 extension EffectiveRoutineOccurrenceStatusX on RoutineOccurrence {
   RoutineOccurrenceStatus effectiveStatusAt(DateTime now) {
-    if (isMissedAt(now)) {
+    if (status == RoutineOccurrenceStatus.pending && isMissedAt(now)) {
       return RoutineOccurrenceStatus.missed;
     }
-    return effectiveStatus;
+    return status;
   }
 }
