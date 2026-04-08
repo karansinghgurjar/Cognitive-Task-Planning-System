@@ -38,29 +38,26 @@ def find_subject_bbox(image: Image.Image, threshold: int = 28) -> tuple[int, int
     return min_x, min_y, max_x + 1, max_y + 1
 
 
-def build_square_crop(
-    image_size: tuple[int, int],
+def render_icon_canvas(
+    image: Image.Image,
     bbox: tuple[int, int, int, int],
-    padding_ratio: float = 0.10,
-) -> tuple[int, int, int, int]:
-    image_width, image_height = image_size
+    output_size: int = 1024,
+    inset_ratio: float = 0.14,
+) -> Image.Image:
     min_x, min_y, max_x, max_y = bbox
-    bbox_width = max_x - min_x
-    bbox_height = max_y - min_y
+    subject = image.convert("RGBA").crop((min_x, min_y, max_x, max_y))
+    subject_width, subject_height = subject.size
+    available = int(round(output_size * (1.0 - inset_ratio * 2.0)))
+    scale = min(available / subject_width, available / subject_height)
+    scaled_width = max(1, int(round(subject_width * scale)))
+    scaled_height = max(1, int(round(subject_height * scale)))
+    resized = subject.resize((scaled_width, scaled_height), Image.Resampling.LANCZOS)
 
-    side = int(max(bbox_width, bbox_height) * (1.0 + padding_ratio * 2.0))
-    side = min(side, image_width, image_height)
-
-    center_x = (min_x + max_x) / 2.0
-    center_y = (min_y + max_y) / 2.0
-
-    left = int(round(center_x - side / 2.0))
-    top = int(round(center_y - side / 2.0))
-
-    left = max(0, min(left, image_width - side))
-    top = max(0, min(top, image_height - side))
-
-    return left, top, left + side, top + side
+    canvas = Image.new("RGBA", (output_size, output_size), (0, 0, 0, 0))
+    left = (output_size - scaled_width) // 2
+    top = (output_size - scaled_height) // 2
+    canvas.alpha_composite(resized, (left, top))
+    return canvas
 
 
 def main() -> int:
@@ -79,11 +76,7 @@ def main() -> int:
 
     with Image.open(source) as image:
         bbox = find_subject_bbox(image)
-        crop = build_square_crop(image.size, bbox)
-        prepared = image.convert("RGBA").crop(crop).resize(
-            (1024, 1024),
-            Image.Resampling.LANCZOS,
-        )
+        prepared = render_icon_canvas(image, bbox)
         prepared.save(output, format="PNG")
 
     print(f"Prepared icon source: {output}")
