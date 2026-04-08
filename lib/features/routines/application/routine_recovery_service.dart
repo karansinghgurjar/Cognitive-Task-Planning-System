@@ -66,6 +66,7 @@ class RoutineRecoveryService {
           routine.isArchived ||
           !routine.autoRescheduleMissed ||
           occurrence.effectiveStatusAt(now) != RoutineOccurrenceStatus.missed ||
+          occurrence.recoveryDismissedAt != null ||
           existingRecoverySourceIds.contains(occurrence.id)) {
         continue;
       }
@@ -106,6 +107,17 @@ class RoutineRecoveryService {
       isAutoScheduled: true,
       schedulingNote: 'Recovery placement',
       notes: 'Recovery for missed routine block',
+    );
+  }
+
+  RoutineOccurrence dismissRecoverySuggestion(
+    RoutineOccurrence occurrence, {
+    required DateTime now,
+  }) {
+    return occurrence.copyWith(
+      recoveryDismissedAt: now,
+      updatedAt: now,
+      notes: 'Recovery suggestion ignored',
     );
   }
 

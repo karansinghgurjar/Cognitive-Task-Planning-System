@@ -127,40 +127,50 @@ const RoutineSchema = CollectionSchema(
       name: r'priority',
       type: IsarType.long,
     ),
-    r'repeatRule': PropertySchema(
+    r'reminderLeadMinutes': PropertySchema(
       id: 22,
+      name: r'reminderLeadMinutes',
+      type: IsarType.long,
+    ),
+    r'remindersEnabled': PropertySchema(
+      id: 23,
+      name: r'remindersEnabled',
+      type: IsarType.bool,
+    ),
+    r'repeatRule': PropertySchema(
+      id: 24,
       name: r'repeatRule',
       type: IsarType.object,
       target: r'RoutineRepeatRule',
     ),
     r'routineType': PropertySchema(
-      id: 23,
+      id: 25,
       name: r'routineType',
       type: IsarType.string,
       enumMap: _RoutineroutineTypeEnumValueMap,
     ),
     r'tagIds': PropertySchema(
-      id: 24,
+      id: 26,
       name: r'tagIds',
       type: IsarType.stringList,
     ),
     r'timeWindowEndMinuteOfDay': PropertySchema(
-      id: 25,
+      id: 27,
       name: r'timeWindowEndMinuteOfDay',
       type: IsarType.long,
     ),
     r'timeWindowStartMinuteOfDay': PropertySchema(
-      id: 26,
+      id: 28,
       name: r'timeWindowStartMinuteOfDay',
       type: IsarType.long,
     ),
     r'title': PropertySchema(
-      id: 27,
+      id: 29,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 28,
+      id: 30,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -279,18 +289,20 @@ void _routineSerialize(
   writer.writeLong(offsets[19], object.preferredDurationMinutes);
   writer.writeLong(offsets[20], object.preferredStartMinuteOfDay);
   writer.writeLong(offsets[21], object.priority);
+  writer.writeLong(offsets[22], object.reminderLeadMinutes);
+  writer.writeBool(offsets[23], object.remindersEnabled);
   writer.writeObject<RoutineRepeatRule>(
-    offsets[22],
+    offsets[24],
     allOffsets,
     RoutineRepeatRuleSchema.serialize,
     object.repeatRule,
   );
-  writer.writeString(offsets[23], object.routineType.name);
-  writer.writeStringList(offsets[24], object.tagIds);
-  writer.writeLong(offsets[25], object.timeWindowEndMinuteOfDay);
-  writer.writeLong(offsets[26], object.timeWindowStartMinuteOfDay);
-  writer.writeString(offsets[27], object.title);
-  writer.writeDateTime(offsets[28], object.updatedAt);
+  writer.writeString(offsets[25], object.routineType.name);
+  writer.writeStringList(offsets[26], object.tagIds);
+  writer.writeLong(offsets[27], object.timeWindowEndMinuteOfDay);
+  writer.writeLong(offsets[28], object.timeWindowStartMinuteOfDay);
+  writer.writeString(offsets[29], object.title);
+  writer.writeDateTime(offsets[30], object.updatedAt);
 }
 
 Routine _routineDeserialize(
@@ -318,20 +330,22 @@ Routine _routineDeserialize(
     preferredDurationMinutes: reader.readLongOrNull(offsets[19]),
     preferredStartMinuteOfDay: reader.readLongOrNull(offsets[20]),
     priority: reader.readLongOrNull(offsets[21]) ?? 3,
+    reminderLeadMinutes: reader.readLongOrNull(offsets[22]),
+    remindersEnabled: reader.readBoolOrNull(offsets[23]) ?? false,
     repeatRule: reader.readObjectOrNull<RoutineRepeatRule>(
-          offsets[22],
+          offsets[24],
           RoutineRepeatRuleSchema.deserialize,
           allOffsets,
         ) ??
         RoutineRepeatRule(),
     routineType:
-        _RoutineroutineTypeValueEnumMap[reader.readStringOrNull(offsets[23])] ??
+        _RoutineroutineTypeValueEnumMap[reader.readStringOrNull(offsets[25])] ??
             RoutineType.custom,
-    tagIds: reader.readStringList(offsets[24]) ?? const [],
-    timeWindowEndMinuteOfDay: reader.readLongOrNull(offsets[25]),
-    timeWindowStartMinuteOfDay: reader.readLongOrNull(offsets[26]),
-    title: reader.readString(offsets[27]),
-    updatedAt: reader.readDateTimeOrNull(offsets[28]),
+    tagIds: reader.readStringList(offsets[26]) ?? const [],
+    timeWindowEndMinuteOfDay: reader.readLongOrNull(offsets[27]),
+    timeWindowStartMinuteOfDay: reader.readLongOrNull(offsets[28]),
+    title: reader.readString(offsets[29]),
+    updatedAt: reader.readDateTimeOrNull(offsets[30]),
   );
   object.isarId = id;
   return object;
@@ -389,25 +403,29 @@ P _routineDeserializeProp<P>(
     case 21:
       return (reader.readLongOrNull(offset) ?? 3) as P;
     case 22:
+      return (reader.readLongOrNull(offset)) as P;
+    case 23:
+      return (reader.readBoolOrNull(offset) ?? false) as P;
+    case 24:
       return (reader.readObjectOrNull<RoutineRepeatRule>(
             offset,
             RoutineRepeatRuleSchema.deserialize,
             allOffsets,
           ) ??
           RoutineRepeatRule()) as P;
-    case 23:
+    case 25:
       return (_RoutineroutineTypeValueEnumMap[
               reader.readStringOrNull(offset)] ??
           RoutineType.custom) as P;
-    case 24:
-      return (reader.readStringList(offset) ?? const []) as P;
-    case 25:
-      return (reader.readLongOrNull(offset)) as P;
     case 26:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readStringList(offset) ?? const []) as P;
     case 27:
-      return (reader.readString(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 28:
+      return (reader.readLongOrNull(offset)) as P;
+    case 29:
+      return (reader.readString(offset)) as P;
+    case 30:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2205,6 +2223,90 @@ extension RoutineQueryFilter
     });
   }
 
+  QueryBuilder<Routine, Routine, QAfterFilterCondition>
+      reminderLeadMinutesIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'reminderLeadMinutes',
+      ));
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterFilterCondition>
+      reminderLeadMinutesIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'reminderLeadMinutes',
+      ));
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterFilterCondition>
+      reminderLeadMinutesEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'reminderLeadMinutes',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterFilterCondition>
+      reminderLeadMinutesGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'reminderLeadMinutes',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterFilterCondition>
+      reminderLeadMinutesLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'reminderLeadMinutes',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterFilterCondition>
+      reminderLeadMinutesBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'reminderLeadMinutes',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterFilterCondition> remindersEnabledEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'remindersEnabled',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Routine, Routine, QAfterFilterCondition> routineTypeEqualTo(
     RoutineType value, {
     bool caseSensitive = true,
@@ -3186,6 +3288,30 @@ extension RoutineQuerySortBy on QueryBuilder<Routine, Routine, QSortBy> {
     });
   }
 
+  QueryBuilder<Routine, Routine, QAfterSortBy> sortByReminderLeadMinutes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reminderLeadMinutes', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterSortBy> sortByReminderLeadMinutesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reminderLeadMinutes', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterSortBy> sortByRemindersEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'remindersEnabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterSortBy> sortByRemindersEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'remindersEnabled', Sort.desc);
+    });
+  }
+
   QueryBuilder<Routine, Routine, QAfterSortBy> sortByRoutineType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'routineType', Sort.asc);
@@ -3537,6 +3663,30 @@ extension RoutineQuerySortThenBy
     });
   }
 
+  QueryBuilder<Routine, Routine, QAfterSortBy> thenByReminderLeadMinutes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reminderLeadMinutes', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterSortBy> thenByReminderLeadMinutesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reminderLeadMinutes', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterSortBy> thenByRemindersEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'remindersEnabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QAfterSortBy> thenByRemindersEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'remindersEnabled', Sort.desc);
+    });
+  }
+
   QueryBuilder<Routine, Routine, QAfterSortBy> thenByRoutineType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'routineType', Sort.asc);
@@ -3746,6 +3896,18 @@ extension RoutineQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Routine, Routine, QDistinct> distinctByReminderLeadMinutes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'reminderLeadMinutes');
+    });
+  }
+
+  QueryBuilder<Routine, Routine, QDistinct> distinctByRemindersEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'remindersEnabled');
+    });
+  }
+
   QueryBuilder<Routine, Routine, QDistinct> distinctByRoutineType(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3928,6 +4090,18 @@ extension RoutineQueryProperty
   QueryBuilder<Routine, int, QQueryOperations> priorityProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'priority');
+    });
+  }
+
+  QueryBuilder<Routine, int?, QQueryOperations> reminderLeadMinutesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'reminderLeadMinutes');
+    });
+  }
+
+  QueryBuilder<Routine, bool, QQueryOperations> remindersEnabledProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'remindersEnabled');
     });
   }
 

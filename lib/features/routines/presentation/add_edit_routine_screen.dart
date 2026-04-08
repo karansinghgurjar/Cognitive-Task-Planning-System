@@ -24,6 +24,7 @@ class _AddEditRoutineScreenState extends ConsumerState<AddEditRoutineScreen> {
   late final TextEditingController _descriptionController;
   late final TextEditingController _intervalController;
   late final TextEditingController _durationController;
+  late final TextEditingController _reminderLeadController;
 
   @override
   void initState() {
@@ -45,6 +46,9 @@ class _AddEditRoutineScreenState extends ConsumerState<AddEditRoutineScreen> {
     _durationController = TextEditingController(
       text: state.preferredDurationMinutes?.toString() ?? '',
     );
+    _reminderLeadController = TextEditingController(
+      text: state.reminderLeadMinutes?.toString() ?? '',
+    );
   }
 
   @override
@@ -53,6 +57,7 @@ class _AddEditRoutineScreenState extends ConsumerState<AddEditRoutineScreen> {
     _descriptionController.dispose();
     _intervalController.dispose();
     _durationController.dispose();
+    _reminderLeadController.dispose();
     super.dispose();
   }
 
@@ -73,6 +78,13 @@ class _AddEditRoutineScreenState extends ConsumerState<AddEditRoutineScreen> {
       text: formState.preferredDurationMinutes?.toString() ?? '',
       selection: TextSelection.collapsed(
         offset: (formState.preferredDurationMinutes?.toString() ?? '').length,
+      ),
+      composing: TextRange.empty,
+    );
+    _reminderLeadController.value = _reminderLeadController.value.copyWith(
+      text: formState.reminderLeadMinutes?.toString() ?? '',
+      selection: TextSelection.collapsed(
+        offset: (formState.reminderLeadMinutes?.toString() ?? '').length,
       ),
       composing: TextRange.empty,
     );
@@ -307,6 +319,29 @@ class _AddEditRoutineScreenState extends ConsumerState<AddEditRoutineScreen> {
                   value: formState.countsTowardConsistency,
                   onChanged: controller.setCountsTowardConsistency,
                 ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Enable reminders'),
+                  subtitle: const Text(
+                    'Only scheduled upcoming routine blocks can trigger reminders.',
+                  ),
+                  value: formState.remindersEnabled,
+                  onChanged: controller.setRemindersEnabled,
+                ),
+                if (formState.remindersEnabled) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _reminderLeadController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Reminder lead minutes',
+                      helperText: '0 means remind right at start time.',
+                      errorText: formState.validationErrors['reminderLeadMinutes'],
+                    ),
+                    onChanged: (value) =>
+                        controller.setReminderLeadMinutes(int.tryParse(value.trim())),
+                  ),
+                ],
               ],
             ),
           ),

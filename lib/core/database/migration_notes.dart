@@ -34,5 +34,10 @@ class MigrationNotes {
       description:
           'Added smart repeating routines and routine occurrences for recurring habit blocks.',
     ),
+    MigrationNote(
+      version: 6,
+      description:
+          'Hardened routine lifecycle behavior with reconciliation, reminder preferences, and recovery dismissal state.',
+    ),
   ];
 }

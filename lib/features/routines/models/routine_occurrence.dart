@@ -26,6 +26,8 @@ class RoutineOccurrence {
     this.needsAttention = false,
     this.isAutoScheduled = false,
     this.schedulingNote,
+    this.isManualOverride = false,
+    this.recoveryDismissedAt,
   }) : occurrenceDate = normalizeDate(occurrenceDate),
        updatedAt = updatedAt ?? createdAt,
        occurrenceKey = buildOccurrenceKey(routineId, occurrenceDate) {
@@ -64,6 +66,8 @@ class RoutineOccurrence {
   late bool needsAttention;
   late bool isAutoScheduled;
   String? schedulingNote;
+  late bool isManualOverride;
+  DateTime? recoveryDismissedAt;
 
   RoutineOccurrence copyWith({
     String? id,
@@ -93,6 +97,9 @@ class RoutineOccurrence {
     bool? isAutoScheduled,
     String? schedulingNote,
     bool clearSchedulingNote = false,
+    bool? isManualOverride,
+    DateTime? recoveryDismissedAt,
+    bool clearRecoveryDismissedAt = false,
   }) {
     final occurrence = RoutineOccurrence(
       id: id ?? this.id,
@@ -117,6 +124,10 @@ class RoutineOccurrence {
       schedulingNote: clearSchedulingNote
           ? null
           : schedulingNote ?? this.schedulingNote,
+      isManualOverride: isManualOverride ?? this.isManualOverride,
+      recoveryDismissedAt: clearRecoveryDismissedAt
+          ? null
+          : recoveryDismissedAt ?? this.recoveryDismissedAt,
     )..isarId = isarId;
     return occurrence;
   }

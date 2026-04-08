@@ -1606,26 +1606,52 @@ class _RoutineRecoveryBanner extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(first.reason),
             const SizedBox(height: 12),
-            FilledButton.tonalIcon(
-              onPressed: () async {
-                try {
-                  await ref
-                      .read(routineIntelligenceControllerProvider.notifier)
-                      .acceptRecoverySuggestion(first);
-                } catch (error) {
-                  if (context.mounted) {
-                    ErrorHandler.showSnackBar(
-                      context,
-                      error,
-                      fallbackTitle: 'Recovery failed',
-                      fallbackMessage:
-                          'The missed routine block could not be recovered.',
-                    );
-                  }
-                }
-              },
-              icon: const Icon(Icons.restore_rounded),
-              label: const Text('Recover suggested block'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () async {
+                    try {
+                      await ref
+                          .read(routineIntelligenceControllerProvider.notifier)
+                          .acceptRecoverySuggestion(first);
+                    } catch (error) {
+                      if (context.mounted) {
+                        ErrorHandler.showSnackBar(
+                          context,
+                          error,
+                          fallbackTitle: 'Recovery failed',
+                          fallbackMessage:
+                              'The missed routine block could not be recovered.',
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.restore_rounded),
+                  label: const Text('Recover suggested block'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    try {
+                      await ref
+                          .read(routineIntelligenceControllerProvider.notifier)
+                          .dismissRecoverySuggestion(first.sourceOccurrence.id);
+                    } catch (error) {
+                      if (context.mounted) {
+                        ErrorHandler.showSnackBar(
+                          context,
+                          error,
+                          fallbackTitle: 'Recovery update failed',
+                          fallbackMessage:
+                              'The recovery suggestion could not be ignored.',
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Ignore'),
+                ),
+              ],
             ),
           ],
         ),
@@ -1646,7 +1672,7 @@ class _RoutineAttentionBanner extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Text(
-          '$count flexible routine block${count == 1 ? '' : 's'} need placement in the current schedule.',
+          '$count flexible routine block${count == 1 ? '' : 's'} need placement. Open the routine to see why it was not scheduled.',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       ),

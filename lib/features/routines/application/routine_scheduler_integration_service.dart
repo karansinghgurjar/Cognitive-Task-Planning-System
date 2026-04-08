@@ -111,7 +111,7 @@ class RoutineSchedulerIntegrationService {
         clearScheduledStart: true,
         clearScheduledEnd: true,
         isAutoScheduled: false,
-        schedulingNote: 'Fixed routine needs a preferred time',
+        schedulingNote: 'Needs placement: fixed routine is missing a preferred time',
       );
     }
 
@@ -127,7 +127,9 @@ class RoutineSchedulerIntegrationService {
       scheduledEnd: end,
       needsAttention: conflicts,
       isAutoScheduled: false,
-      schedulingNote: conflicts ? 'Conflicts with existing schedule' : 'Fixed placement',
+      schedulingNote: conflicts
+          ? 'Conflict: fixed time overlaps another scheduled block'
+          : 'Scheduled at the routine\'s fixed time',
     );
   }
 
@@ -147,7 +149,7 @@ class RoutineSchedulerIntegrationService {
     if (durationMinutes == null || durationMinutes <= 0) {
       return occurrence.copyWith(
         needsAttention: true,
-        schedulingNote: 'Flexible routine needs a duration to auto-place',
+        schedulingNote: 'Needs placement: add a duration before auto-scheduling can work',
       );
     }
 
@@ -186,7 +188,7 @@ class RoutineSchedulerIntegrationService {
         clearScheduledEnd: true,
         needsAttention: true,
         isAutoScheduled: false,
-        schedulingNote: 'No valid slot found in the current schedule',
+        schedulingNote: 'Unscheduled: no free slot long enough was found',
       );
     }
 
@@ -195,7 +197,7 @@ class RoutineSchedulerIntegrationService {
       scheduledEnd: fit.end,
       needsAttention: false,
       isAutoScheduled: true,
-      schedulingNote: 'Placed in available window',
+      schedulingNote: 'Scheduled in the best available window',
     );
   }
 

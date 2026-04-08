@@ -89,6 +89,11 @@ class RoutineOccurrenceController extends StateNotifier<AsyncValue<void>> {
           newStart: newStart,
           notes: notes,
           now: _nowProvider(),
+        ).copyWith(
+          isManualOverride: true,
+          needsAttention: false,
+          isAutoScheduled: false,
+          schedulingNote: 'Manual time preserved',
         ),
       );
     });

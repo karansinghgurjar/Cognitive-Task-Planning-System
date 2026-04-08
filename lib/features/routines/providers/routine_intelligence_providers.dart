@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../schedule/providers/schedule_providers.dart';
 import '../../timetable/providers/timetable_providers.dart';
 import '../application/routine_consistency_service.dart';
+import '../application/routine_reconciliation_service.dart';
 import '../application/routine_goal_link_service.dart';
 import '../application/routine_recovery_service.dart';
 import '../application/routine_scheduler_integration_service.dart';
@@ -26,6 +27,11 @@ final routineSchedulerIntegrationServiceProvider =
 final routineGoalContributionServiceProvider =
     Provider<RoutineGoalLinkService>((ref) {
       return const RoutineGoalLinkService();
+    });
+
+final routineReconciliationServiceProvider =
+    Provider<RoutineReconciliationService>((ref) {
+      return RoutineReconciliationService();
     });
 
 final routineAnalyticsRangeProvider = StateProvider<RoutineAnalyticsRange>((ref) {
@@ -216,6 +222,32 @@ class RoutineIntelligenceController extends AsyncNotifier<void> {
     }
   }
 
+  Future<void> dismissRecoverySuggestion(String occurrenceId) async {
+    if (state.isLoading) {
+      return;
+    }
+    state = const AsyncLoading();
+    try {
+      final occurrenceRepository = await ref.read(
+        routineOccurrenceRepositoryProvider.future,
+      );
+      final occurrence = await occurrenceRepository.getOccurrenceById(occurrenceId);
+      if (occurrence == null) {
+        state = const AsyncData(null);
+        return;
+      }
+      final updated = ref.read(routineRecoveryServiceProvider).dismissRecoverySuggestion(
+            occurrence,
+            now: DateTime.now(),
+          );
+      await occurrenceRepository.updateOccurrence(updated);
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
+  }
+
   Future<void> runSchedulingIntegration() async {
     if (state.isLoading) {
       return;
@@ -241,6 +273,69 @@ class RoutineIntelligenceController extends AsyncNotifier<void> {
           );
       final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
       await repository.saveOccurrences(result.updatedOccurrences);
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> replanRoutineOccurrences(String routineId) async {
+    if (state.isLoading) {
+      return;
+    }
+    state = const AsyncLoading();
+    try {
+      final routines = await ref.read(watchAllRoutinesProvider.future);
+      final occurrences = await ref.read(watchAllRoutineOccurrencesProvider.future);
+      final sessions = await ref.read(watchAllSessionsProvider.future);
+      final timetableSlots = await ref.read(watchTimetableSlotsProvider.future);
+      final weeklyAvailability = ref
+          .read(availabilityServiceProvider)
+          .computeWeeklyAvailability(timetableSlots);
+      final now = DateTime.now();
+      final horizonEnd = now.add(const Duration(days: 30));
+      final reconciliationService = ref.read(routineReconciliationServiceProvider);
+      final routineById = {for (final routine in routines) routine.id: routine};
+      final resetOccurrences = occurrences.map((occurrence) {
+        if (occurrence.routineId != routineId ||
+            occurrence.status != RoutineOccurrenceStatus.pending ||
+            occurrence.isManualOverride ||
+            occurrence.occurrenceDate.isBefore(
+              DateTime(now.year, now.month, now.day),
+            ) ||
+            occurrence.occurrenceDate.isAfter(DateTime(
+              horizonEnd.year,
+              horizonEnd.month,
+              horizonEnd.day,
+            ))) {
+          return occurrence;
+        }
+        final routine = routineById[occurrence.routineId];
+        if (routine == null) {
+          return occurrence;
+        }
+        return reconciliationService.refreshOccurrenceSchedule(
+          occurrence: occurrence,
+          routine: routine,
+          now: now,
+        );
+      }).toList();
+      final result = ref.read(routineSchedulerIntegrationServiceProvider).integrate(
+            routines: routines,
+            occurrences: resetOccurrences,
+            weeklyAvailability: weeklyAvailability,
+            plannedSessions: sessions,
+            startDate: now,
+            endDate: horizonEnd,
+            now: now,
+          );
+      final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
+      await repository.saveOccurrences(
+        result.updatedOccurrences
+            .where((occurrence) => occurrence.routineId == routineId)
+            .toList(),
+      );
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);

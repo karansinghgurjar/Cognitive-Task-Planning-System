@@ -8,6 +8,7 @@ import '../../../core/widgets/app_section_header.dart';
 import '../models/routine.dart';
 import '../providers/routine_providers.dart';
 import 'add_edit_routine_screen.dart';
+import 'routine_detail_screen.dart';
 import 'routine_widgets.dart';
 
 class RoutinesScreen extends ConsumerStatefulWidget {
@@ -123,6 +124,13 @@ class _RoutineTabBody extends ConsumerWidget {
             final routine = routines[index] as dynamic;
             return RoutineListCard(
               routine: routine,
+              onOpen: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => RoutineDetailScreen(routineId: routine.id),
+                  ),
+                );
+              },
               onEdit: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(

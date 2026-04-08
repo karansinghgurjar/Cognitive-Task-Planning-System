@@ -14,6 +14,7 @@ import '../domain/routine_scheduling_service.dart';
 import '../domain/routine_sync_service.dart';
 import '../models/routine.dart';
 import '../models/routine_occurrence.dart';
+import 'routine_intelligence_providers.dart';
 
 final routineRepositoryProvider = FutureProvider<RoutineRepository>((ref) async {
   final isar = await ref.watch(isarInstanceProvider.future);
@@ -179,7 +180,32 @@ final routineFormControllerProvider = StateNotifierProvider.autoDispose
           );
           await repository.deleteForRoutine(routineId);
         },
+        loadOccurrencesForRoutine: (routineId) async {
+          final repository = await ref.read(
+            routineOccurrenceRepositoryProvider.future,
+          );
+          return repository.getOccurrencesForRoutine(routineId);
+        },
+        saveOccurrences: (occurrences) async {
+          final repository = await ref.read(
+            routineOccurrenceRepositoryProvider.future,
+          );
+          await repository.saveOccurrences(occurrences);
+        },
+        deleteOccurrenceIds: (occurrenceIds) async {
+          final repository = await ref.read(
+            routineOccurrenceRepositoryProvider.future,
+          );
+          await repository.deleteOccurrenceIds(occurrenceIds);
+        },
         loadSyncService: () => ref.read(routineSyncServiceProvider.future),
+        loadReconciliationService: () async =>
+            ref.read(routineReconciliationServiceProvider),
+        replanRoutineOccurrences: (routineId) async {
+          await ref
+              .read(routineIntelligenceControllerProvider.notifier)
+              .replanRoutineOccurrences(routineId);
+        },
         nowProvider: DateTime.now,
         initialRoutine: routine,
       );

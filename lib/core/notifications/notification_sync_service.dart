@@ -4,6 +4,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../config/app_brand.dart';
 import '../../features/goals/models/learning_goal.dart';
 import '../../features/recommendations/domain/recommendation_models.dart';
+import '../../features/routines/application/routine_reminder_service.dart';
+import '../../features/routines/models/routine.dart';
+import '../../features/routines/models/routine_occurrence.dart';
 import '../../features/schedule/models/planned_session.dart';
 import '../../features/settings/models/notification_preferences.dart';
 import '../../features/tasks/models/task.dart';
@@ -15,9 +18,13 @@ class NotificationSyncService {
     required NotificationService notificationService,
     required NotificationLogRepository notificationLogRepository,
   }) : _notificationService = notificationService,
+       _routineReminderService = RoutineReminderService(
+         notificationService: notificationService,
+       ),
        _notificationLogRepository = notificationLogRepository;
 
   final NotificationService _notificationService;
+  final RoutineReminderService _routineReminderService;
   final NotificationLogRepository _notificationLogRepository;
 
   Future<void> syncSessionReminders({
@@ -64,6 +71,35 @@ class NotificationSyncService {
         await _notificationService.cancelSessionReminder(previous.id);
       }
     }
+  }
+
+  Future<void> cancelRemovedRoutineReminders({
+    required List<RoutineOccurrence> previousOccurrences,
+    required List<RoutineOccurrence> currentOccurrences,
+  }) {
+    return _routineReminderService.cancelRemovedRoutineReminders(
+      previousOccurrences: previousOccurrences,
+      currentOccurrences: currentOccurrences,
+    );
+  }
+
+  Future<void> syncRoutineReminders({
+    required List<Routine> routines,
+    required List<RoutineOccurrence> occurrences,
+    required NotificationPreferences preferences,
+    required DateTime now,
+  }) async {
+    if (!preferences.sessionRemindersEnabled) {
+      for (final occurrence in occurrences) {
+        await _notificationService.cancelRoutineReminder(occurrence.id);
+      }
+      return;
+    }
+    await _routineReminderService.syncRoutineReminders(
+      routines: routines,
+      occurrences: occurrences,
+      now: now,
+    );
   }
 
   Future<void> notifyNewlyMissedSessions({

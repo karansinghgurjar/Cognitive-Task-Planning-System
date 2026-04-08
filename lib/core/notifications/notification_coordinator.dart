@@ -10,6 +10,10 @@ import '../../features/goals/presentation/goal_detail_screen.dart';
 import '../../features/goals/providers/goal_providers.dart';
 import '../../features/recommendations/domain/recommendation_models.dart';
 import '../../features/recommendations/providers/recommendation_providers.dart';
+import '../../features/routines/models/routine.dart';
+import '../../features/routines/models/routine_occurrence.dart';
+import '../../features/routines/presentation/routine_detail_screen.dart';
+import '../../features/routines/providers/routine_providers.dart';
 import '../../features/schedule/models/planned_session.dart';
 import '../../features/schedule/presentation/today_screen.dart';
 import '../../features/schedule/providers/rescheduling_providers.dart';
@@ -38,6 +42,8 @@ class _NotificationCoordinatorState
   ProviderSubscription<AsyncValue<List<Task>>>? _tasksSub;
   ProviderSubscription<AsyncValue<NotificationPreferences>>? _prefsSub;
   ProviderSubscription<AsyncValue<List<LearningGoal>>>? _goalsSub;
+  ProviderSubscription<AsyncValue<List<Routine>>>? _routinesSub;
+  ProviderSubscription<AsyncValue<List<RoutineOccurrence>>>? _routineOccurrencesSub;
   ProviderSubscription<AsyncValue<List<GoalFeasibilityReport>>>?
   _goalReportsSub;
   ProviderSubscription<AsyncValue<List<WorkloadWarning>>>? _warningsSub;
@@ -47,6 +53,9 @@ class _NotificationCoordinatorState
   List<PlannedSession> _previousSessions = const [];
   List<Task> _tasks = const [];
   List<LearningGoal> _goals = const [];
+  List<Routine> _routines = const [];
+  List<RoutineOccurrence> _routineOccurrences = const [];
+  List<RoutineOccurrence> _previousRoutineOccurrences = const [];
   NotificationPreferences? _preferences;
   List<GoalFeasibilityReport> _goalReports = const [];
   List<WorkloadWarning> _workloadWarnings = const [];
@@ -66,6 +75,8 @@ class _NotificationCoordinatorState
     _tasksSub?.close();
     _prefsSub?.close();
     _goalsSub?.close();
+    _routinesSub?.close();
+    _routineOccurrencesSub?.close();
     _goalReportsSub?.close();
     _warningsSub?.close();
     unawaited(_intentSub?.cancel());
@@ -109,6 +120,7 @@ class _NotificationCoordinatorState
       next.whenData((preferences) {
         _preferences = preferences;
         unawaited(_syncSessionNotifications());
+        unawaited(_syncRoutineNotifications());
         unawaited(_syncRiskNotifications());
       });
     }, fireImmediately: true);
@@ -119,6 +131,25 @@ class _NotificationCoordinatorState
         unawaited(_syncRiskNotifications());
       });
     }, fireImmediately: true);
+
+    _routinesSub = ref.listenManual(watchAllRoutinesProvider, (_, next) {
+      next.whenData((routines) {
+        _routines = routines;
+        unawaited(_syncRoutineNotifications());
+      });
+    }, fireImmediately: true);
+
+    _routineOccurrencesSub = ref.listenManual(
+      watchAllRoutineOccurrencesProvider,
+      (_, next) {
+        next.whenData((occurrences) {
+          _previousRoutineOccurrences = _routineOccurrences;
+          _routineOccurrences = occurrences;
+          unawaited(_syncRoutineNotifications());
+        });
+      },
+      fireImmediately: true,
+    );
 
     _goalReportsSub = ref.listenManual(goalFeasibilityReportsProvider, (
       _,
@@ -219,6 +250,40 @@ class _NotificationCoordinatorState
     }
   }
 
+  Future<void> _syncRoutineNotifications() async {
+    if (!_notificationsAvailable) {
+      return;
+    }
+    final preferences = _preferences;
+    if (preferences == null) {
+      return;
+    }
+
+    try {
+      final syncService = await ref.read(notificationSyncServiceProvider.future);
+      final now = DateTime.now();
+      await syncService.cancelRemovedRoutineReminders(
+        previousOccurrences: _previousRoutineOccurrences,
+        currentOccurrences: _routineOccurrences,
+      );
+      await syncService.syncRoutineReminders(
+        routines: _routines,
+        occurrences: _routineOccurrences,
+        preferences: preferences,
+        now: now,
+      );
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'study_flow',
+          context: ErrorDescription('during routine notification sync'),
+        ),
+      );
+    }
+  }
+
   Future<void> _handleIntent(NotificationIntent intent) async {
     try {
       switch (intent.type) {
@@ -249,6 +314,16 @@ class _NotificationCoordinatorState
           appNavigatorKey.currentState?.push(
             MaterialPageRoute<void>(builder: (_) => const FocusSessionScreen()),
           );
+          return;
+        case NotificationIntentType.routineReminder:
+          ref.read(homeTabIndexProvider.notifier).setTab(AppTab.today);
+          if (intent.routineId != null) {
+            appNavigatorKey.currentState?.push(
+              MaterialPageRoute<void>(
+                builder: (_) => RoutineDetailScreen(routineId: intent.routineId!),
+              ),
+            );
+          }
           return;
         case NotificationIntentType.missedSession:
           ref.read(homeTabIndexProvider.notifier).setTab(AppTab.today);

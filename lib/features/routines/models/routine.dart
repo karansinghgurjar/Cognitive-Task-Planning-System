@@ -36,6 +36,8 @@ class Routine {
     this.energyType,
     this.colorHex,
     this.iconName,
+    this.remindersEnabled = false,
+    this.reminderLeadMinutes,
   }) : title = title.trim(),
        updatedAt = updatedAt ?? createdAt,
        anchorDate = normalizeDate(anchorDate),
@@ -75,6 +77,8 @@ class Routine {
   String? energyType;
   String? colorHex;
   String? iconName;
+  late bool remindersEnabled;
+  int? reminderLeadMinutes;
 
   Routine copyWith({
     String? id,
@@ -113,6 +117,9 @@ class Routine {
     bool clearColorHex = false,
     String? iconName,
     bool clearIconName = false,
+    bool? remindersEnabled,
+    int? reminderLeadMinutes,
+    bool clearReminderLeadMinutes = false,
   }) {
     final routine = Routine(
       id: id ?? this.id,
@@ -150,6 +157,10 @@ class Routine {
       energyType: clearEnergyType ? null : energyType ?? this.energyType,
       colorHex: clearColorHex ? null : colorHex ?? this.colorHex,
       iconName: clearIconName ? null : iconName ?? this.iconName,
+      remindersEnabled: remindersEnabled ?? this.remindersEnabled,
+      reminderLeadMinutes: clearReminderLeadMinutes
+          ? null
+          : reminderLeadMinutes ?? this.reminderLeadMinutes,
     )..isarId = isarId;
 
     return routine;
@@ -242,6 +253,13 @@ class Routine {
         timeWindowStartMinuteOfDay! >= timeWindowEndMinuteOfDay!) {
       throw ArgumentError(
         'Time window start must be earlier than time window end.',
+      );
+    }
+    if (reminderLeadMinutes != null && reminderLeadMinutes! < 0) {
+      throw ArgumentError.value(
+        reminderLeadMinutes,
+        'reminderLeadMinutes',
+        'Reminder lead time must be 0 or greater.',
       );
     }
   }

@@ -15,6 +15,7 @@ void notificationTapBackground(NotificationResponse response) {}
 
 enum NotificationIntentType {
   sessionReminder,
+  routineReminder,
   missedSession,
   dailySummary,
   goalRisk,
@@ -29,12 +30,16 @@ class NotificationIntent {
     required this.type,
     this.action = NotificationIntentAction.open,
     this.sessionId,
+    this.routineId,
+    this.occurrenceId,
     this.goalId,
   });
 
   final NotificationIntentType type;
   final NotificationIntentAction action;
   final String? sessionId;
+  final String? routineId;
+  final String? occurrenceId;
   final String? goalId;
 }
 
@@ -71,6 +76,7 @@ class NotificationService {
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   static const sessionReminderChannelId = 'session_reminders';
+  static const routineReminderChannelId = 'routine_reminders';
   static const sessionAlertChannelId = 'session_alerts';
   static const plannerSummaryChannelId = 'planner_summary';
   static const testChannelId = 'test_notifications';
@@ -167,6 +173,41 @@ class NotificationService {
   Future<void> cancelNotification(int id) async {
     await initialize();
     await _plugin.cancel(id: id);
+  }
+
+  Future<void> scheduleRoutineReminder({
+    required String occurrenceId,
+    required String routineId,
+    required DateTime when,
+    required String title,
+    required String body,
+  }) async {
+    await initialize();
+    await cancelRoutineReminder(occurrenceId);
+    if (!when.isAfter(DateTime.now())) {
+      return;
+    }
+    await _scheduleZonedNotification(
+      request: ScheduledNotificationRequest(
+        id: _routineReminderId(occurrenceId),
+        when: when,
+        title: title,
+        body: body,
+        payload: encodePayload(
+          NotificationIntent(
+            type: NotificationIntentType.routineReminder,
+            routineId: routineId,
+            occurrenceId: occurrenceId,
+          ),
+        ),
+      ),
+      channelId: routineReminderChannelId,
+    );
+  }
+
+  Future<void> cancelRoutineReminder(String occurrenceId) async {
+    await initialize();
+    await _plugin.cancel(id: _routineReminderId(occurrenceId));
   }
 
   Future<void> scheduleDailySummaryNotification(
@@ -317,6 +358,8 @@ class NotificationService {
       'type': intent.type.name,
       'action': intent.action.name,
       if (intent.sessionId != null) 'sessionId': intent.sessionId,
+      if (intent.routineId != null) 'routineId': intent.routineId,
+      if (intent.occurrenceId != null) 'occurrenceId': intent.occurrenceId,
       if (intent.goalId != null) 'goalId': intent.goalId,
     });
   }
@@ -344,6 +387,8 @@ class NotificationService {
         type: type,
         action: action,
         sessionId: decoded['sessionId'] as String?,
+        routineId: decoded['routineId'] as String?,
+        occurrenceId: decoded['occurrenceId'] as String?,
         goalId: decoded['goalId'] as String?,
       );
     } catch (_) {
@@ -389,6 +434,14 @@ class NotificationService {
         sessionReminderChannelId,
         'Session Reminders',
         description: 'Reminders for upcoming focus sessions',
+        importance: Importance.high,
+      ),
+    );
+    await android.createNotificationChannel(
+      const AndroidNotificationChannel(
+        routineReminderChannelId,
+        'Routine Reminders',
+        description: 'Reminders for scheduled routine blocks',
         importance: Importance.high,
       ),
     );
@@ -494,6 +547,8 @@ class NotificationService {
   static int _missedSessionId(String sessionId) =>
       _stableId('missedSession|$sessionId');
   static int _dailySummaryId() => _stableId('dailySummary');
+  static int _routineReminderId(String occurrenceId) =>
+      _stableId('routineReminder|$occurrenceId');
 
   static int stableMissedSessionNotificationId(String sessionId) =>
       _missedSessionId(sessionId);

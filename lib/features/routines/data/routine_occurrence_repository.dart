@@ -76,6 +76,47 @@ class RoutineOccurrenceRepository {
     });
   }
 
+  Future<List<RoutineOccurrence>> getOccurrencesForRoutine(
+    String routineId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    var query = _isar.routineOccurrences.filter().routineIdEqualTo(routineId);
+    if (startDate != null) {
+      query = query.and().occurrenceDateGreaterThan(
+        normalizeDate(startDate),
+        include: true,
+      );
+    }
+    if (endDate != null) {
+      query = query.and().occurrenceDateLessThan(
+        normalizeDate(endDate),
+        include: true,
+      );
+    }
+    final occurrences = await query.findAll();
+    occurrences.sort(_compareOccurrences);
+    return occurrences;
+  }
+
+  Future<void> deleteOccurrenceIds(List<String> occurrenceIds) async {
+    if (occurrenceIds.isEmpty) {
+      return;
+    }
+    final occurrences = await _isar.routineOccurrences
+        .filter()
+        .anyOf(occurrenceIds, (query, id) => query.idEqualTo(id))
+        .findAll();
+    if (occurrences.isEmpty) {
+      return;
+    }
+    await _isar.writeTxn(() async {
+      await _isar.routineOccurrences.deleteAll(
+        occurrences.map((occurrence) => occurrence.isarId).toList(),
+      );
+    });
+  }
+
   Future<void> replaceFutureOccurrencesInRange({
     required DateTime start,
     required DateTime end,

@@ -13,6 +13,7 @@ import '../providers/routine_providers.dart';
 class RoutineListCard extends ConsumerWidget {
   const RoutineListCard({
     required this.routine,
+    required this.onOpen,
     required this.onEdit,
     required this.onArchiveToggle,
     required this.onDelete,
@@ -20,6 +21,7 @@ class RoutineListCard extends ConsumerWidget {
   });
 
   final Routine routine;
+  final VoidCallback onOpen;
   final VoidCallback onEdit;
   final VoidCallback onArchiveToggle;
   final VoidCallback onDelete;
@@ -30,7 +32,7 @@ class RoutineListCard extends ConsumerWidget {
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
-        onTap: onEdit,
+        onTap: onOpen,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -168,6 +170,14 @@ class RoutineOccurrenceCard extends ConsumerWidget {
                           const SizedBox(height: 4),
                           Text(occurrence.schedulingNote!),
                         ],
+                        if (occurrence.isManualOverride) ...[
+                          const SizedBox(height: 4),
+                          const Text('Manual time preserved'),
+                        ],
+                        if (occurrence.isRecoveryInstance) ...[
+                          const SizedBox(height: 4),
+                          const Text('Recovery block'),
+                        ],
                         if (routine != null) ...[
                           const SizedBox(height: 4),
                           Text(formatRoutineRepeatSummary(routine)),
@@ -180,6 +190,25 @@ class RoutineOccurrenceCard extends ConsumerWidget {
                 ],
               ),
               if (showInlineActions && canAct) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (occurrence.needsAttention)
+                      const AppStatusChip(label: 'Needs placement'),
+                    if (occurrence.isManualOverride)
+                      const AppStatusChip(label: 'Manual override'),
+                    if (occurrence.isRecoveryInstance)
+                      const AppStatusChip(label: 'Recovery'),
+                    if ((routine?.remindersEnabled ?? false) &&
+                        occurrence.scheduledStart != null)
+                      AppStatusChip(
+                        label:
+                            'Reminder ${routine!.reminderLeadMinutes ?? 10}m before',
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,

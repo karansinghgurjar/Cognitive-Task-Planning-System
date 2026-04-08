@@ -17,6 +17,8 @@ class RoutineConsistencySummary {
     required this.lastCompletedAt,
     required this.lastMissedAt,
     required this.totalCompletedMinutes,
+    required this.healthLabel,
+    required this.trendLabel,
   });
 
   final String routineId;
@@ -30,6 +32,8 @@ class RoutineConsistencySummary {
   final DateTime? lastCompletedAt;
   final DateTime? lastMissedAt;
   final int totalCompletedMinutes;
+  final String healthLabel;
+  final String trendLabel;
 
   String get insightLabel {
     if (closedOccurrences == 0) {
@@ -91,6 +95,15 @@ class RoutineConsistencyService {
         0,
         (sum, item) => sum + (item.durationMinutes ?? routine.preferredDurationMinutes ?? 0),
       ),
+      healthLabel: _healthLabel(
+        completedCount: completed.length,
+        missedCount: missed.length,
+        closedCount: closed,
+      ),
+      trendLabel: _trendLabel(
+        current: _windowCompletionRate(filtered),
+        previous: _previousWindowCompletionRate(occurrences, now, range),
+      ),
     );
   }
 
@@ -117,5 +130,73 @@ class RoutineConsistencyService {
       return value;
     }
     return current;
+  }
+
+  String _healthLabel({
+    required int completedCount,
+    required int missedCount,
+    required int closedCount,
+  }) {
+    if (closedCount == 0) {
+      return 'Inactive';
+    }
+    final completionRate = completedCount / closedCount;
+    if (completionRate >= 0.8) {
+      return 'On track';
+    }
+    if (missedCount > completedCount) {
+      return 'At risk';
+    }
+    return 'Mixed';
+  }
+
+  String _trendLabel({
+    required double current,
+    required double? previous,
+  }) {
+    if (previous == null) {
+      return 'No comparison yet';
+    }
+    if (current >= previous + 0.15) {
+      return 'Improving over the previous window';
+    }
+    if (current <= previous - 0.15) {
+      return 'Behind the previous window';
+    }
+    return 'Holding steady';
+  }
+
+  double _windowCompletionRate(List<RoutineOccurrence> occurrences) {
+    final completed = occurrences
+        .where((item) => item.status == RoutineOccurrenceStatus.completed)
+        .length;
+    final skipped = occurrences
+        .where((item) => item.status == RoutineOccurrenceStatus.skipped)
+        .length;
+    final missed = occurrences
+        .where((item) => item.status == RoutineOccurrenceStatus.missed)
+        .length;
+    final closed = completed + skipped + missed;
+    return closed == 0 ? 0 : completed / closed;
+  }
+
+  double? _previousWindowCompletionRate(
+    List<RoutineOccurrence> occurrences,
+    DateTime now,
+    RoutineAnalyticsRange range,
+  ) {
+    if (range == RoutineAnalyticsRange.allTime) {
+      return null;
+    }
+    final days = range == RoutineAnalyticsRange.last7Days ? 7 : 30;
+    final end = DateTime(now.year, now.month, now.day).subtract(
+      Duration(days: days),
+    );
+    final start = end.subtract(Duration(days: days - 1));
+    final previous = occurrences.where((item) {
+      return !item.occurrenceDate.isBefore(start) &&
+          !item.occurrenceDate.isAfter(end);
+    }).toList();
+    return _windowCompletionRate(previous);
   }
 }

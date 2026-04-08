@@ -1,15 +1,26 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import 'routine_reconciliation_service.dart';
 import '../domain/routine_enums.dart';
 import '../domain/routine_repeat_rule.dart';
 import '../domain/routine_repository.dart';
 import '../domain/routine_sync_service.dart';
 import '../models/routine.dart';
+import '../models/routine_occurrence.dart';
 
 typedef RoutineRepositoryLoader = Future<RoutineRepositoryContract> Function();
 typedef RoutineOccurrenceDelete = Future<void> Function(String routineId);
+typedef RoutineOccurrencesLoader =
+    Future<List<RoutineOccurrence>> Function(String routineId);
+typedef RoutineOccurrencesSaver =
+    Future<void> Function(List<RoutineOccurrence> occurrences);
+typedef RoutineOccurrenceDeleteByIds =
+    Future<void> Function(List<String> occurrenceIds);
 typedef RoutineSyncLoader = Future<RoutineSyncService> Function();
+typedef RoutineReconciliationLoader =
+    Future<RoutineReconciliationService> Function();
+typedef RoutineReplanHook = Future<void> Function(String routineId);
 
 class RoutineFormState {
   const RoutineFormState({
@@ -30,6 +41,8 @@ class RoutineFormState {
     required this.autoRescheduleMissed,
     required this.countsTowardConsistency,
     required this.routineTypeIndex,
+    required this.remindersEnabled,
+    required this.reminderLeadMinutes,
     required this.isSaving,
     required this.validationErrors,
     required this.hasUnsavedChanges,
@@ -52,6 +65,8 @@ class RoutineFormState {
   final bool autoRescheduleMissed;
   final bool countsTowardConsistency;
   final int routineTypeIndex;
+  final bool remindersEnabled;
+  final int? reminderLeadMinutes;
   final bool isSaving;
   final Map<String, String> validationErrors;
   final bool hasUnsavedChanges;
@@ -81,6 +96,9 @@ class RoutineFormState {
     bool? autoRescheduleMissed,
     bool? countsTowardConsistency,
     int? routineTypeIndex,
+    bool? remindersEnabled,
+    int? reminderLeadMinutes,
+    bool clearReminderLeadMinutes = false,
     bool? isSaving,
     Map<String, String>? validationErrors,
     bool? hasUnsavedChanges,
@@ -115,6 +133,10 @@ class RoutineFormState {
       countsTowardConsistency:
           countsTowardConsistency ?? this.countsTowardConsistency,
       routineTypeIndex: routineTypeIndex ?? this.routineTypeIndex,
+      remindersEnabled: remindersEnabled ?? this.remindersEnabled,
+      reminderLeadMinutes: clearReminderLeadMinutes
+          ? null
+          : reminderLeadMinutes ?? this.reminderLeadMinutes,
       isSaving: isSaving ?? this.isSaving,
       validationErrors: validationErrors ?? this.validationErrors,
       hasUnsavedChanges: hasUnsavedChanges ?? this.hasUnsavedChanges,
@@ -128,22 +150,58 @@ class RoutineFormController extends StateNotifier<RoutineFormState> {
   RoutineFormController({
     required RoutineRepositoryLoader loadRepository,
     required RoutineOccurrenceDelete deleteOccurrencesForRoutine,
+    RoutineOccurrencesLoader? loadOccurrencesForRoutine,
+    RoutineOccurrencesSaver? saveOccurrences,
+    RoutineOccurrenceDeleteByIds? deleteOccurrenceIds,
     required RoutineSyncLoader loadSyncService,
+    RoutineReconciliationLoader? loadReconciliationService,
+    RoutineReplanHook? replanRoutineOccurrences,
     required DateTime Function() nowProvider,
     String Function()? idGenerator,
     Routine? initialRoutine,
   }) : _loadRepository = loadRepository,
        _deleteOccurrencesForRoutine = deleteOccurrencesForRoutine,
+       _loadOccurrencesForRoutine =
+           loadOccurrencesForRoutine ?? _emptyOccurrenceLoader,
+       _saveOccurrences = saveOccurrences ?? _noopOccurrenceSaver,
+       _deleteOccurrenceIds = deleteOccurrenceIds ?? _noopDeleteOccurrenceIds,
        _loadSyncService = loadSyncService,
+       _loadReconciliationService =
+           loadReconciliationService ?? _defaultReconciliationLoader,
+       _replanRoutineOccurrences =
+           replanRoutineOccurrences ?? _noopReplanRoutineOccurrences,
        _nowProvider = nowProvider,
        _idGenerator = idGenerator ?? const Uuid().v4,
        super(_buildInitialState(initialRoutine, nowProvider()));
 
   final RoutineRepositoryLoader _loadRepository;
   final RoutineOccurrenceDelete _deleteOccurrencesForRoutine;
+  final RoutineOccurrencesLoader _loadOccurrencesForRoutine;
+  final RoutineOccurrencesSaver _saveOccurrences;
+  final RoutineOccurrenceDeleteByIds _deleteOccurrenceIds;
   final RoutineSyncLoader _loadSyncService;
+  final RoutineReconciliationLoader _loadReconciliationService;
+  final RoutineReplanHook _replanRoutineOccurrences;
   final DateTime Function() _nowProvider;
   final String Function() _idGenerator;
+
+  static Future<List<RoutineOccurrence>> _emptyOccurrenceLoader(
+    String routineId,
+  ) async => const [];
+
+  static Future<void> _noopOccurrenceSaver(
+    List<RoutineOccurrence> occurrences,
+  ) async {}
+
+  static Future<void> _noopDeleteOccurrenceIds(
+    List<String> occurrenceIds,
+  ) async {}
+
+  static Future<RoutineReconciliationService> _defaultReconciliationLoader() async {
+    return RoutineReconciliationService();
+  }
+
+  static Future<void> _noopReplanRoutineOccurrences(String routineId) async {}
 
   static RoutineFormState _buildInitialState(
     Routine? routine,
@@ -168,6 +226,8 @@ class RoutineFormController extends StateNotifier<RoutineFormState> {
         autoRescheduleMissed: true,
         countsTowardConsistency: true,
         routineTypeIndex: 4,
+        remindersEnabled: false,
+        reminderLeadMinutes: 10,
         isSaving: false,
         validationErrors: const {},
         hasUnsavedChanges: false,
@@ -192,6 +252,8 @@ class RoutineFormController extends StateNotifier<RoutineFormState> {
       autoRescheduleMissed: routine.autoRescheduleMissed,
       countsTowardConsistency: routine.countsTowardConsistency,
       routineTypeIndex: routine.routineType.index,
+      remindersEnabled: routine.remindersEnabled,
+      reminderLeadMinutes: routine.reminderLeadMinutes ?? 10,
       isSaving: false,
       validationErrors: const {},
       hasUnsavedChanges: false,
@@ -277,6 +339,21 @@ class RoutineFormController extends StateNotifier<RoutineFormState> {
   void setRoutineTypeIndex(int value) =>
       _update(state.copyWith(routineTypeIndex: value));
 
+  void setRemindersEnabled(bool value) => _update(
+        state.copyWith(
+          remindersEnabled: value,
+          reminderLeadMinutes: value ? state.reminderLeadMinutes ?? 10 : null,
+          clearReminderLeadMinutes: !value,
+        ),
+      );
+
+  void setReminderLeadMinutes(int? value) => _update(
+        state.copyWith(
+          reminderLeadMinutes: value,
+          clearReminderLeadMinutes: value == null,
+        ),
+      );
+
   Map<String, String> validate() {
     final errors = <String, String>{};
     if (state.title.trim().isEmpty) {
@@ -299,6 +376,10 @@ class RoutineFormController extends StateNotifier<RoutineFormState> {
         state.timeWindowStartMinuteOfDay! >= state.timeWindowEndMinuteOfDay!) {
       errors['timeWindow'] = 'Window start must be earlier than window end.';
     }
+    if (state.remindersEnabled &&
+        (state.reminderLeadMinutes == null || state.reminderLeadMinutes! < 0)) {
+      errors['reminderLeadMinutes'] = 'Reminder lead time must be 0 or greater.';
+    }
     state = state.copyWith(validationErrors: errors);
     return errors;
   }
@@ -316,18 +397,40 @@ class RoutineFormController extends StateNotifier<RoutineFormState> {
     try {
       final repository = await _loadRepository();
       final syncService = await _loadSyncService();
+      final reconciliationService = await _loadReconciliationService();
       final routine = _buildRoutine(now);
 
       if (state.isEditMode) {
+        final initialRoutine = state.initialRoutine!;
+        final existingOccurrences = await _loadOccurrencesForRoutine(initialRoutine.id);
         await repository.updateRoutine(routine);
+        final plan = reconciliationService.reconcile(
+          previousRoutine: initialRoutine,
+          nextRoutine: routine,
+          existingOccurrences: existingOccurrences,
+          now: now,
+        );
+        await _deleteOccurrenceIds(plan.occurrenceIdsToRemove);
+        await _saveOccurrences(plan.occurrencesToUpsert);
+        if (!routine.isArchived) {
+          await syncService.syncRoutine(
+            routine.id,
+            startDate: now.subtract(const Duration(days: 7)),
+            endDate: now.add(const Duration(days: 30)),
+          );
+        }
+        if (plan.shouldRunSchedulingIntegration) {
+          await _replanRoutineOccurrences(routine.id);
+        }
       } else {
         await repository.saveRoutine(routine);
+        await syncService.syncRoutine(
+          routine.id,
+          startDate: now.subtract(const Duration(days: 7)),
+          endDate: now.add(const Duration(days: 30)),
+        );
+        await _replanRoutineOccurrences(routine.id);
       }
-      await syncService.syncRoutine(
-        routine.id,
-        startDate: now.subtract(const Duration(days: 7)),
-        endDate: now.add(const Duration(days: 30)),
-      );
       state = _buildInitialState(routine, now);
       return routine;
     } finally {
@@ -345,10 +448,29 @@ class RoutineFormController extends StateNotifier<RoutineFormState> {
     state = state.copyWith(isSaving: true);
     try {
       final repository = await _loadRepository();
+      final now = _nowProvider();
       if (routine.isArchived) {
         await repository.unarchiveRoutine(routine.id);
+        final syncService = await _loadSyncService();
+        await syncService.syncRoutine(
+          routine.id,
+          startDate: now.subtract(const Duration(days: 7)),
+          endDate: now.add(const Duration(days: 30)),
+        );
+        await _replanRoutineOccurrences(routine.id);
       } else {
+        final futurePendingIds = (await _loadOccurrencesForRoutine(routine.id))
+            .where(
+              (occurrence) =>
+                  occurrence.status == RoutineOccurrenceStatus.pending &&
+                  !occurrence.occurrenceDate.isBefore(
+                    DateTime(now.year, now.month, now.day),
+                  ),
+            )
+            .map((occurrence) => occurrence.id)
+            .toList();
         await repository.archiveRoutine(routine.id);
+        await _deleteOccurrenceIds(futurePendingIds);
       }
       final updated = (await repository.getRoutineById(routine.id)) ?? routine;
       state = _buildInitialState(updated, _nowProvider());
@@ -414,6 +536,10 @@ class RoutineFormController extends StateNotifier<RoutineFormState> {
           countsTowardConsistency: state.countsTowardConsistency,
           routineType: RoutineType.values[state.routineTypeIndex],
           categoryId: RoutineType.values[state.routineTypeIndex].defaultCategoryTag,
+          remindersEnabled: state.remindersEnabled,
+          reminderLeadMinutes:
+              state.remindersEnabled ? state.reminderLeadMinutes : null,
+          clearReminderLeadMinutes: !state.remindersEnabled,
         ) ??
         Routine(
           id: _idGenerator(),
@@ -432,6 +558,9 @@ class RoutineFormController extends StateNotifier<RoutineFormState> {
           countsTowardConsistency: state.countsTowardConsistency,
           routineType: RoutineType.values[state.routineTypeIndex],
           categoryId: RoutineType.values[state.routineTypeIndex].defaultCategoryTag,
+          remindersEnabled: state.remindersEnabled,
+          reminderLeadMinutes:
+              state.remindersEnabled ? state.reminderLeadMinutes : null,
         );
   }
 

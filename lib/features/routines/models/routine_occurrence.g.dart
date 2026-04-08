@@ -37,79 +37,89 @@ const RoutineOccurrenceSchema = CollectionSchema(
       name: r'isAutoScheduled',
       type: IsarType.bool,
     ),
-    r'isRecoveryInstance': PropertySchema(
+    r'isManualOverride': PropertySchema(
       id: 4,
+      name: r'isManualOverride',
+      type: IsarType.bool,
+    ),
+    r'isRecoveryInstance': PropertySchema(
+      id: 5,
       name: r'isRecoveryInstance',
       type: IsarType.bool,
     ),
     r'missedAt': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'missedAt',
       type: IsarType.dateTime,
     ),
     r'needsAttention': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'needsAttention',
       type: IsarType.bool,
     ),
     r'notes': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'notes',
       type: IsarType.string,
     ),
     r'occurrenceDate': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'occurrenceDate',
       type: IsarType.dateTime,
     ),
     r'occurrenceKey': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'occurrenceKey',
       type: IsarType.string,
     ),
     r'recoveredFromOccurrenceId': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'recoveredFromOccurrenceId',
       type: IsarType.string,
     ),
+    r'recoveryDismissedAt': PropertySchema(
+      id: 12,
+      name: r'recoveryDismissedAt',
+      type: IsarType.dateTime,
+    ),
     r'routineId': PropertySchema(
-      id: 11,
+      id: 13,
       name: r'routineId',
       type: IsarType.string,
     ),
     r'scheduledEnd': PropertySchema(
-      id: 12,
+      id: 14,
       name: r'scheduledEnd',
       type: IsarType.dateTime,
     ),
     r'scheduledStart': PropertySchema(
-      id: 13,
+      id: 15,
       name: r'scheduledStart',
       type: IsarType.dateTime,
     ),
     r'schedulingNote': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'schedulingNote',
       type: IsarType.string,
     ),
     r'skippedAt': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'skippedAt',
       type: IsarType.dateTime,
     ),
     r'sourceTaskId': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'sourceTaskId',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'status',
       type: IsarType.string,
       enumMap: _RoutineOccurrencestatusEnumValueMap,
     ),
     r'updatedAt': PropertySchema(
-      id: 18,
+      id: 20,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -228,21 +238,23 @@ void _routineOccurrenceSerialize(
   writer.writeDateTime(offsets[1], object.createdAt);
   writer.writeString(offsets[2], object.id);
   writer.writeBool(offsets[3], object.isAutoScheduled);
-  writer.writeBool(offsets[4], object.isRecoveryInstance);
-  writer.writeDateTime(offsets[5], object.missedAt);
-  writer.writeBool(offsets[6], object.needsAttention);
-  writer.writeString(offsets[7], object.notes);
-  writer.writeDateTime(offsets[8], object.occurrenceDate);
-  writer.writeString(offsets[9], object.occurrenceKey);
-  writer.writeString(offsets[10], object.recoveredFromOccurrenceId);
-  writer.writeString(offsets[11], object.routineId);
-  writer.writeDateTime(offsets[12], object.scheduledEnd);
-  writer.writeDateTime(offsets[13], object.scheduledStart);
-  writer.writeString(offsets[14], object.schedulingNote);
-  writer.writeDateTime(offsets[15], object.skippedAt);
-  writer.writeString(offsets[16], object.sourceTaskId);
-  writer.writeString(offsets[17], object.status.name);
-  writer.writeDateTime(offsets[18], object.updatedAt);
+  writer.writeBool(offsets[4], object.isManualOverride);
+  writer.writeBool(offsets[5], object.isRecoveryInstance);
+  writer.writeDateTime(offsets[6], object.missedAt);
+  writer.writeBool(offsets[7], object.needsAttention);
+  writer.writeString(offsets[8], object.notes);
+  writer.writeDateTime(offsets[9], object.occurrenceDate);
+  writer.writeString(offsets[10], object.occurrenceKey);
+  writer.writeString(offsets[11], object.recoveredFromOccurrenceId);
+  writer.writeDateTime(offsets[12], object.recoveryDismissedAt);
+  writer.writeString(offsets[13], object.routineId);
+  writer.writeDateTime(offsets[14], object.scheduledEnd);
+  writer.writeDateTime(offsets[15], object.scheduledStart);
+  writer.writeString(offsets[16], object.schedulingNote);
+  writer.writeDateTime(offsets[17], object.skippedAt);
+  writer.writeString(offsets[18], object.sourceTaskId);
+  writer.writeString(offsets[19], object.status.name);
+  writer.writeDateTime(offsets[20], object.updatedAt);
 }
 
 RoutineOccurrence _routineOccurrenceDeserialize(
@@ -256,25 +268,27 @@ RoutineOccurrence _routineOccurrenceDeserialize(
     createdAt: reader.readDateTime(offsets[1]),
     id: reader.readString(offsets[2]),
     isAutoScheduled: reader.readBoolOrNull(offsets[3]) ?? false,
-    isRecoveryInstance: reader.readBoolOrNull(offsets[4]) ?? false,
-    missedAt: reader.readDateTimeOrNull(offsets[5]),
-    needsAttention: reader.readBoolOrNull(offsets[6]) ?? false,
-    notes: reader.readStringOrNull(offsets[7]),
-    occurrenceDate: reader.readDateTime(offsets[8]),
-    recoveredFromOccurrenceId: reader.readStringOrNull(offsets[10]),
-    routineId: reader.readString(offsets[11]),
-    scheduledEnd: reader.readDateTimeOrNull(offsets[12]),
-    scheduledStart: reader.readDateTimeOrNull(offsets[13]),
-    schedulingNote: reader.readStringOrNull(offsets[14]),
-    skippedAt: reader.readDateTimeOrNull(offsets[15]),
-    sourceTaskId: reader.readStringOrNull(offsets[16]),
+    isManualOverride: reader.readBoolOrNull(offsets[4]) ?? false,
+    isRecoveryInstance: reader.readBoolOrNull(offsets[5]) ?? false,
+    missedAt: reader.readDateTimeOrNull(offsets[6]),
+    needsAttention: reader.readBoolOrNull(offsets[7]) ?? false,
+    notes: reader.readStringOrNull(offsets[8]),
+    occurrenceDate: reader.readDateTime(offsets[9]),
+    recoveredFromOccurrenceId: reader.readStringOrNull(offsets[11]),
+    recoveryDismissedAt: reader.readDateTimeOrNull(offsets[12]),
+    routineId: reader.readString(offsets[13]),
+    scheduledEnd: reader.readDateTimeOrNull(offsets[14]),
+    scheduledStart: reader.readDateTimeOrNull(offsets[15]),
+    schedulingNote: reader.readStringOrNull(offsets[16]),
+    skippedAt: reader.readDateTimeOrNull(offsets[17]),
+    sourceTaskId: reader.readStringOrNull(offsets[18]),
     status: _RoutineOccurrencestatusValueEnumMap[
-            reader.readStringOrNull(offsets[17])] ??
+            reader.readStringOrNull(offsets[19])] ??
         RoutineOccurrenceStatus.pending,
-    updatedAt: reader.readDateTimeOrNull(offsets[18]),
+    updatedAt: reader.readDateTimeOrNull(offsets[20]),
   );
   object.isarId = id;
-  object.occurrenceKey = reader.readString(offsets[9]);
+  object.occurrenceKey = reader.readString(offsets[10]);
   return object;
 }
 
@@ -296,34 +310,38 @@ P _routineOccurrenceDeserializeProp<P>(
     case 4:
       return (reader.readBoolOrNull(offset) ?? false) as P;
     case 5:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 6:
       return (reader.readBoolOrNull(offset) ?? false) as P;
+    case 6:
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 7:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBoolOrNull(offset) ?? false) as P;
     case 8:
-      return (reader.readDateTime(offset)) as P;
-    case 9:
-      return (reader.readString(offset)) as P;
-    case 10:
       return (reader.readStringOrNull(offset)) as P;
-    case 11:
+    case 9:
+      return (reader.readDateTime(offset)) as P;
+    case 10:
       return (reader.readString(offset)) as P;
+    case 11:
+      return (reader.readStringOrNull(offset)) as P;
     case 12:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 13:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 14:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 15:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 16:
       return (reader.readStringOrNull(offset)) as P;
     case 17:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 18:
+      return (reader.readStringOrNull(offset)) as P;
+    case 19:
       return (_RoutineOccurrencestatusValueEnumMap[
               reader.readStringOrNull(offset)] ??
           RoutineOccurrenceStatus.pending) as P;
-    case 18:
+    case 20:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1063,6 +1081,16 @@ extension RoutineOccurrenceQueryFilter
   }
 
   QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterFilterCondition>
+      isManualOverrideEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isManualOverride',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterFilterCondition>
       isRecoveryInstanceEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -1710,6 +1738,80 @@ extension RoutineOccurrenceQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'recoveredFromOccurrenceId',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterFilterCondition>
+      recoveryDismissedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'recoveryDismissedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterFilterCondition>
+      recoveryDismissedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'recoveryDismissedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterFilterCondition>
+      recoveryDismissedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'recoveryDismissedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterFilterCondition>
+      recoveryDismissedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'recoveryDismissedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterFilterCondition>
+      recoveryDismissedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'recoveryDismissedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterFilterCondition>
+      recoveryDismissedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'recoveryDismissedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
       ));
     });
   }
@@ -2655,6 +2757,20 @@ extension RoutineOccurrenceQuerySortBy
   }
 
   QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterSortBy>
+      sortByIsManualOverride() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isManualOverride', Sort.asc);
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterSortBy>
+      sortByIsManualOverrideDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isManualOverride', Sort.desc);
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterSortBy>
       sortByIsRecoveryInstance() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isRecoveryInstance', Sort.asc);
@@ -2749,6 +2865,20 @@ extension RoutineOccurrenceQuerySortBy
       sortByRecoveredFromOccurrenceIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'recoveredFromOccurrenceId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterSortBy>
+      sortByRecoveryDismissedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recoveryDismissedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterSortBy>
+      sortByRecoveryDismissedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recoveryDismissedAt', Sort.desc);
     });
   }
 
@@ -2923,6 +3053,20 @@ extension RoutineOccurrenceQuerySortThenBy
   }
 
   QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterSortBy>
+      thenByIsManualOverride() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isManualOverride', Sort.asc);
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterSortBy>
+      thenByIsManualOverrideDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isManualOverride', Sort.desc);
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterSortBy>
       thenByIsRecoveryInstance() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isRecoveryInstance', Sort.asc);
@@ -3031,6 +3175,20 @@ extension RoutineOccurrenceQuerySortThenBy
       thenByRecoveredFromOccurrenceIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'recoveredFromOccurrenceId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterSortBy>
+      thenByRecoveryDismissedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recoveryDismissedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QAfterSortBy>
+      thenByRecoveryDismissedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recoveryDismissedAt', Sort.desc);
     });
   }
 
@@ -3178,6 +3336,13 @@ extension RoutineOccurrenceQueryWhereDistinct
   }
 
   QueryBuilder<RoutineOccurrence, RoutineOccurrence, QDistinct>
+      distinctByIsManualOverride() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isManualOverride');
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QDistinct>
       distinctByIsRecoveryInstance() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isRecoveryInstance');
@@ -3225,6 +3390,13 @@ extension RoutineOccurrenceQueryWhereDistinct
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'recoveredFromOccurrenceId',
           caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, RoutineOccurrence, QDistinct>
+      distinctByRecoveryDismissedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'recoveryDismissedAt');
     });
   }
 
@@ -3322,6 +3494,13 @@ extension RoutineOccurrenceQueryProperty
   }
 
   QueryBuilder<RoutineOccurrence, bool, QQueryOperations>
+      isManualOverrideProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isManualOverride');
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, bool, QQueryOperations>
       isRecoveryInstanceProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isRecoveryInstance');
@@ -3366,6 +3545,13 @@ extension RoutineOccurrenceQueryProperty
       recoveredFromOccurrenceIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'recoveredFromOccurrenceId');
+    });
+  }
+
+  QueryBuilder<RoutineOccurrence, DateTime?, QQueryOperations>
+      recoveryDismissedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'recoveryDismissedAt');
     });
   }
 
