@@ -27,6 +27,8 @@ class Routine {
     this.autoRescheduleMissed = false,
     this.countsTowardConsistency = true,
     this.linkedGoalId,
+    this.linkedProjectId,
+    this.sourceTemplateId,
     this.categoryId,
     List<String> tagIds = const [],
     this.routineType = RoutineType.custom,
@@ -65,6 +67,8 @@ class Routine {
   late bool autoRescheduleMissed;
   late bool countsTowardConsistency;
   String? linkedGoalId;
+  String? linkedProjectId;
+  String? sourceTemplateId;
   String? categoryId;
   late List<String> tagIds;
 
@@ -103,6 +107,10 @@ class Routine {
     bool? countsTowardConsistency,
     String? linkedGoalId,
     bool clearLinkedGoalId = false,
+    String? linkedProjectId,
+    bool clearLinkedProjectId = false,
+    String? sourceTemplateId,
+    bool clearSourceTemplateId = false,
     String? categoryId,
     bool clearCategoryId = false,
     List<String>? tagIds,
@@ -148,6 +156,12 @@ class Routine {
       countsTowardConsistency:
           countsTowardConsistency ?? this.countsTowardConsistency,
       linkedGoalId: clearLinkedGoalId ? null : linkedGoalId ?? this.linkedGoalId,
+      linkedProjectId: clearLinkedProjectId
+          ? null
+          : linkedProjectId ?? this.linkedProjectId,
+      sourceTemplateId: clearSourceTemplateId
+          ? null
+          : sourceTemplateId ?? this.sourceTemplateId,
       categoryId: clearCategoryId ? null : categoryId ?? this.categoryId,
       tagIds: tagIds ?? this.tagIds,
       routineType: routineType ?? this.routineType,

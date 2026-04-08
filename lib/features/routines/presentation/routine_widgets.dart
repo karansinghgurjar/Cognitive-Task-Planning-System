@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/error_handler.dart';
 import '../../../core/widgets/app_status_chip.dart';
+import '../../focus_session/providers/focus_session_providers.dart';
+import '../../schedule/providers/schedule_providers.dart';
+import '../../tasks/providers/task_providers.dart';
 import '../application/routine_formatters.dart';
 import '../domain/routine_enums.dart';
 import '../models/routine.dart';
@@ -246,6 +249,17 @@ class RoutineOccurrenceCard extends ConsumerWidget {
                       icon: const Icon(Icons.skip_next_rounded),
                       label: const Text('Skip'),
                     ),
+                    if (routine != null)
+                      TextButton.icon(
+                        onPressed: () => _startFocusSession(
+                          context,
+                          ref,
+                          routine,
+                          occurrence,
+                        ),
+                        icon: const Icon(Icons.timer_rounded),
+                        label: const Text('Start Focus'),
+                      ),
                   ],
                 ),
               ],
@@ -381,6 +395,22 @@ Future<void> showRoutineOccurrenceActionSheet(
                 ),
               if (canAct)
                 ListTile(
+                  leading: const Icon(Icons.timer_rounded),
+                  title: const Text('Start Focus Session'),
+                  onTap: item.routine == null
+                      ? null
+                      : () async {
+                          Navigator.of(context).pop();
+                          await _startFocusSession(
+                            context,
+                            ref,
+                            item.routine!,
+                            occurrence,
+                          );
+                        },
+                ),
+              if (canAct)
+                ListTile(
                   leading: const Icon(Icons.schedule_rounded),
                   title: const Text('Snooze 30 minutes'),
                   onTap: () async {
@@ -440,6 +470,36 @@ Future<void> _runOccurrenceAction(
         error,
         fallbackTitle: title,
         fallbackMessage: message,
+      );
+    }
+  }
+}
+
+Future<void> _startFocusSession(
+  BuildContext context,
+  WidgetRef ref,
+  Routine routine,
+  RoutineOccurrence occurrence,
+) async {
+  try {
+    final bridge = ref.read(routineFocusBridgeServiceProvider).createFocusArtifacts(
+          routine: routine,
+          occurrence: occurrence,
+        );
+    final taskRepository = await ref.read(taskRepositoryProvider.future);
+    await taskRepository.addTask(bridge.task);
+    final sessionRepository = await ref.read(plannedSessionRepositoryProvider.future);
+    await sessionRepository.addSession(bridge.session);
+    await ref
+        .read(focusSessionControllerProvider.notifier)
+        .startSession(bridge.session, bridge.task.title);
+  } catch (error) {
+    if (context.mounted) {
+      ErrorHandler.showSnackBar(
+        context,
+        error,
+        fallbackTitle: 'Focus session failed',
+        fallbackMessage: 'The routine block could not be launched as a focus session.',
       );
     }
   }

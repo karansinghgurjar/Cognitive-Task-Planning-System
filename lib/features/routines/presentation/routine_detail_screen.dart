@@ -7,6 +7,7 @@ import '../../../core/widgets/app_confirmation_dialog.dart';
 import '../../../core/widgets/app_status_chip.dart';
 import '../../goals/presentation/goal_detail_screen.dart';
 import '../../goals/providers/goal_providers.dart';
+import '../../integrations/providers/calendar_export_providers.dart';
 import '../application/routine_consistency_service.dart';
 import '../application/routine_formatters.dart';
 import '../domain/routine_enums.dart';
@@ -415,6 +416,73 @@ class _ActionsCard extends ConsumerWidget {
               },
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Replan Upcoming'),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () async {
+                try {
+                  final template = ref
+                      .read(routineTemplateServiceProvider)
+                      .buildTemplateFromRoutines(
+                        name: '${routine.title} Template',
+                        routines: [routine],
+                      );
+                  final repository = await ref.read(
+                    routineTemplateRepositoryProvider.future,
+                  );
+                  await repository.saveTemplate(template);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Saved as routine template.'),
+                      ),
+                    );
+                  }
+                } catch (error) {
+                  if (context.mounted) {
+                    ErrorHandler.showSnackBar(
+                      context,
+                      error,
+                      fallbackTitle: 'Template save failed',
+                      fallbackMessage:
+                          'The routine template could not be saved.',
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.bookmark_add_rounded),
+              label: const Text('Save Template'),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () async {
+                try {
+                  final ics = ref
+                      .read(routineCalendarExportServiceProvider)
+                      .generateRecurringRoutineIcs([routine], calendarName: routine.title);
+                  final result = await ref
+                      .read(calendarFileExportServiceProvider)
+                      .saveIcsFile(
+                        content: ics,
+                        suggestedName: '${routine.title}_routine.ics',
+                      );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(result.message)),
+                    );
+                  }
+                } catch (error) {
+                  if (context.mounted) {
+                    ErrorHandler.showSnackBar(
+                      context,
+                      error,
+                      fallbackTitle: 'Routine export failed',
+                      fallbackMessage:
+                          'The routine calendar file could not be created.',
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.file_download_rounded),
+              label: const Text('Export ICS'),
             ),
             TextButton.icon(
               onPressed: () async {

@@ -24,6 +24,7 @@ import '../../quick_capture/presentation/quick_capture_inbox_screen.dart';
 import '../../quick_capture/presentation/quick_capture_sheet.dart';
 import '../../quick_capture/providers/quick_capture_providers.dart';
 import '../../review/presentation/weekly_review_screen.dart';
+import '../../routines/application/routine_orchestration_service.dart';
 import '../../routines/domain/routine_enums.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/models/routine_occurrence.dart';
@@ -88,6 +89,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final unscheduledRoutineItemsAsync = ref.watch(
       unscheduledFlexibleRoutineOccurrencesProvider,
     );
+    final routinePlanningSummaryAsync = ref.watch(todayRoutinePlanningSummaryProvider);
 
     return Column(
       children: [
@@ -109,6 +111,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             todayRoutineOccurrencesAsync: todayRoutineOccurrencesAsync,
             recoverySuggestionsAsync: recoverySuggestionsAsync,
             unscheduledRoutineItemsAsync: unscheduledRoutineItemsAsync,
+            routinePlanningSummaryAsync: routinePlanningSummaryAsync,
           ),
         ),
       ],
@@ -130,6 +133,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     required AsyncValue<List<RoutineOccurrenceItem>> todayRoutineOccurrencesAsync,
     required AsyncValue<List<RoutineRecoverySuggestion>> recoverySuggestionsAsync,
     required AsyncValue<List<RoutineOccurrenceItem>> unscheduledRoutineItemsAsync,
+    required AsyncValue<RoutinePlanningSummary> routinePlanningSummaryAsync,
   }) {
     final header = _TodayHeader(
       isGenerating: isGenerating,
@@ -225,6 +229,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           ],
           const _QuickCaptureTodayCard(),
           const SizedBox(height: 16),
+          _RoutineDailyOrchestrationCard(summaryAsync: routinePlanningSummaryAsync),
+          const SizedBox(height: 16),
           _TodayRecommendationCard(
             summaryAsync: recommendationSummaryAsync,
             tasks: tasks,
@@ -265,6 +271,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           const SizedBox(height: 16),
         ],
         const _QuickCaptureTodayCard(),
+        const SizedBox(height: 16),
+        _RoutineDailyOrchestrationCard(summaryAsync: routinePlanningSummaryAsync),
         const SizedBox(height: 16),
         _TodayRecommendationCard(
           summaryAsync: recommendationSummaryAsync,
@@ -1674,6 +1682,48 @@ class _RoutineAttentionBanner extends StatelessWidget {
         child: Text(
           '$count flexible routine block${count == 1 ? '' : 's'} need placement. Open the routine to see why it was not scheduled.',
           style: Theme.of(context).textTheme.bodyLarge,
+        ),
+      ),
+    );
+  }
+}
+
+class _RoutineDailyOrchestrationCard extends StatelessWidget {
+  const _RoutineDailyOrchestrationCard({required this.summaryAsync});
+
+  final AsyncValue<RoutinePlanningSummary> summaryAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: summaryAsync.when(
+          data: (summary) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Routine Layer',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${summary.scheduledRoutineCount} scheduled routine blocks today',
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${summary.flexibleNeedsPlacementCount} flexible opportunities • ${summary.recoverableMissedCount} recovery candidates',
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${summary.totalPlannedMinutes} planned minutes • ${summary.consistencyCount} consistency-tracked',
+              ),
+            ],
+          ),
+          error: (error, _) => Text(ErrorHandler.mapError(error).message),
+          loading: () => const Text('Loading routine layer...'),
         ),
       ),
     );

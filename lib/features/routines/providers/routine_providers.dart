@@ -4,16 +4,27 @@ import '../../../core/database/isar_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../application/routine_form_controller.dart';
+import '../application/routine_bulk_action_service.dart';
+import '../application/routine_calendar_export_service.dart';
+import '../application/routine_focus_bridge_service.dart';
+import '../application/routine_group_service.dart';
 import '../application/routine_occurrence_controller.dart';
+import '../application/routine_orchestration_service.dart';
+import '../application/routine_starter_pack_service.dart';
+import '../application/routine_template_service.dart';
+import '../data/routine_group_repository.dart';
 import '../data/routine_occurrence_repository.dart';
 import '../data/routine_repository.dart';
+import '../data/routine_template_repository.dart';
 import '../domain/routine_enums.dart';
 import '../domain/routine_generation_service.dart';
 import '../domain/routine_repository.dart';
 import '../domain/routine_scheduling_service.dart';
 import '../domain/routine_sync_service.dart';
 import '../models/routine.dart';
+import '../models/routine_group.dart';
 import '../models/routine_occurrence.dart';
+import '../models/routine_template.dart';
 import 'routine_intelligence_providers.dart';
 
 final routineRepositoryProvider = FutureProvider<RoutineRepository>((ref) async {
@@ -32,6 +43,18 @@ final routineOccurrenceRepositoryProvider =
       return RoutineOccurrenceRepository(isar);
     });
 
+final routineTemplateRepositoryProvider =
+    FutureProvider<RoutineTemplateRepository>((ref) async {
+      final isar = await ref.watch(isarInstanceProvider.future);
+      return RoutineTemplateRepository(isar);
+    });
+
+final routineGroupRepositoryProvider =
+    FutureProvider<RoutineGroupRepository>((ref) async {
+      final isar = await ref.watch(isarInstanceProvider.future);
+      return RoutineGroupRepository(isar);
+    });
+
 final routineGenerationServiceProvider = Provider<RoutineGenerationService>((ref) {
   return RoutineGenerationService();
 });
@@ -40,6 +63,38 @@ final routineSchedulingServiceProvider = Provider<RoutineSchedulingService>((ref
   return RoutineSchedulingService(
     generationService: ref.read(routineGenerationServiceProvider),
   );
+});
+
+final routineTemplateServiceProvider = Provider<RoutineTemplateService>((ref) {
+  return RoutineTemplateService(
+    generationService: ref.read(routineGenerationServiceProvider),
+  );
+});
+
+final routineStarterPackServiceProvider = Provider<RoutineStarterPackService>((ref) {
+  return const RoutineStarterPackService();
+});
+
+final routineGroupServiceProvider = Provider<RoutineGroupService>((ref) {
+  return const RoutineGroupService();
+});
+
+final routineOrchestrationServiceProvider =
+    Provider<RoutineOrchestrationService>((ref) {
+      return const RoutineOrchestrationService();
+    });
+
+final routineCalendarExportServiceProvider =
+    Provider<RoutineCalendarExportService>((ref) {
+      return const RoutineCalendarExportService();
+    });
+
+final routineBulkActionServiceProvider = Provider<RoutineBulkActionService>((ref) {
+  return const RoutineBulkActionService();
+});
+
+final routineFocusBridgeServiceProvider = Provider<RoutineFocusBridgeService>((ref) {
+  return RoutineFocusBridgeService();
 });
 
 final routineSyncServiceProvider = FutureProvider<RoutineSyncService>((ref) async {
@@ -66,6 +121,17 @@ final watchAllRoutineOccurrencesProvider =
       yield* repository.watchAllOccurrences();
     });
 
+final watchRoutineTemplatesProvider =
+    StreamProvider<List<RoutineTemplate>>((ref) async* {
+      final repository = await ref.watch(routineTemplateRepositoryProvider.future);
+      yield* repository.watchTemplates();
+    });
+
+final watchRoutineGroupsProvider = StreamProvider<List<RoutineGroup>>((ref) async* {
+  final repository = await ref.watch(routineGroupRepositoryProvider.future);
+  yield* repository.watchGroups();
+});
+
 final activeRoutinesProvider = Provider<AsyncValue<List<Routine>>>((ref) {
   final routinesAsync = ref.watch(watchAllRoutinesProvider);
   return routinesAsync.whenData(
@@ -78,6 +144,10 @@ final archivedRoutinesProvider = Provider<AsyncValue<List<Routine>>>((ref) {
   return routinesAsync.whenData(
     (routines) => routines.where((routine) => routine.isArchived).toList(),
   );
+});
+
+final routineStarterPacksProvider = Provider<List<RoutineStarterPack>>((ref) {
+  return ref.read(routineStarterPackServiceProvider).getBuiltInPacks();
 });
 
 class RoutineOccurrenceItem {
@@ -316,6 +386,64 @@ final routineRecommendationActionsProvider =
           AsyncData(value: final occurrences),
         ) =>
           AsyncData(_buildRoutineActions(routines, occurrences, DateTime.now())),
+        (AsyncError(:final error, :final stackTrace), _) => AsyncError(
+          error,
+          stackTrace,
+        ),
+        (_, AsyncError(:final error, :final stackTrace)) => AsyncError(
+          error,
+          stackTrace,
+        ),
+        _ => const AsyncLoading(),
+      };
+    });
+
+final todayRoutinePlanningSummaryProvider =
+    Provider<AsyncValue<RoutinePlanningSummary>>((ref) {
+      final routinesAsync = ref.watch(watchAllRoutinesProvider);
+      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+
+      return switch ((routinesAsync, occurrencesAsync)) {
+        (
+          AsyncData(value: final routines),
+          AsyncData(value: final occurrences),
+        ) =>
+          AsyncData(
+            ref.read(routineOrchestrationServiceProvider).summarizeDaily(
+                  routines: routines,
+                  occurrences: occurrences,
+                  now: DateTime.now(),
+                ),
+          ),
+        (AsyncError(:final error, :final stackTrace), _) => AsyncError(
+          error,
+          stackTrace,
+        ),
+        (_, AsyncError(:final error, :final stackTrace)) => AsyncError(
+          error,
+          stackTrace,
+        ),
+        _ => const AsyncLoading(),
+      };
+    });
+
+final weeklyRoutinePlanningSummaryProvider =
+    Provider<AsyncValue<RoutinePlanningSummary>>((ref) {
+      final routinesAsync = ref.watch(watchAllRoutinesProvider);
+      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+
+      return switch ((routinesAsync, occurrencesAsync)) {
+        (
+          AsyncData(value: final routines),
+          AsyncData(value: final occurrences),
+        ) =>
+          AsyncData(
+            ref.read(routineOrchestrationServiceProvider).summarizeWeekly(
+                  routines: routines,
+                  occurrences: occurrences,
+                  now: DateTime.now(),
+                ),
+          ),
         (AsyncError(:final error, :final stackTrace), _) => AsyncError(
           error,
           stackTrace,
