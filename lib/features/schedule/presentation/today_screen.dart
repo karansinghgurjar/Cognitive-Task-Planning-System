@@ -24,6 +24,7 @@ import '../../quick_capture/providers/quick_capture_providers.dart';
 import '../../review/presentation/weekly_review_screen.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/models/routine_occurrence.dart';
+import '../../routines/domain/routine_enums.dart';
 import '../../routines/presentation/routines_screen.dart';
 import '../../routines/providers/routine_providers.dart';
 import '../../tasks/providers/task_providers.dart';
@@ -207,15 +208,17 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             )
             .toList()
           ..sort(
-            (left, right) => right.scheduledEnd.compareTo(left.scheduledEnd),
+            (left, right) => right.occurrenceDate.compareTo(left.occurrenceDate),
           );
     final upcomingRoutineOccurrences =
         routineOccurrences.where((occurrence) {
           return occurrence.effectiveStatusAt(now) ==
                   RoutineOccurrenceStatus.pending &&
-              occurrence.scheduledEnd.isAfter(now);
+              !occurrence.occurrenceDate.isBefore(
+                DateTime(now.year, now.month, now.day),
+              );
         }).toList()..sort(
-          (left, right) => left.scheduledStart.compareTo(right.scheduledStart),
+          (left, right) => left.occurrenceDate.compareTo(right.occurrenceDate),
         );
     final groupedRoutineOccurrences = _groupRoutineOccurrencesByDate(
       upcomingRoutineOccurrences,
@@ -431,11 +434,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
   ) {
     final grouped = <DateTime, List<RoutineOccurrence>>{};
     for (final occurrence in occurrences) {
-      final date = DateTime(
-        occurrence.scheduledStart.year,
-        occurrence.scheduledStart.month,
-        occurrence.scheduledStart.day,
-      );
+      final date = occurrence.occurrenceDate;
       grouped.putIfAbsent(date, () => []).add(occurrence);
     }
     return grouped;
@@ -1273,6 +1272,14 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
     final canComplete = effectiveStatus == RoutineOccurrenceStatus.pending;
     final routineTitle = routine?.title ?? 'Routine';
     final linkedTaskId = occurrence.linkedTaskId;
+    final scheduledStart = occurrence.scheduledStart;
+    final scheduledEnd = occurrence.scheduledEnd;
+    final timingLabel = scheduledStart != null && scheduledEnd != null
+        ? '${timeFormat.format(scheduledStart)} -> ${timeFormat.format(scheduledEnd)}'
+        : 'Any time on ${DateFormat('EEE, MMM d').format(occurrence.occurrenceDate)}';
+    final durationLabel = occurrence.durationMinutes == null
+        ? 'Flexible duration'
+        : '${occurrence.durationMinutes} min';
 
     return Card(
       child: Padding(
@@ -1323,13 +1330,13 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${timeFormat.format(occurrence.scheduledStart)} -> ${timeFormat.format(occurrence.scheduledEnd)}',
+                        timingLabel,
                       ),
                       const SizedBox(height: 6),
-                      Text('${occurrence.durationMinutes} min'),
-                      if ((routine?.categoryTag ?? '').trim().isNotEmpty) ...[
+                      Text(durationLabel),
+                      if ((routine?.categoryId ?? '').trim().isNotEmpty) ...[
                         const SizedBox(height: 6),
-                        Text('Tag: ${routine!.categoryTag}'),
+                        Text('Tag: ${routine!.categoryId}'),
                       ],
                       if ((routine?.energyType ?? '').trim().isNotEmpty) ...[
                         const SizedBox(height: 4),
@@ -1448,7 +1455,7 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
   }
 
   Future<void> _snoozeOccurrence(BuildContext context, WidgetRef ref) async {
-    final initialDate = occurrence.scheduledStart;
+    final initialDate = occurrence.scheduledStart ?? occurrence.occurrenceDate;
     final date = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -1460,7 +1467,15 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
     }
     final pickedTime = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(occurrence.scheduledStart),
+      initialTime: TimeOfDay.fromDateTime(
+        occurrence.scheduledStart ??
+            DateTime(
+              occurrence.occurrenceDate.year,
+              occurrence.occurrenceDate.month,
+              occurrence.occurrenceDate.day,
+              18,
+            ),
+      ),
     );
     if (pickedTime == null || !context.mounted) {
       return;
@@ -1548,10 +1563,6 @@ class _RoutineStatusBadge extends StatelessWidget {
       RoutineOccurrenceStatus.missed => (
         colorScheme.errorContainer,
         colorScheme.onErrorContainer,
-      ),
-      RoutineOccurrenceStatus.cancelled => (
-        colorScheme.surfaceContainerHighest,
-        colorScheme.onSurface,
       ),
     };
     return AppStatusChip(
