@@ -109,6 +109,10 @@ class RoutineOccurrenceRepository {
     });
   }
 
+  Future<RoutineOccurrence?> getOccurrenceById(String occurrenceId) {
+    return _isar.routineOccurrences.filter().idEqualTo(occurrenceId).findFirst();
+  }
+
   int _compareOccurrences(RoutineOccurrence left, RoutineOccurrence right) {
     final dateCompare = left.occurrenceDate.compareTo(right.occurrenceDate);
     if (dateCompare != 0) {

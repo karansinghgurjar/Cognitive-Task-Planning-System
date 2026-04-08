@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/isar_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
+import '../application/routine_form_controller.dart';
+import '../application/routine_occurrence_controller.dart';
 import '../data/routine_occurrence_repository.dart';
 import '../data/routine_repository.dart';
 import '../domain/routine_enums.dart';
 import '../domain/routine_generation_service.dart';
+import '../domain/routine_repository.dart';
 import '../domain/routine_scheduling_service.dart';
 import '../domain/routine_sync_service.dart';
 import '../models/routine.dart';
@@ -16,6 +19,11 @@ final routineRepositoryProvider = FutureProvider<RoutineRepository>((ref) async 
   final isar = await ref.watch(isarInstanceProvider.future);
   return RoutineRepository(isar);
 });
+
+final routineRepositoryContractProvider =
+    FutureProvider<RoutineRepositoryContract>((ref) async {
+      return ref.watch(routineRepositoryProvider.future);
+    });
 
 final routineOccurrenceRepositoryProvider =
     FutureProvider<RoutineOccurrenceRepository>((ref) async {
@@ -56,6 +64,148 @@ final watchAllRoutineOccurrencesProvider =
       final repository = await ref.watch(routineOccurrenceRepositoryProvider.future);
       yield* repository.watchAllOccurrences();
     });
+
+final activeRoutinesProvider = Provider<AsyncValue<List<Routine>>>((ref) {
+  final routinesAsync = ref.watch(watchAllRoutinesProvider);
+  return routinesAsync.whenData(
+    (routines) => routines.where((routine) => !routine.isArchived).toList(),
+  );
+});
+
+final archivedRoutinesProvider = Provider<AsyncValue<List<Routine>>>((ref) {
+  final routinesAsync = ref.watch(watchAllRoutinesProvider);
+  return routinesAsync.whenData(
+    (routines) => routines.where((routine) => routine.isArchived).toList(),
+  );
+});
+
+class RoutineOccurrenceItem {
+  const RoutineOccurrenceItem({
+    required this.routine,
+    required this.occurrence,
+    required this.effectiveStatus,
+  });
+
+  final Routine? routine;
+  final RoutineOccurrence occurrence;
+  final RoutineOccurrenceStatus effectiveStatus;
+
+  bool get isPending => effectiveStatus == RoutineOccurrenceStatus.pending;
+}
+
+class RoutineWeekRange {
+  const RoutineWeekRange({
+    required this.startDate,
+    required this.endDate,
+  });
+
+  final DateTime startDate;
+  final DateTime endDate;
+}
+
+final todayRoutineOccurrencesProvider =
+    Provider<AsyncValue<List<RoutineOccurrenceItem>>>((ref) {
+      final routinesAsync = ref.watch(watchAllRoutinesProvider);
+      final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+      final today = _normalize(DateTime.now());
+
+      return switch ((routinesAsync, occurrencesAsync)) {
+        (
+          AsyncData(value: final routines),
+          AsyncData(value: final occurrences),
+        ) =>
+          AsyncData(
+            buildRoutineOccurrenceItems(
+              routines: routines,
+              occurrences: occurrences,
+              now: DateTime.now(),
+              startDate: today,
+              endDate: today,
+            ),
+          ),
+        (AsyncError(:final error, :final stackTrace), _) => AsyncError(
+          error,
+          stackTrace,
+        ),
+        (_, AsyncError(:final error, :final stackTrace)) => AsyncError(
+          error,
+          stackTrace,
+        ),
+        _ => const AsyncLoading(),
+      };
+    });
+
+final weeklyRoutineOccurrencesProvider =
+    Provider.family<AsyncValue<Map<int, List<RoutineOccurrenceItem>>>, RoutineWeekRange>(
+      (ref, range) {
+        final routinesAsync = ref.watch(watchAllRoutinesProvider);
+        final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
+        return switch ((routinesAsync, occurrencesAsync)) {
+          (
+            AsyncData(value: final routines),
+            AsyncData(value: final occurrences),
+          ) =>
+            AsyncData(
+              groupRoutineOccurrencesByWeekday(
+                buildRoutineOccurrenceItems(
+                  routines: routines,
+                  occurrences: occurrences,
+                  now: DateTime.now(),
+                  startDate: range.startDate,
+                  endDate: range.endDate,
+                ),
+              ),
+            ),
+          (AsyncError(:final error, :final stackTrace), _) => AsyncError(
+            error,
+            stackTrace,
+          ),
+          (_, AsyncError(:final error, :final stackTrace)) => AsyncError(
+            error,
+            stackTrace,
+          ),
+          _ => const AsyncLoading(),
+        };
+      },
+    );
+
+final routineFormControllerProvider = StateNotifierProvider.autoDispose
+    .family<RoutineFormController, RoutineFormState, Routine?>((ref, routine) {
+      return RoutineFormController(
+        loadRepository: () => ref.read(routineRepositoryContractProvider.future),
+        deleteOccurrencesForRoutine: (routineId) async {
+          final repository = await ref.read(
+            routineOccurrenceRepositoryProvider.future,
+          );
+          await repository.deleteForRoutine(routineId);
+        },
+        loadSyncService: () => ref.read(routineSyncServiceProvider.future),
+        nowProvider: DateTime.now,
+        initialRoutine: routine,
+      );
+    });
+
+final routineOccurrenceControllerProvider =
+    StateNotifierProvider.autoDispose<RoutineOccurrenceController, AsyncValue<void>>(
+      (ref) {
+        return RoutineOccurrenceController(
+          loadOccurrenceById: (occurrenceId) async {
+            final repository = await ref.read(
+              routineOccurrenceRepositoryProvider.future,
+            );
+            return repository.getOccurrenceById(occurrenceId);
+          },
+          updateOccurrence: (occurrence) async {
+            final repository = await ref.read(
+              routineOccurrenceRepositoryProvider.future,
+            );
+            await repository.updateOccurrence(occurrence);
+          },
+          schedulingService: ref.read(routineSchedulingServiceProvider),
+          nowProvider: DateTime.now,
+        );
+      },
+    );
 
 class RoutinePreviewState {
   const RoutinePreviewState({
@@ -122,10 +272,10 @@ RoutineOccurrence? _findNextOccurrence(
       .where(
         (item) =>
             item.effectiveStatusAt(now) == RoutineOccurrenceStatus.pending &&
-            !item.occurrenceDate.isBefore(DateTime(now.year, now.month, now.day)),
+            !item.occurrenceDate.isBefore(_normalize(now)),
       )
       .toList()
-    ..sort((left, right) => left.occurrenceDate.compareTo(right.occurrenceDate));
+    ..sort(_sortOccurrences);
   return matching.isEmpty ? null : matching.first;
 }
 
@@ -162,9 +312,7 @@ List<String> _buildRoutineActions(
     return actions;
   }
 
-  final horizonEnd = DateTime(now.year, now.month, now.day).add(
-    const Duration(days: 7),
-  );
+  final horizonEnd = _normalize(now).add(const Duration(days: 7));
   final upcomingOccurrences = occurrences.where((occurrence) {
     return !occurrence.occurrenceDate.isAfter(horizonEnd) &&
         occurrence.effectiveStatusAt(now) == RoutineOccurrenceStatus.pending;
@@ -224,16 +372,84 @@ int _weeklyOccurrences(Routine routine) {
   }
 }
 
+List<RoutineOccurrenceItem> buildRoutineOccurrenceItems({
+  required List<Routine> routines,
+  required List<RoutineOccurrence> occurrences,
+  required DateTime now,
+  required DateTime startDate,
+  required DateTime endDate,
+}) {
+  final routineById = {for (final routine in routines) routine.id: routine};
+  final normalizedStart = _normalize(startDate);
+  final normalizedEnd = _normalize(endDate);
+
+  final items = occurrences
+      .where(
+        (occurrence) =>
+            !occurrence.occurrenceDate.isBefore(normalizedStart) &&
+            !occurrence.occurrenceDate.isAfter(normalizedEnd),
+      )
+      .map(
+        (occurrence) => RoutineOccurrenceItem(
+          routine: routineById[occurrence.routineId],
+          occurrence: occurrence,
+          effectiveStatus: occurrence.effectiveStatusAt(now),
+        ),
+      )
+      .toList()
+    ..sort(_sortOccurrenceItems);
+  return items;
+}
+
+Map<int, List<RoutineOccurrenceItem>> groupRoutineOccurrencesByWeekday(
+  List<RoutineOccurrenceItem> items,
+) {
+  final grouped = <int, List<RoutineOccurrenceItem>>{};
+  for (final item in items) {
+    grouped.putIfAbsent(item.occurrence.occurrenceDate.weekday, () => []).add(item);
+  }
+  for (final entry in grouped.entries) {
+    entry.value.sort(_sortOccurrenceItems);
+  }
+  return grouped;
+}
+
+int _sortOccurrenceItems(RoutineOccurrenceItem left, RoutineOccurrenceItem right) {
+  if (left.isPending != right.isPending) {
+    return left.isPending ? -1 : 1;
+  }
+  return _sortOccurrences(left.occurrence, right.occurrence);
+}
+
+int _sortOccurrences(RoutineOccurrence left, RoutineOccurrence right) {
+  final dateCompare = left.occurrenceDate.compareTo(right.occurrenceDate);
+  if (dateCompare != 0) {
+    return dateCompare;
+  }
+  final leftStart = left.scheduledStart;
+  final rightStart = right.scheduledStart;
+  if (leftStart != null && rightStart != null) {
+    return leftStart.compareTo(rightStart);
+  }
+  if (leftStart != null) {
+    return -1;
+  }
+  if (rightStart != null) {
+    return 1;
+  }
+  return left.id.compareTo(right.id);
+}
+
+DateTime _normalize(DateTime value) => DateTime(value.year, value.month, value.day);
+
 extension<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
 }
 
-final routineActionControllerProvider =
-    AsyncNotifierProvider<RoutineActionController, void>(
-      RoutineActionController.new,
-    );
+final routineCrudControllerProvider =
+    AsyncNotifierProvider<RoutineCrudController, void>(RoutineCrudController.new);
 
-class RoutineActionController extends AsyncNotifier<void> {
+class RoutineCrudController extends AsyncNotifier<void> {
   @override
   void build() {}
 
@@ -264,73 +480,8 @@ class RoutineActionController extends AsyncNotifier<void> {
     });
   }
 
-  Future<void> setActive(Routine routine, bool isActive) async {
-    await updateRoutine(routine.copyWith(isActive: isActive));
-  }
-
-  Future<void> setArchived(Routine routine, bool isArchived) async {
-    await updateRoutine(
-      routine.copyWith(
-        isArchived: isArchived,
-        archivedAt: isArchived ? DateTime.now() : null,
-        clearArchivedAt: !isArchived,
-      ),
-    );
-  }
-
-  Future<void> generateNext7Days() => _run(() => _syncFutureOccurrences(days: 7));
-
   Future<void> generateNext30Days() =>
       _run(() => _syncFutureOccurrences(days: 30));
-
-  Future<void> markOccurrenceCompleted(RoutineOccurrence occurrence) async {
-    await _run(() async {
-      final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
-      await repository.updateOccurrence(
-        occurrence.copyWith(
-          status: RoutineOccurrenceStatus.completed,
-          completedAt: DateTime.now(),
-          clearSkippedAt: true,
-          clearMissedAt: true,
-          updatedAt: DateTime.now(),
-        ),
-      );
-    });
-  }
-
-  Future<void> markOccurrenceSkipped(RoutineOccurrence occurrence) async {
-    await _run(() async {
-      final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
-      await repository.updateOccurrence(
-        occurrence.copyWith(
-          status: RoutineOccurrenceStatus.skipped,
-          skippedAt: DateTime.now(),
-          clearCompletedAt: true,
-          clearMissedAt: true,
-          updatedAt: DateTime.now(),
-        ),
-      );
-    });
-  }
-
-  Future<void> snoozeOccurrence(
-    RoutineOccurrence occurrence,
-    DateTime newStart, {
-    String? notes,
-  }) async {
-    await _run(() async {
-      final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
-      final service = ref.read(routineSchedulingServiceProvider);
-      await repository.updateOccurrence(
-        service.rescheduleOccurrence(
-          occurrence: occurrence,
-          newStart: newStart,
-          notes: notes,
-          now: DateTime.now(),
-        ),
-      );
-    });
-  }
 
   Future<Task> convertOccurrenceToTask({
     required Routine routine,
@@ -381,7 +532,9 @@ class RoutineActionController extends AsyncNotifier<void> {
   }
 
   Future<void> _run(Future<void> Function() action) async {
-    _ensureIdle();
+    if (state.isLoading) {
+      throw StateError('Another routine action is already in progress.');
+    }
     state = const AsyncLoading();
     try {
       await action();
@@ -389,12 +542,6 @@ class RoutineActionController extends AsyncNotifier<void> {
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       rethrow;
-    }
-  }
-
-  void _ensureIdle() {
-    if (state.isLoading) {
-      throw StateError('Another routine action is already in progress.');
     }
   }
 }
