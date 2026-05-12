@@ -11,6 +11,7 @@ import '../features/planning_assistant/presentation/screens/planning_assistant_s
 import '../features/review/presentation/weekly_review_screen.dart';
 import '../features/routines/presentation/routines_screen.dart';
 import '../features/settings/presentation/settings_home_screen.dart';
+import '../features/sync/presentation/sync_status_screen.dart';
 import '../features/tasks/presentation/tasks_screen.dart';
 import '../features/timetable/presentation/timetable_screen.dart';
 
@@ -21,6 +22,12 @@ class AppRouter {
     return Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const SettingsHomeScreen()));
+  }
+
+  static Future<void> openSyncStatus(BuildContext context) {
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const SyncStatusScreen()),
+    );
   }
 
   static Future<void> openKnowledgeDashboard(BuildContext context) {

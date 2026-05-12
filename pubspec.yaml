@@ -46,3 +46,7 @@ flutter_launcher_icons:
   adaptive_icon_foreground: assets/branding/app_icon_android_foreground.png
   adaptive_icon_foreground_inset: 4
 
+dependency_overrides:
+  isar_flutter_libs:
+    path: third_party/isar_flutter_libs
+

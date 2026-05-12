@@ -19,3 +19,8 @@ pubspec.lock
 
 # Windows
 **/windows/flutter/ephemeral/
+# Local artifacts
+android/.kotlin/
+backups/
+flutter_01.log
+

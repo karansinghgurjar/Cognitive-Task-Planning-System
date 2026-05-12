@@ -22,6 +22,7 @@ subprojects {
 subprojects {
     plugins.withId("com.android.library") {
         val android = extensions.getByType(com.android.build.gradle.LibraryExtension::class.java)
+        android.compileSdk = 36
         if (android.namespace == null || android.namespace!!.isEmpty()) {
             val manifestFile = file("${projectDir}/src/main/AndroidManifest.xml")
             if (manifestFile.exists()) {
@@ -38,3 +39,4 @@ subprojects {
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
+

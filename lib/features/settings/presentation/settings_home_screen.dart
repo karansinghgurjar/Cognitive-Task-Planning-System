@@ -53,7 +53,7 @@ class SettingsHomeScreen extends ConsumerWidget {
                   : account.isConfigured
                   ? 'Configured, but not signed in yet.'
                   : 'Sync backend is not configured.',
-              onTap: () => AppRouter.openSettings(context),
+              onTap: () => AppRouter.openSyncStatus(context),
             ),
             loading: () => const SizedBox.shrink(),
             error: (_, _) => const SizedBox.shrink(),
