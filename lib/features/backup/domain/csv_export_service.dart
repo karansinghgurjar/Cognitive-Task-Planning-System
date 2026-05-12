@@ -168,5 +168,3 @@ class CsvExportService {
     return '"${value.replaceAll('"', '""')}"';
   }
 }
-
-

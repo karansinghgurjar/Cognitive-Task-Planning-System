@@ -1,4 +1,5 @@
 import '../../goals/models/learning_goal.dart';
+import '../../knowledge/models/knowledge_item.dart';
 import '../../notes/models/entity_note.dart';
 import '../../quick_capture/models/quick_capture_item.dart';
 import '../../review/models/weekly_review.dart';
@@ -12,6 +13,7 @@ class SearchDataRepository {
     required List<Task> tasks,
     required List<LearningGoal> goals,
     required List<EntityNote> notes,
+    required List<KnowledgeItem> knowledgeItems,
     required List<QuickCaptureItem> captures,
     required List<WeeklyReview> weeklyReviews,
   }) {
@@ -19,6 +21,7 @@ class SearchDataRepository {
       ...tasks.map(_taskRecord),
       ...goals.map(_goalRecord),
       ...notes.where((note) => !note.isArchived).map(_noteRecord),
+      ...knowledgeItems.map(_knowledgeRecord),
       ...captures.map(_captureRecord),
       ...weeklyReviews.map(_weeklyReviewRecord),
     ];
@@ -57,10 +60,7 @@ class SearchDataRepository {
       title: goal.title.trim().isEmpty ? 'Untitled Goal' : goal.title,
       subtitle: goal.goalType.label,
       snippet: _truncate(goal.description ?? ''),
-      searchableTerms: [
-        goal.title,
-        goal.description ?? '',
-      ],
+      searchableTerms: [goal.title, goal.description ?? ''],
       updatedAt: goal.completedAt ?? goal.createdAt,
       isArchived: goal.status == GoalStatus.archived,
     );
@@ -75,13 +75,32 @@ class SearchDataRepository {
       title: title == null || title.isEmpty ? 'Untitled Note' : title,
       subtitle: '${note.entityType.label} Note',
       snippet: _truncate(note.content),
-      searchableTerms: [
-        note.title ?? '',
-        note.content,
-      ],
+      searchableTerms: [note.title ?? '', note.content],
       updatedAt: note.updatedAt ?? note.createdAt,
       parentEntityType: note.entityType,
       parentEntityId: note.entityId,
+    );
+  }
+
+  SearchableRecord _knowledgeRecord(KnowledgeItem item) {
+    return SearchableRecord(
+      id: 'knowledge:${item.id}',
+      resultType: SearchResultType.knowledge,
+      entityId: item.id,
+      title: item.title.trim().isEmpty ? 'Untitled Knowledge' : item.title,
+      subtitle: item.type.label,
+      snippet: _truncate(
+        item.content ?? item.externalReference ?? item.sourceUrl ?? '',
+      ),
+      searchableTerms: [
+        item.title,
+        item.content ?? '',
+        item.externalReference ?? '',
+        item.sourceUrl ?? '',
+        ...item.tags,
+      ],
+      updatedAt: item.updatedAt ?? item.createdAt,
+      isArchived: item.status == KnowledgeStatus.archived,
     );
   }
 

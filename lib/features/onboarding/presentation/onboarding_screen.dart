@@ -15,37 +15,34 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _controller = PageController();
   int _pageIndex = 0;
+  String _selectedUseCase = 'Study';
+  String _selectedStyle = 'Structured';
+  String _selectedStarter = 'Balanced weekly system';
 
   static const _steps = [
     _OnboardingStep(
-      title: 'Plan your workflow',
+      title: 'Welcome to CogniPlan',
       message:
-          'Cognitive Task Planning System turns tasks, goals, and your real timetable into a work plan that you can actually execute.',
+          'A local-first planning workspace for serious execution: goals, routines, schedules, focus, review, and knowledge in one place.',
       icon: Icons.track_changes_rounded,
     ),
     _OnboardingStep(
-      title: 'Start with your timetable',
+      title: 'Start from your real week',
       message:
-          'Add your fixed busy hours first so the scheduler can find usable focus windows.',
+          'Add your timetable first, then let tasks and routines fit around the week you actually live.',
       icon: Icons.calendar_view_week_rounded,
     ),
     _OnboardingStep(
-      title: 'Add a first task or goal',
+      title: 'Keep plans reviewable',
       message:
-          'You can create tasks directly or use goals and AI planning to break larger work into milestones.',
-      icon: Icons.checklist_rounded,
+          'Use routines, focus sessions, insights, and revision workflows without losing trust in your local data.',
+      icon: Icons.fact_check_rounded,
     ),
     _OnboardingStep(
-      title: 'Generate and execute',
+      title: 'Choose your starting shape',
       message:
-          'Generate a schedule, start focus sessions, and recover missed work when plans drift.',
-      icon: Icons.auto_awesome_rounded,
-    ),
-    _OnboardingStep(
-      title: 'Notifications and sync',
-      message:
-          'Reminders and personal sync are optional. You can configure them later from Settings.',
-      icon: Icons.notifications_active_rounded,
+          'Pick a use case, planning style, and starter direction. You can change all of this later.',
+      icon: Icons.tune_rounded,
     ),
   ];
 
@@ -96,39 +93,113 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     final step = _steps[index];
                     return Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 560),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(step.icon, size: 72),
-                            const SizedBox(height: 24),
-                            Text(
-                              step.title,
-                              style: Theme.of(context).textTheme.headlineMedium
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              step.message,
-                              style: Theme.of(context).textTheme.bodyLarge,
-                              textAlign: TextAlign.center,
-                            ),
-                            if (index == _steps.length - 1) ...[
-                              const SizedBox(height: 24),
-                              FilledButton.tonalIcon(
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => const SettingsHomeScreen(),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.settings_outlined),
-                                label: const Text('Review settings later'),
-                              ),
-                            ],
-                          ],
+                        constraints: const BoxConstraints(maxWidth: 640),
+                        child: Card(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return SingleChildScrollView(
+                                padding: const EdgeInsets.all(28),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: constraints.maxHeight,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Icon(step.icon, size: 64),
+                                      const SizedBox(height: 24),
+                                      Text(
+                                        step.title,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium
+                                            ?.copyWith(fontWeight: FontWeight.w700),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        step.message,
+                                        style: Theme.of(context).textTheme.bodyLarge,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      if (index == _steps.length - 1) ...[
+                                        const SizedBox(height: 28),
+                                        _ChoiceSection(
+                                          title: 'Primary use case',
+                                          options: const [
+                                            'Study',
+                                            'Research',
+                                            'Fitness',
+                                            'Work',
+                                            'Personal planning',
+                                          ],
+                                          selected: _selectedUseCase,
+                                          onSelected: (value) =>
+                                              setState(() => _selectedUseCase = value),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        _ChoiceSection(
+                                          title: 'Planning style',
+                                          options: const [
+                                            'Simple',
+                                            'Structured',
+                                            'Advanced',
+                                          ],
+                                          selected: _selectedStyle,
+                                          onSelected: (value) =>
+                                              setState(() => _selectedStyle = value),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        _ChoiceSection(
+                                          title: 'Starter direction',
+                                          options: const [
+                                            'Balanced weekly system',
+                                            'Routine-first setup',
+                                            'Goal and planner focus',
+                                          ],
+                                          selected: _selectedStarter,
+                                          onSelected: (value) =>
+                                              setState(() => _selectedStarter = value),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Wrap(
+                                          spacing: 12,
+                                          runSpacing: 12,
+                                          alignment: WrapAlignment.center,
+                                          children: [
+                                            FilledButton.tonalIcon(
+                                              onPressed: () {
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute<void>(
+                                                    builder: (_) =>
+                                                        const SettingsHomeScreen(),
+                                                  ),
+                                                );
+                                              },
+                                              icon: const Icon(Icons.settings_outlined),
+                                              label: const Text('Review settings'),
+                                            ),
+                                            FilledButton.tonalIcon(
+                                              onPressed: () {
+                                                AppRouter.openPlanningAssistant(
+                                                  context,
+                                                  initialPrompt:
+                                                      'Create a ${_selectedStyle.toLowerCase()} ${_selectedUseCase.toLowerCase()} planning system.',
+                                                );
+                                              },
+                                              icon: const Icon(Icons.auto_awesome_rounded),
+                                              label: const Text('Open assistant'),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     );
@@ -162,9 +233,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       onPressed: actionState.isLoading
                           ? null
                           : () => _controller.previousPage(
-                              duration: const Duration(milliseconds: 220),
-                              curve: Curves.easeOut,
-                            ),
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOut,
+                              ),
                       child: const Text('Back'),
                     )
                   else
@@ -174,15 +245,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     onPressed: actionState.isLoading
                         ? null
                         : lastPage
-                        ? _finish
-                        : () => _controller.nextPage(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOut,
-                          ),
+                            ? _finish
+                            : () => _controller.nextPage(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeOut,
+                                ),
                     icon: Icon(
-                      lastPage
-                          ? Icons.check_rounded
-                          : Icons.arrow_forward_rounded,
+                      lastPage ? Icons.check_rounded : Icons.arrow_forward_rounded,
                     ),
                     label: Text(lastPage ? 'Finish' : 'Next'),
                   ),
@@ -206,7 +275,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         return AlertDialog(
           title: const Text('Skip onboarding?'),
           content: const Text(
-            'You can reopen onboarding later from Settings if you want a guided setup again.',
+            'You can reopen onboarding later from Settings if you want the guided setup again.',
           ),
           actions: [
             TextButton(
@@ -228,6 +297,49 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (mounted) {
       await AppRouter.openSettings(context);
     }
+  }
+}
+
+class _ChoiceSection extends StatelessWidget {
+  const _ChoiceSection({
+    required this.title,
+    required this.options,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String title;
+  final List<String> options;
+  final String selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options
+              .map(
+                (option) => ChoiceChip(
+                  label: Text(option),
+                  selected: selected == option,
+                  onSelected: (_) => onSelected(option),
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    );
   }
 }
 

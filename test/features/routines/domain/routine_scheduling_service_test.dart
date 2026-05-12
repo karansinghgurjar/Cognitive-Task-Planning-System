@@ -155,6 +155,27 @@ void main() {
       expect(occurrence.occurrenceKey, 'materialized|20260410');
     });
 
+
+    test('default occurrence id is deterministic logical identity', () {
+      final deterministicService = RoutineGenerationService();
+      final routine = buildRoutine(
+        id: 'routine-identity',
+        rule: RoutineRepeatRule(type: RoutineRepeatType.daily),
+      );
+
+      final first = deterministicService.buildOccurrence(
+        routine,
+        DateTime(2026, 4, 10, 9),
+      );
+      final second = deterministicService.buildOccurrence(
+        routine,
+        DateTime(2026, 4, 10, 20),
+      );
+
+      expect(first.id, 'routine-identity|20260410');
+      expect(second.id, first.id);
+      expect(second.occurrenceKey, first.occurrenceKey);
+    });
     test('builds occurrence without scheduled end when duration is absent', () {
       final routine = buildRoutine(
         id: 'partial',

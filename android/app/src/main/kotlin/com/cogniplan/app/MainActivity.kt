@@ -1,4 +1,4 @@
-package com.example.study_flow
+package com.cogniplan.app
 
 import io.flutter.embedding.android.FlutterActivity
 

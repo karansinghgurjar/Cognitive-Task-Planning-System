@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/app_router.dart';
 import '../../../core/errors/error_handler.dart';
 import '../../ai_planning/presentation/ai_plan_generator_screen.dart';
 import '../../ai_planning/providers/ai_planning_providers.dart';
+import '../../insights/presentation/planning_insights_panel.dart';
 import '../../settings/presentation/settings_home_screen.dart';
 import '../domain/recommendation_models.dart';
 import '../providers/recommendation_providers.dart';
@@ -39,6 +41,13 @@ class RecommendationsDashboard extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ),
+              IconButton(
+                onPressed: () {
+                  AppRouter.openPlanningAssistant(context);
+                },
+                icon: const Icon(Icons.psychology_alt_rounded),
+                tooltip: 'Planning Assistant',
               ),
               IconButton(
                 onPressed: () {
@@ -124,6 +133,12 @@ class _DashboardBody extends StatelessWidget {
         ),
         if (planningOpportunityAsync.valueOrNull != null)
           const SizedBox(height: 16),
+        const PlanningInsightsPanel(
+          title: 'Adaptive Planning',
+          maxItems: 4,
+          showEmptyState: true,
+        ),
+        const SizedBox(height: 16),
         _BestNextTaskCard(
           recommendation: summary.bestNextTask,
           nextBlock: summary.nextStudyBlock,

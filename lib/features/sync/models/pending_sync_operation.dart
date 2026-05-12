@@ -1,4 +1,4 @@
-﻿import 'package:isar/isar.dart';
+import 'package:isar/isar.dart';
 
 import '../domain/sync_models.dart';
 
@@ -48,4 +48,3 @@ class PendingSyncOperationRecord {
 
   String get syncKey => '${entityType.name}::$entityId';
 }
-

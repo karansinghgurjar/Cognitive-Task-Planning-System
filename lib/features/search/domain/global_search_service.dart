@@ -76,7 +76,9 @@ class GlobalSearchService {
     final title = record.title.toLowerCase();
     final subtitle = record.subtitle.toLowerCase();
     final snippet = record.snippet.toLowerCase();
-    final terms = record.searchableTerms.map((term) => term.toLowerCase()).toList();
+    final terms = record.searchableTerms
+        .map((term) => term.toLowerCase())
+        .toList();
 
     var score = 0;
     if (title == query) {
@@ -113,7 +115,9 @@ class GlobalSearchService {
       }
     }
 
-    final termsInQuery = query.split(RegExp(r'\s+')).where((term) => term.isNotEmpty);
+    final termsInQuery = query
+        .split(RegExp(r'\s+'))
+        .where((term) => term.isNotEmpty);
     if (termsInQuery.isNotEmpty &&
         termsInQuery.every((term) {
           return title.contains(term) ||

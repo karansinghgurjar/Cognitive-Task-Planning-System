@@ -303,6 +303,32 @@ class RoutineIntelligenceController extends AsyncNotifier<void> {
     }
   }
 
+
+  Future<void> rebuildPostSyncDerivedState() async {
+    await runSchedulingIntegration();
+  }
+
+  Future<int> dedupeRoutineOccurrences() async {
+    if (state.isLoading) {
+      return 0;
+    }
+    state = const AsyncLoading();
+    try {
+      final repository = await ref.read(routineOccurrenceRepositoryProvider.future);
+      final count = await repository.dedupeOccurrences();
+      ref.invalidate(planningHorizonRoutineOccurrencesProvider);
+      ref.invalidate(recentHistoryRoutineOccurrencesProvider);
+      state = const AsyncData(null);
+      return count;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> rebuildRoutineReminders() async {
+    await runSchedulingIntegration();
+  }
   Future<void> replanRoutineOccurrences(String routineId) async {
     if (state.isLoading) {
       return;

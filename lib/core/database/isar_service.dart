@@ -5,6 +5,7 @@ import '../../core/notifications/notification_log.dart';
 import '../../features/backup/models/backup_record.dart';
 import '../../features/goals/models/goal_milestone.dart';
 import '../../features/goals/models/learning_goal.dart';
+import '../../features/knowledge/models/knowledge_item.dart';
 import '../../features/notes/models/entity_note.dart';
 import '../../features/notes/models/entity_resource.dart';
 import '../../features/onboarding/models/onboarding_state.dart';
@@ -61,6 +62,7 @@ class IsarService {
           TimetableSlotSchema,
           PlannedSessionSchema,
           LearningGoalSchema,
+          KnowledgeItemSchema,
           GoalMilestoneSchema,
           TaskDependencySchema,
           EntityNoteSchema,

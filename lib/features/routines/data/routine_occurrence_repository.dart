@@ -1,13 +1,20 @@
 import 'package:isar/isar.dart';
 
+import '../../sync/data/sync_mutation_recorder.dart';
+import '../../sync/domain/sync_models.dart';
 import '../domain/routine_date_utils.dart';
 import '../domain/routine_enums.dart';
 import '../models/routine_occurrence.dart';
 
 class RoutineOccurrenceRepository {
-  RoutineOccurrenceRepository(this._isar);
+  RoutineOccurrenceRepository(
+    this._isar, {
+    SyncMutationRecorder syncMutationRecorder =
+        const NoopSyncMutationRecorder(),
+  }) : _syncMutationRecorder = syncMutationRecorder;
 
   final Isar _isar;
+  final SyncMutationRecorder _syncMutationRecorder;
 
   Future<List<RoutineOccurrence>> getAllOccurrences() async {
     final occurrences = await _isar.routineOccurrences.where().findAll();
@@ -50,6 +57,7 @@ class RoutineOccurrenceRepository {
     await _isar.writeTxn(() async {
       await _isar.routineOccurrences.put(occurrence);
     });
+    await _recordOccurrenceUpsert(occurrence, SyncOperationType.update);
   }
 
   Future<void> saveOccurrences(List<RoutineOccurrence> occurrences) async {
@@ -59,6 +67,9 @@ class RoutineOccurrenceRepository {
     await _isar.writeTxn(() async {
       await _isar.routineOccurrences.putAll(occurrences);
     });
+    for (final occurrence in occurrences) {
+      await _recordOccurrenceUpsert(occurrence, SyncOperationType.update);
+    }
   }
 
   Future<void> deleteForRoutine(String routineId) async {
@@ -74,6 +85,12 @@ class RoutineOccurrenceRepository {
         occurrences.map((occurrence) => occurrence.isarId).toList(),
       );
     });
+    for (final occurrence in occurrences) {
+      await _syncMutationRecorder.recordDelete(
+        entityType: SyncEntityType.routineOccurrence,
+        entityId: occurrence.id,
+      );
+    }
   }
 
   Future<List<RoutineOccurrence>> getOccurrencesForRoutine(
@@ -115,6 +132,12 @@ class RoutineOccurrenceRepository {
         occurrences.map((occurrence) => occurrence.isarId).toList(),
       );
     });
+    for (final occurrence in occurrences) {
+      await _syncMutationRecorder.recordDelete(
+        entityType: SyncEntityType.routineOccurrence,
+        entityId: occurrence.id,
+      );
+    }
   }
 
   Future<void> replaceFutureOccurrencesInRange({
@@ -148,10 +171,91 @@ class RoutineOccurrenceRepository {
         await _isar.routineOccurrences.putAll(newOccurrences);
       }
     });
+    for (final occurrence in occurrencesToDelete) {
+      await _syncMutationRecorder.recordDelete(
+        entityType: SyncEntityType.routineOccurrence,
+        entityId: occurrence.id,
+      );
+    }
+    for (final occurrence in newOccurrences) {
+      await _recordOccurrenceUpsert(occurrence, SyncOperationType.update);
+    }
   }
 
   Future<RoutineOccurrence?> getOccurrenceById(String occurrenceId) {
     return _isar.routineOccurrences.filter().idEqualTo(occurrenceId).findFirst();
+  }
+
+  Future<int> dedupeOccurrences() async {
+    final all = await _isar.routineOccurrences.where().findAll();
+    final keepByLogicalKey = <String, RoutineOccurrence>{};
+    final removeIds = <int>[];
+
+    for (final occurrence in all) {
+      final key = occurrence.isRecoveryInstance
+          ? 'recovery:${occurrence.recoveredFromOccurrenceId ?? occurrence.id}'
+          : 'standard:${occurrence.occurrenceKey}';
+      final existing = keepByLogicalKey[key];
+      if (existing == null) {
+        keepByLogicalKey[key] = occurrence;
+        continue;
+      }
+      final winner = _chooseOccurrenceWinner(existing, occurrence);
+      final loser = identical(winner, existing) ? occurrence : existing;
+      keepByLogicalKey[key] = winner;
+      removeIds.add(loser.isarId);
+    }
+
+    if (removeIds.isNotEmpty) {
+      await _isar.writeTxn(() async {
+        await _isar.routineOccurrences.deleteAll(removeIds);
+      });
+    }
+    return removeIds.length;
+  }
+
+  Future<void> _recordOccurrenceUpsert(
+    RoutineOccurrence occurrence,
+    SyncOperationType operationType,
+  ) {
+    return _syncMutationRecorder.recordUpsert(
+      entityType: SyncEntityType.routineOccurrence,
+      entityId: occurrence.id,
+      entity: occurrence,
+      operationType: operationType,
+    );
+  }
+
+  RoutineOccurrence _chooseOccurrenceWinner(
+    RoutineOccurrence left,
+    RoutineOccurrence right,
+  ) {
+    final statusCompare = _statusRank(right).compareTo(_statusRank(left));
+    if (statusCompare > 0) {
+      return right;
+    }
+    if (statusCompare < 0) {
+      return left;
+    }
+    if (right.isManualOverride != left.isManualOverride) {
+      return right.isManualOverride ? right : left;
+    }
+    final leftUpdated = left.updatedAt ?? left.createdAt;
+    final rightUpdated = right.updatedAt ?? right.createdAt;
+    return rightUpdated.isAfter(leftUpdated) ? right : left;
+  }
+
+  int _statusRank(RoutineOccurrence occurrence) {
+    switch (occurrence.status) {
+      case RoutineOccurrenceStatus.completed:
+        return 4;
+      case RoutineOccurrenceStatus.skipped:
+        return 3;
+      case RoutineOccurrenceStatus.missed:
+        return 2;
+      case RoutineOccurrenceStatus.pending:
+        return 1;
+    }
   }
 
   int _compareOccurrences(RoutineOccurrence left, RoutineOccurrence right) {

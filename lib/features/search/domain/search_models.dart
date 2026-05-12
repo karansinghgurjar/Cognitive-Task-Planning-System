@@ -1,6 +1,6 @@
 import '../../notes/models/entity_note.dart';
 
-enum SearchResultType { task, goal, note, capture, weeklyReview }
+enum SearchResultType { task, goal, note, knowledge, capture, weeklyReview }
 
 extension SearchResultTypeX on SearchResultType {
   String get label {
@@ -11,6 +11,8 @@ extension SearchResultTypeX on SearchResultType {
         return 'Goals';
       case SearchResultType.note:
         return 'Notes';
+      case SearchResultType.knowledge:
+        return 'Knowledge';
       case SearchResultType.capture:
         return 'Quick Captures';
       case SearchResultType.weeklyReview:

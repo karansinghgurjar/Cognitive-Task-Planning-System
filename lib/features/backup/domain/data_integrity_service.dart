@@ -1,4 +1,5 @@
 import '../../schedule/domain/task_progress_service.dart';
+import '../../knowledge/models/knowledge_item.dart';
 import '../../notes/models/entity_note.dart';
 import '../../review/models/weekly_review.dart';
 import '../domain/backup_models.dart';
@@ -25,7 +26,8 @@ class DataIntegrityService {
                 'Milestone ${milestone.id} references missing goal ${milestone.goalId}.',
             severity: DataIntegritySeverity.error,
             relatedEntityId: milestone.id,
-            suggestedRepair: 'Delete the orphan milestone or relink it to a goal.',
+            suggestedRepair:
+                'Delete the orphan milestone or relink it to a goal.',
           ),
         );
       }
@@ -43,7 +45,8 @@ class DataIntegrityService {
           ),
         );
       }
-      if (task.milestoneId != null && !milestoneIds.contains(task.milestoneId)) {
+      if (task.milestoneId != null &&
+          !milestoneIds.contains(task.milestoneId)) {
         issues.add(
           DataIntegrityIssue(
             code: 'task_missing_milestone',
@@ -51,7 +54,8 @@ class DataIntegrityService {
                 'Task ${task.id} references missing milestone ${task.milestoneId}.',
             severity: DataIntegritySeverity.warning,
             relatedEntityId: task.id,
-            suggestedRepair: 'Clear the milestone link or restore the missing milestone.',
+            suggestedRepair:
+                'Clear the milestone link or restore the missing milestone.',
           ),
         );
       }
@@ -68,7 +72,8 @@ class DataIntegrityService {
                 'Task ${task.id} is marked complete but has no completed focus history.',
             severity: DataIntegritySeverity.info,
             relatedEntityId: task.id,
-            suggestedRepair: 'Review the task completion state and session history.',
+            suggestedRepair:
+                'Review the task completion state and session history.',
           ),
         );
       }
@@ -83,7 +88,8 @@ class DataIntegrityService {
                 'Planned session ${session.id} references missing task ${session.taskId}.',
             severity: DataIntegritySeverity.error,
             relatedEntityId: session.id,
-            suggestedRepair: 'Delete the orphan session or restore the missing task.',
+            suggestedRepair:
+                'Delete the orphan session or restore the missing task.',
           ),
         );
       }
@@ -99,7 +105,8 @@ class DataIntegrityService {
                 'Dependency ${dependency.id} references missing tasks and is no longer valid.',
             severity: DataIntegritySeverity.error,
             relatedEntityId: dependency.id,
-            suggestedRepair: 'Delete the broken dependency or restore the missing tasks.',
+            suggestedRepair:
+                'Delete the broken dependency or restore the missing tasks.',
           ),
         );
       }
@@ -144,6 +151,42 @@ class DataIntegrityService {
         );
       }
     }
+
+    final routineIds = snapshot.routines.map((item) => item.id).toSet();
+    final routineOccurrenceIds = snapshot.routineOccurrences
+        .map((item) => item.id)
+        .toSet();
+    final sessionIds = snapshot.plannedSessions.map((item) => item.id).toSet();
+
+    for (final item in snapshot.knowledgeItems) {
+      for (final link in item.links) {
+        final exists = switch (link.entityType) {
+          LinkedEntityType.goal => goalIds.contains(link.entityId),
+          LinkedEntityType.project => true,
+          LinkedEntityType.task => taskIds.contains(link.entityId),
+          LinkedEntityType.routine => routineIds.contains(link.entityId),
+          LinkedEntityType.routineOccurrence => routineOccurrenceIds.contains(
+            link.entityId,
+          ),
+          LinkedEntityType.focusSession => sessionIds.contains(link.entityId),
+          LinkedEntityType.milestone => milestoneIds.contains(link.entityId),
+        };
+        if (!exists) {
+          issues.add(
+            DataIntegrityIssue(
+              code: 'knowledge_stale_link',
+              message:
+                  'Knowledge item ${item.id} references missing ${link.entityType.name} ${link.entityId}.',
+              severity: DataIntegritySeverity.warning,
+              relatedEntityId: item.id,
+              suggestedRepair:
+                  'Refresh stale links or relink the knowledge item.',
+            ),
+          );
+        }
+      }
+    }
+
     _scanWeeklyReviews(snapshot.weeklyReviews, issues);
 
     return DataIntegrityReport(scannedAt: DateTime.now(), issues: issues);
@@ -169,6 +212,3 @@ class DataIntegrityService {
     }
   }
 }
-
-
-

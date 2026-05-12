@@ -1,4 +1,4 @@
-﻿import 'package:isar/isar.dart';
+import 'package:isar/isar.dart';
 
 part 'sync_local_state.g.dart';
 
@@ -24,4 +24,3 @@ class SyncLocalState {
   late bool bootstrapPending;
   String? bootstrapMessage;
 }
-

@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/errors/error_handler.dart';
+import '../../knowledge/models/knowledge_item.dart';
+import '../../knowledge/presentation/widgets/linked_knowledge_section.dart';
 import '../../../core/widgets/app_confirmation_dialog.dart';
 import '../../../core/widgets/app_status_chip.dart';
 import '../../goals/presentation/goal_detail_screen.dart';
 import '../../goals/providers/goal_providers.dart';
 import '../../integrations/providers/calendar_export_providers.dart';
+import '../../insights/presentation/planning_insights_panel.dart';
 import '../application/routine_consistency_service.dart';
 import '../application/routine_formatters.dart';
 import '../domain/routine_enums.dart';
@@ -27,28 +30,43 @@ class RoutineDetailScreen extends ConsumerWidget {
     final routinesAsync = ref.watch(watchAllRoutinesProvider);
     final occurrencesAsync = ref.watch(watchAllRoutineOccurrencesProvider);
     final goalsAsync = ref.watch(watchGoalsProvider);
-    final summaryAsync = ref.watch(routineConsistencySummaryProvider(routineId));
+    final summaryAsync = ref.watch(
+      routineConsistencySummaryProvider(routineId),
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Routine Details')),
-      body: switch ((routinesAsync, occurrencesAsync, goalsAsync, summaryAsync)) {
+      body: switch ((
+        routinesAsync,
+        occurrencesAsync,
+        goalsAsync,
+        summaryAsync,
+      )) {
         (
           AsyncData(value: final routines),
           AsyncData(value: final occurrences),
           AsyncData(value: final goals),
           AsyncData(value: final summary),
-        ) => () {
-          final routine = routines.where((item) => item.id == routineId).firstOrNull;
-          final linkedGoalName = routine?.linkedGoalId == null
-              ? null
-              : goals.where((item) => item.id == routine!.linkedGoalId).firstOrNull?.title;
-          return _DetailBody(
-            routine: routine,
-            occurrences: occurrences.where((item) => item.routineId == routineId).toList(),
-            linkedGoalName: linkedGoalName,
-            summary: summary,
-          );
-        }(),
+        ) =>
+          () {
+            final routine = routines
+                .where((item) => item.id == routineId)
+                .firstOrNull;
+            final linkedGoalName = routine?.linkedGoalId == null
+                ? null
+                : goals
+                      .where((item) => item.id == routine!.linkedGoalId)
+                      .firstOrNull
+                      ?.title;
+            return _DetailBody(
+              routine: routine,
+              occurrences: occurrences
+                  .where((item) => item.routineId == routineId)
+                  .toList(),
+              linkedGoalName: linkedGoalName,
+              summary: summary,
+            );
+          }(),
         (AsyncError(:final error, :final stackTrace), _, _, _) => _ErrorBody(
           error: error,
           stackTrace: stackTrace,
@@ -93,25 +111,43 @@ class _DetailBody extends ConsumerWidget {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final nextOccurrences = occurrences
-        .where(
-          (item) =>
-              item.effectiveStatusAt(now) == RoutineOccurrenceStatus.pending &&
-              !item.occurrenceDate.isBefore(today),
-        )
-        .toList()
-      ..sort((left, right) => left.occurrenceDate.compareTo(right.occurrenceDate));
-    final history = occurrences
-        .where((item) => item.effectiveStatusAt(now) != RoutineOccurrenceStatus.pending)
-        .toList()
-      ..sort((left, right) => right.occurrenceDate.compareTo(left.occurrenceDate));
-    final needsAttention = nextOccurrences.where((item) => item.needsAttention).toList();
-    final recoveryInstances =
-        nextOccurrences.where((item) => item.isRecoveryInstance).toList();
+    final nextOccurrences =
+        occurrences
+            .where(
+              (item) =>
+                  item.effectiveStatusAt(now) ==
+                      RoutineOccurrenceStatus.pending &&
+                  !item.occurrenceDate.isBefore(today),
+            )
+            .toList()
+          ..sort(
+            (left, right) =>
+                left.occurrenceDate.compareTo(right.occurrenceDate),
+          );
+    final history =
+        occurrences
+            .where(
+              (item) =>
+                  item.effectiveStatusAt(now) !=
+                  RoutineOccurrenceStatus.pending,
+            )
+            .toList()
+          ..sort(
+            (left, right) =>
+                right.occurrenceDate.compareTo(left.occurrenceDate),
+          );
+    final needsAttention = nextOccurrences
+        .where((item) => item.needsAttention)
+        .toList();
+    final recoveryInstances = nextOccurrences
+        .where((item) => item.isRecoveryInstance)
+        .toList();
     final recoverySuggestions = occurrences.where((item) {
       return item.effectiveStatusAt(now) == RoutineOccurrenceStatus.missed &&
           item.recoveryDismissedAt == null &&
-          !occurrences.any((candidate) => candidate.recoveredFromOccurrenceId == item.id);
+          !occurrences.any(
+            (candidate) => candidate.recoveredFromOccurrenceId == item.id,
+          );
     }).toList();
 
     return ListView(
@@ -138,8 +174,12 @@ class _DetailBody extends ConsumerWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    AppStatusChip(label: routine.isArchived ? 'Archived' : 'Active'),
-                    AppStatusChip(label: routine.isFlexible ? 'Flexible' : 'Fixed'),
+                    AppStatusChip(
+                      label: routine.isArchived ? 'Archived' : 'Active',
+                    ),
+                    AppStatusChip(
+                      label: routine.isFlexible ? 'Flexible' : 'Fixed',
+                    ),
                     if (routine.autoRescheduleMissed)
                       const AppStatusChip(label: 'Auto-recover'),
                     if (routine.remindersEnabled)
@@ -162,8 +202,9 @@ class _DetailBody extends ConsumerWidget {
                         : () {
                             Navigator.of(context).push(
                               MaterialPageRoute<void>(
-                                builder: (_) =>
-                                    GoalDetailScreen(goalId: routine.linkedGoalId!),
+                                builder: (_) => GoalDetailScreen(
+                                  goalId: routine.linkedGoalId!,
+                                ),
                               ),
                             );
                           },
@@ -179,6 +220,19 @@ class _DetailBody extends ConsumerWidget {
         _ActionsCard(
           routine: routine,
           onDelete: () => _deleteRoutine(context, ref, routine),
+        ),
+        const SizedBox(height: 16),
+        PlanningInsightsPanel(
+          title: 'Routine Suggestions',
+          routineId: routine.id,
+          maxItems: 3,
+          showEmptyState: true,
+        ),
+        const SizedBox(height: 16),
+        LinkedKnowledgeSection(
+          entityType: LinkedEntityType.routine,
+          entityId: routine.id,
+          title: 'Knowledge',
         ),
         const SizedBox(height: 16),
         Card(
@@ -205,7 +259,9 @@ class _DetailBody extends ConsumerWidget {
                 ),
                 if (summary.lastCompletedAt != null) ...[
                   const SizedBox(height: 4),
-                  Text('Last completed ${DateFormat.yMMMd().add_jm().format(summary.lastCompletedAt!)}'),
+                  Text(
+                    'Last completed ${DateFormat.yMMMd().add_jm().format(summary.lastCompletedAt!)}',
+                  ),
                 ],
               ],
             ),
@@ -229,11 +285,15 @@ class _DetailBody extends ConsumerWidget {
                   ),
                   if (needsAttention.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text('${needsAttention.length} upcoming occurrence(s) still need placement.'),
+                    Text(
+                      '${needsAttention.length} upcoming occurrence(s) still need placement.',
+                    ),
                   ],
                   if (recoveryInstances.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text('${recoveryInstances.length} recovery occurrence(s) are already scheduled.'),
+                    Text(
+                      '${recoveryInstances.length} recovery occurrence(s) are already scheduled.',
+                    ),
                   ],
                   for (final suggestion in recoverySuggestions.take(3)) ...[
                     const SizedBox(height: 12),
@@ -248,7 +308,10 @@ class _DetailBody extends ConsumerWidget {
                           onPressed: () async {
                             try {
                               await ref
-                                  .read(routineIntelligenceControllerProvider.notifier)
+                                  .read(
+                                    routineIntelligenceControllerProvider
+                                        .notifier,
+                                  )
                                   .dismissRecoverySuggestion(suggestion.id);
                             } catch (error) {
                               if (context.mounted) {
@@ -287,7 +350,9 @@ class _DetailBody extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 if (nextOccurrences.isEmpty)
-                  const Text('No upcoming routine occurrences in the current horizon.')
+                  const Text(
+                    'No upcoming routine occurrences in the current horizon.',
+                  )
                 else
                   for (final occurrence in nextOccurrences.take(7)) ...[
                     _OccurrenceRow(occurrence: occurrence),
@@ -361,10 +426,7 @@ class _DetailBody extends ConsumerWidget {
 }
 
 class _ActionsCard extends ConsumerWidget {
-  const _ActionsCard({
-    required this.routine,
-    required this.onDelete,
-  });
+  const _ActionsCard({required this.routine, required this.onDelete});
 
   final Routine routine;
   final VoidCallback onDelete;
@@ -398,7 +460,9 @@ class _ActionsCard extends ConsumerWidget {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Upcoming routine occurrences replanned.'),
+                        content: Text(
+                          'Upcoming routine occurrences replanned.',
+                        ),
                       ),
                     );
                   }
@@ -457,7 +521,9 @@ class _ActionsCard extends ConsumerWidget {
                 try {
                   final ics = ref
                       .read(routineCalendarExportServiceProvider)
-                      .generateRecurringRoutineIcs([routine], calendarName: routine.title);
+                      .generateRecurringRoutineIcs([
+                        routine,
+                      ], calendarName: routine.title);
                   final result = await ref
                       .read(calendarFileExportServiceProvider)
                       .saveIcsFile(
@@ -465,9 +531,9 @@ class _ActionsCard extends ConsumerWidget {
                         suggestedName: '${routine.title}_routine.ics',
                       );
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(result.message)),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(result.message)));
                   }
                 } catch (error) {
                   if (context.mounted) {
@@ -487,20 +553,25 @@ class _ActionsCard extends ConsumerWidget {
             TextButton.icon(
               onPressed: () async {
                 try {
-                  await ref.read(routineFormControllerProvider(routine).notifier).archive();
+                  await ref
+                      .read(routineFormControllerProvider(routine).notifier)
+                      .archive();
                 } catch (error) {
                   if (context.mounted) {
                     ErrorHandler.showSnackBar(
                       context,
                       error,
                       fallbackTitle: 'Routine update failed',
-                      fallbackMessage: 'The routine block could not be updated.',
+                      fallbackMessage:
+                          'The routine block could not be updated.',
                     );
                   }
                 }
               },
               icon: Icon(
-                routine.isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
+                routine.isArchived
+                    ? Icons.unarchive_outlined
+                    : Icons.archive_outlined,
               ),
               label: Text(routine.isArchived ? 'Unarchive' : 'Archive'),
             ),
@@ -557,10 +628,7 @@ class _OccurrenceRow extends StatelessWidget {
 }
 
 class _ErrorBody extends StatelessWidget {
-  const _ErrorBody({
-    required this.error,
-    required this.stackTrace,
-  });
+  const _ErrorBody({required this.error, required this.stackTrace});
 
   final Object error;
   final StackTrace stackTrace;

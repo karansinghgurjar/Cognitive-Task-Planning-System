@@ -1,6 +1,6 @@
 ﻿class AppDatabaseVersion {
   const AppDatabaseVersion._();
 
-  static const int schemaVersion = 5;
-  static const int backupFormatVersion = 1;
+  static const int schemaVersion = 6;
+  static const int backupFormatVersion = 2;
 }

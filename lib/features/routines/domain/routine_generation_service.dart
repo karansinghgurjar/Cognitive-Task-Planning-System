@@ -1,5 +1,3 @@
-import 'package:uuid/uuid.dart';
-
 import 'routine_date_utils.dart';
 import 'routine_enums.dart';
 import '../models/routine.dart';
@@ -7,9 +5,9 @@ import '../models/routine_occurrence.dart';
 
 class RoutineGenerationService {
   RoutineGenerationService({String Function()? idGenerator})
-    : _idGenerator = idGenerator ?? const Uuid().v4;
+    : _idGenerator = idGenerator;
 
-  final String Function() _idGenerator;
+  final String Function()? _idGenerator;
 
   List<DateTime> computeOccurrenceDates(
     Routine routine, {
@@ -65,7 +63,7 @@ class RoutineGenerationService {
         : null;
 
     return RoutineOccurrence(
-      id: _idGenerator(),
+      id: _idGenerator?.call() ?? buildOccurrenceKey(routine.id, normalizedDate),
       routineId: routine.id,
       occurrenceDate: normalizedDate,
       scheduledStart: scheduledStart,

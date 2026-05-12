@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 enum SyncEntityType {
   task,
@@ -11,6 +11,7 @@ enum SyncEntityType {
   routineOccurrence,
   routineTemplate,
   routineGroup,
+  knowledgeItem,
   notificationPreferences,
 }
 
@@ -118,6 +119,18 @@ class SyncConflict {
   final Map<String, dynamic>? remotePayload;
 }
 
+class SyncApplyReport {
+  const SyncApplyReport({
+    this.appliedCount = 0,
+    this.tombstoneAppliedCount = 0,
+    this.dedupedOccurrenceCount = 0,
+  });
+
+  final int appliedCount;
+  final int tombstoneAppliedCount;
+  final int dedupedOccurrenceCount;
+}
+
 class SyncResult {
   const SyncResult({
     required this.startedAt,
@@ -129,6 +142,9 @@ class SyncResult {
     this.errors = const [],
     this.wasOffline = false,
     this.requiredBootstrap = false,
+    this.tombstoneAppliedCount = 0,
+    this.dedupedOccurrenceCount = 0,
+    this.reminderRebuildCount = 0,
   });
 
   final DateTime startedAt;
@@ -140,6 +156,9 @@ class SyncResult {
   final List<String> errors;
   final bool wasOffline;
   final bool requiredBootstrap;
+  final int tombstoneAppliedCount;
+  final int dedupedOccurrenceCount;
+  final int reminderRebuildCount;
 
   bool get success => failedCount == 0 && errors.isEmpty;
 }
@@ -225,4 +244,3 @@ class BootstrapPlan {
 
   bool get requiresChoice => requirement == BootstrapRequirement.choose;
 }
-

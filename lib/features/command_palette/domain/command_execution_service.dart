@@ -9,6 +9,7 @@ import '../../focus_session/presentation/focus_session_screen.dart';
 import '../../goals/presentation/add_goal_screen.dart';
 import '../../goals/presentation/goal_detail_screen.dart';
 import '../../integrations/presentation/calendar_export_screen.dart';
+import '../../planning_assistant/presentation/screens/planning_assistant_screen.dart';
 import '../../quick_capture/presentation/quick_capture_inbox_screen.dart';
 import '../../quick_capture/presentation/quick_capture_sheet.dart';
 import '../../review/presentation/weekly_review_screen.dart';
@@ -64,6 +65,16 @@ class CommandExecutionService {
           await Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const WeeklyReviewScreen()),
           );
+          return const CommandExecutionResult(success: true);
+        case AppCommandId.openPlanningAssistant:
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const PlanningAssistantScreen(),
+            ),
+          );
+          return const CommandExecutionResult(success: true);
+        case AppCommandId.openKnowledge:
+          await AppRouter.openKnowledgeDashboard(context);
           return const CommandExecutionResult(success: true);
         case AppCommandId.openSettings:
           await AppRouter.openSettings(context);
@@ -180,7 +191,9 @@ class CommandExecutionService {
     if (confirmed != true) {
       return const CommandExecutionResult(success: false);
     }
-    await ref.read(scheduleActionControllerProvider.notifier).generateNext7DaysSchedule();
+    await ref
+        .read(scheduleActionControllerProvider.notifier)
+        .generateNext7DaysSchedule();
     return const CommandExecutionResult(
       success: true,
       message: 'Schedule generated.',

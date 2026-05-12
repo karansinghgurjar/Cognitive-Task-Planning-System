@@ -230,6 +230,11 @@ const _SyncEntityMetadataentityTypeEnumValueMap = {
   r'learningGoal': r'learningGoal',
   r'goalMilestone': r'goalMilestone',
   r'taskDependency': r'taskDependency',
+  r'routine': r'routine',
+  r'routineOccurrence': r'routineOccurrence',
+  r'routineTemplate': r'routineTemplate',
+  r'routineGroup': r'routineGroup',
+  r'knowledgeItem': r'knowledgeItem',
   r'notificationPreferences': r'notificationPreferences',
 };
 const _SyncEntityMetadataentityTypeValueEnumMap = {
@@ -239,6 +244,11 @@ const _SyncEntityMetadataentityTypeValueEnumMap = {
   r'learningGoal': SyncEntityType.learningGoal,
   r'goalMilestone': SyncEntityType.goalMilestone,
   r'taskDependency': SyncEntityType.taskDependency,
+  r'routine': SyncEntityType.routine,
+  r'routineOccurrence': SyncEntityType.routineOccurrence,
+  r'routineTemplate': SyncEntityType.routineTemplate,
+  r'routineGroup': SyncEntityType.routineGroup,
+  r'knowledgeItem': SyncEntityType.knowledgeItem,
   r'notificationPreferences': SyncEntityType.notificationPreferences,
 };
 const _SyncEntityMetadatasyncStateEnumValueMap = {

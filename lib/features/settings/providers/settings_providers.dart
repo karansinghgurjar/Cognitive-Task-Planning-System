@@ -20,6 +20,11 @@ final notificationPreferencesProvider = StreamProvider<NotificationPreferences>(
   },
 );
 
+final appThemePreferenceProvider = Provider<AppThemePreference>((ref) {
+  return ref.watch(notificationPreferencesProvider).valueOrNull?.themePreference ??
+      AppThemePreference.system;
+});
+
 final settingsActionControllerProvider =
     AsyncNotifierProvider<SettingsActionController, void>(
       SettingsActionController.new,

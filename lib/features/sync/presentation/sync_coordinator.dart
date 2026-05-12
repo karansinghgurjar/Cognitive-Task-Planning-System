@@ -1,7 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../settings/providers/settings_providers.dart';
+import '../../routines/providers/routine_intelligence_providers.dart';
 import '../providers/sync_providers.dart';
 
 class SyncCoordinator extends ConsumerStatefulWidget {
@@ -39,14 +42,29 @@ class _SyncCoordinatorState extends ConsumerState<SyncCoordinator>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(
-      watchPendingSyncOperationsProvider,
-      (_, next) {
-        if ((next.valueOrNull?.length ?? 0) > 0) {
-          ref.read(syncActionControllerProvider.notifier).scheduleAutoSync();
-        }
-      },
-    );
+    ref.listen(watchPendingSyncOperationsProvider, (_, next) {
+      if ((next.valueOrNull?.length ?? 0) > 0) {
+        ref.read(syncActionControllerProvider.notifier).scheduleAutoSync();
+      }
+    });
+    ref.listen(syncActionControllerProvider, (previous, next) {
+      final result = next.valueOrNull;
+      if (result == null || !result.success) {
+        return;
+      }
+      final routineStateChanged =
+          result.pulledCount > 0 ||
+          result.tombstoneAppliedCount > 0 ||
+          result.dedupedOccurrenceCount > 0;
+      if (!routineStateChanged) {
+        return;
+      }
+      unawaited(
+        ref
+            .read(routineIntelligenceControllerProvider.notifier)
+            .rebuildPostSyncDerivedState(),
+      );
+    });
     return widget.child;
   }
 
@@ -69,4 +87,3 @@ class _SyncCoordinatorState extends ConsumerState<SyncCoordinator>
     ref.read(syncActionControllerProvider.notifier).scheduleAutoSync();
   }
 }
-

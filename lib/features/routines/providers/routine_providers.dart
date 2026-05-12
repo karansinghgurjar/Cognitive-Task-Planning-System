@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/isar_providers.dart';
+import '../../settings/providers/settings_providers.dart';
 import '../../tasks/models/task.dart';
+import '../../sync/providers/sync_providers.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../application/routine_form_controller.dart';
 import '../application/routine_bulk_action_service.dart';
@@ -33,7 +35,10 @@ import 'routine_intelligence_providers.dart';
 
 final routineRepositoryProvider = FutureProvider<RoutineRepository>((ref) async {
   final isar = await ref.watch(isarInstanceProvider.future);
-  return RoutineRepository(isar);
+  final syncMutationRecorder = await ref.watch(
+    syncMutationRecorderProvider.future,
+  );
+  return RoutineRepository(isar, syncMutationRecorder: syncMutationRecorder);
 });
 
 final routineRepositoryContractProvider =
@@ -44,19 +49,37 @@ final routineRepositoryContractProvider =
 final routineOccurrenceRepositoryProvider =
     FutureProvider<RoutineOccurrenceRepository>((ref) async {
       final isar = await ref.watch(isarInstanceProvider.future);
-      return RoutineOccurrenceRepository(isar);
+      final syncMutationRecorder = await ref.watch(
+        syncMutationRecorderProvider.future,
+      );
+      return RoutineOccurrenceRepository(
+        isar,
+        syncMutationRecorder: syncMutationRecorder,
+      );
     });
 
 final routineTemplateRepositoryProvider =
     FutureProvider<RoutineTemplateRepository>((ref) async {
       final isar = await ref.watch(isarInstanceProvider.future);
-      return RoutineTemplateRepository(isar);
+      final syncMutationRecorder = await ref.watch(
+        syncMutationRecorderProvider.future,
+      );
+      return RoutineTemplateRepository(
+        isar,
+        syncMutationRecorder: syncMutationRecorder,
+      );
     });
 
 final routineGroupRepositoryProvider =
     FutureProvider<RoutineGroupRepository>((ref) async {
       final isar = await ref.watch(isarInstanceProvider.future);
-      return RoutineGroupRepository(isar);
+      final syncMutationRecorder = await ref.watch(
+        syncMutationRecorderProvider.future,
+      );
+      return RoutineGroupRepository(
+        isar,
+        syncMutationRecorder: syncMutationRecorder,
+      );
     });
 
 final routineGenerationServiceProvider = Provider<RoutineGenerationService>((ref) {
@@ -77,7 +100,11 @@ final routineTemplateServiceProvider = Provider<RoutineTemplateService>((ref) {
 
 final routineHistoryPolicyServiceProvider =
     Provider<RoutineHistoryPolicyService>((ref) {
-      return const RoutineHistoryPolicyService();
+      final preferences = ref.watch(notificationPreferencesProvider).valueOrNull;
+      return RoutineHistoryPolicyService(
+        activePlanningHorizonDays:
+            preferences?.routineGenerationHorizonDays ?? 30,
+      );
     });
 
 final routineStarterPackServiceProvider = Provider<RoutineStarterPackService>((ref) {
@@ -761,3 +788,5 @@ TaskType _taskTypeForRoutine(Routine routine) {
       return TaskType.misc;
   }
 }
+
+

@@ -1,4 +1,4 @@
-﻿class EntitySyncMetadataStrategy {
+class EntitySyncMetadataStrategy {
   const EntitySyncMetadataStrategy({
     required this.entityName,
     required this.stableIdField,

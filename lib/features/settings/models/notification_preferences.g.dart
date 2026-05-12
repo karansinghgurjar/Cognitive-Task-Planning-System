@@ -54,25 +54,41 @@ const NotificationPreferencesSchema = CollectionSchema(
       name: r'deadlineWarningsEnabled',
       type: IsarType.bool,
     ),
-    r'reminderLeadTimeMinutes': PropertySchema(
+    r'defaultPlanningHorizonDays': PropertySchema(
       id: 7,
+      name: r'defaultPlanningHorizonDays',
+      type: IsarType.long,
+    ),
+    r'reminderLeadTimeMinutes': PropertySchema(
+      id: 8,
       name: r'reminderLeadTimeMinutes',
       type: IsarType.long,
     ),
+    r'routineGenerationHorizonDays': PropertySchema(
+      id: 9,
+      name: r'routineGenerationHorizonDays',
+      type: IsarType.long,
+    ),
     r'sessionRemindersEnabled': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'sessionRemindersEnabled',
       type: IsarType.bool,
     ),
     r'syncEnabled': PropertySchema(
-      id: 9,
+      id: 11,
       name: r'syncEnabled',
       type: IsarType.bool,
     ),
     r'syncOnWifiOnly': PropertySchema(
-      id: 10,
+      id: 12,
       name: r'syncOnWifiOnly',
       type: IsarType.bool,
+    ),
+    r'themePreference': PropertySchema(
+      id: 13,
+      name: r'themePreference',
+      type: IsarType.string,
+      enumMap: _NotificationPreferencesthemePreferenceEnumValueMap,
     )
   },
   estimateSize: _notificationPreferencesEstimateSize,
@@ -96,6 +112,7 @@ int _notificationPreferencesEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.backupReminderCadence.name.length * 3;
+  bytesCount += 3 + object.themePreference.name.length * 3;
   return bytesCount;
 }
 
@@ -112,10 +129,13 @@ void _notificationPreferencesSerialize(
   writer.writeLong(offsets[4], object.dailySummaryHour);
   writer.writeLong(offsets[5], object.dailySummaryMinute);
   writer.writeBool(offsets[6], object.deadlineWarningsEnabled);
-  writer.writeLong(offsets[7], object.reminderLeadTimeMinutes);
-  writer.writeBool(offsets[8], object.sessionRemindersEnabled);
-  writer.writeBool(offsets[9], object.syncEnabled);
-  writer.writeBool(offsets[10], object.syncOnWifiOnly);
+  writer.writeLong(offsets[7], object.defaultPlanningHorizonDays);
+  writer.writeLong(offsets[8], object.reminderLeadTimeMinutes);
+  writer.writeLong(offsets[9], object.routineGenerationHorizonDays);
+  writer.writeBool(offsets[10], object.sessionRemindersEnabled);
+  writer.writeBool(offsets[11], object.syncEnabled);
+  writer.writeBool(offsets[12], object.syncOnWifiOnly);
+  writer.writeString(offsets[13], object.themePreference.name);
 }
 
 NotificationPreferences _notificationPreferencesDeserialize(
@@ -135,11 +155,16 @@ NotificationPreferences _notificationPreferencesDeserialize(
     dailySummaryHour: reader.readLongOrNull(offsets[4]) ?? 7,
     dailySummaryMinute: reader.readLongOrNull(offsets[5]) ?? 0,
     deadlineWarningsEnabled: reader.readBoolOrNull(offsets[6]) ?? true,
+    defaultPlanningHorizonDays: reader.readLongOrNull(offsets[7]) ?? 7,
     id: id,
-    reminderLeadTimeMinutes: reader.readLongOrNull(offsets[7]) ?? 10,
-    sessionRemindersEnabled: reader.readBoolOrNull(offsets[8]) ?? true,
-    syncEnabled: reader.readBoolOrNull(offsets[9]) ?? false,
-    syncOnWifiOnly: reader.readBoolOrNull(offsets[10]) ?? false,
+    reminderLeadTimeMinutes: reader.readLongOrNull(offsets[8]) ?? 10,
+    routineGenerationHorizonDays: reader.readLongOrNull(offsets[9]) ?? 30,
+    sessionRemindersEnabled: reader.readBoolOrNull(offsets[10]) ?? true,
+    syncEnabled: reader.readBoolOrNull(offsets[11]) ?? false,
+    syncOnWifiOnly: reader.readBoolOrNull(offsets[12]) ?? false,
+    themePreference: _NotificationPreferencesthemePreferenceValueEnumMap[
+            reader.readStringOrNull(offsets[13])] ??
+        AppThemePreference.system,
   );
   return object;
 }
@@ -168,13 +193,21 @@ P _notificationPreferencesDeserializeProp<P>(
     case 6:
       return (reader.readBoolOrNull(offset) ?? true) as P;
     case 7:
-      return (reader.readLongOrNull(offset) ?? 10) as P;
+      return (reader.readLongOrNull(offset) ?? 7) as P;
     case 8:
-      return (reader.readBoolOrNull(offset) ?? true) as P;
+      return (reader.readLongOrNull(offset) ?? 10) as P;
     case 9:
-      return (reader.readBoolOrNull(offset) ?? false) as P;
+      return (reader.readLongOrNull(offset) ?? 30) as P;
     case 10:
+      return (reader.readBoolOrNull(offset) ?? true) as P;
+    case 11:
       return (reader.readBoolOrNull(offset) ?? false) as P;
+    case 12:
+      return (reader.readBoolOrNull(offset) ?? false) as P;
+    case 13:
+      return (_NotificationPreferencesthemePreferenceValueEnumMap[
+              reader.readStringOrNull(offset)] ??
+          AppThemePreference.system) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -189,6 +222,16 @@ const _NotificationPreferencesbackupReminderCadenceValueEnumMap = {
   r'weekly': BackupReminderCadence.weekly,
   r'everyTwoWeeks': BackupReminderCadence.everyTwoWeeks,
   r'monthly': BackupReminderCadence.monthly,
+};
+const _NotificationPreferencesthemePreferenceEnumValueMap = {
+  r'system': r'system',
+  r'light': r'light',
+  r'dark': r'dark',
+};
+const _NotificationPreferencesthemePreferenceValueEnumMap = {
+  r'system': AppThemePreference.system,
+  r'light': AppThemePreference.light,
+  r'dark': AppThemePreference.dark,
 };
 
 Id _notificationPreferencesGetId(NotificationPreferences object) {
@@ -580,6 +623,62 @@ extension NotificationPreferencesQueryFilter on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> defaultPlanningHorizonDaysEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'defaultPlanningHorizonDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> defaultPlanningHorizonDaysGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'defaultPlanningHorizonDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> defaultPlanningHorizonDaysLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'defaultPlanningHorizonDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> defaultPlanningHorizonDaysBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'defaultPlanningHorizonDays',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
       QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -692,6 +791,62 @@ extension NotificationPreferencesQueryFilter on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> routineGenerationHorizonDaysEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'routineGenerationHorizonDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> routineGenerationHorizonDaysGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'routineGenerationHorizonDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> routineGenerationHorizonDaysLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'routineGenerationHorizonDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> routineGenerationHorizonDaysBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'routineGenerationHorizonDays',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
       QAfterFilterCondition> sessionRemindersEnabledEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -717,6 +872,144 @@ extension NotificationPreferencesQueryFilter on QueryBuilder<
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'syncOnWifiOnly',
         value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> themePreferenceEqualTo(
+    AppThemePreference value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'themePreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> themePreferenceGreaterThan(
+    AppThemePreference value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'themePreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> themePreferenceLessThan(
+    AppThemePreference value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'themePreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> themePreferenceBetween(
+    AppThemePreference lower,
+    AppThemePreference upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'themePreference',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> themePreferenceStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'themePreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> themePreferenceEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'themePreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+          QAfterFilterCondition>
+      themePreferenceContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'themePreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+          QAfterFilterCondition>
+      themePreferenceMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'themePreference',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> themePreferenceIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'themePreference',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> themePreferenceIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'themePreference',
+        value: '',
       ));
     });
   }
@@ -829,6 +1122,20 @@ extension NotificationPreferencesQuerySortBy
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByDefaultPlanningHorizonDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'defaultPlanningHorizonDays', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByDefaultPlanningHorizonDaysDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'defaultPlanningHorizonDays', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
       sortByReminderLeadTimeMinutes() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reminderLeadTimeMinutes', Sort.asc);
@@ -839,6 +1146,20 @@ extension NotificationPreferencesQuerySortBy
       sortByReminderLeadTimeMinutesDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reminderLeadTimeMinutes', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByRoutineGenerationHorizonDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'routineGenerationHorizonDays', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByRoutineGenerationHorizonDaysDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'routineGenerationHorizonDays', Sort.desc);
     });
   }
 
@@ -881,6 +1202,20 @@ extension NotificationPreferencesQuerySortBy
       sortBySyncOnWifiOnlyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'syncOnWifiOnly', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByThemePreference() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'themePreference', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByThemePreferenceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'themePreference', Sort.desc);
     });
   }
 }
@@ -986,6 +1321,20 @@ extension NotificationPreferencesQuerySortThenBy on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByDefaultPlanningHorizonDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'defaultPlanningHorizonDays', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByDefaultPlanningHorizonDaysDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'defaultPlanningHorizonDays', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
       thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -1010,6 +1359,20 @@ extension NotificationPreferencesQuerySortThenBy on QueryBuilder<
       thenByReminderLeadTimeMinutesDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reminderLeadTimeMinutes', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByRoutineGenerationHorizonDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'routineGenerationHorizonDays', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByRoutineGenerationHorizonDaysDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'routineGenerationHorizonDays', Sort.desc);
     });
   }
 
@@ -1052,6 +1415,20 @@ extension NotificationPreferencesQuerySortThenBy on QueryBuilder<
       thenBySyncOnWifiOnlyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'syncOnWifiOnly', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByThemePreference() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'themePreference', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByThemePreferenceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'themePreference', Sort.desc);
     });
   }
 }
@@ -1109,9 +1486,23 @@ extension NotificationPreferencesQueryWhereDistinct on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences, QDistinct>
+      distinctByDefaultPlanningHorizonDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'defaultPlanningHorizonDays');
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QDistinct>
       distinctByReminderLeadTimeMinutes() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'reminderLeadTimeMinutes');
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QDistinct>
+      distinctByRoutineGenerationHorizonDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'routineGenerationHorizonDays');
     });
   }
 
@@ -1133,6 +1524,14 @@ extension NotificationPreferencesQueryWhereDistinct on QueryBuilder<
       distinctBySyncOnWifiOnly() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'syncOnWifiOnly');
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QDistinct>
+      distinctByThemePreference({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'themePreference',
+          caseSensitive: caseSensitive);
     });
   }
 }
@@ -1195,9 +1594,23 @@ extension NotificationPreferencesQueryProperty on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, int, QQueryOperations>
+      defaultPlanningHorizonDaysProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'defaultPlanningHorizonDays');
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, int, QQueryOperations>
       reminderLeadTimeMinutesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'reminderLeadTimeMinutes');
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, int, QQueryOperations>
+      routineGenerationHorizonDaysProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'routineGenerationHorizonDays');
     });
   }
 
@@ -1219,6 +1632,13 @@ extension NotificationPreferencesQueryProperty on QueryBuilder<
       syncOnWifiOnlyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'syncOnWifiOnly');
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, AppThemePreference, QQueryOperations>
+      themePreferenceProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'themePreference');
     });
   }
 }

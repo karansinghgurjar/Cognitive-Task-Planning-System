@@ -22,6 +22,9 @@ void main() {
         sessionRemindersEnabled: false,
         dailySummaryHour: 8,
         dailySummaryMinute: 30,
+        themePreference: AppThemePreference.dark,
+        defaultPlanningHorizonDays: 14,
+        routineGenerationHorizonDays: 45,
       );
 
       await container
@@ -31,6 +34,9 @@ void main() {
       expect(repository.preferences.sessionRemindersEnabled, isFalse);
       expect(repository.preferences.dailySummaryHour, 8);
       expect(repository.preferences.dailySummaryMinute, 30);
+      expect(repository.preferences.themePreference, AppThemePreference.dark);
+      expect(repository.preferences.defaultPlanningHorizonDays, 14);
+      expect(repository.preferences.routineGenerationHorizonDays, 45);
     },
   );
 }

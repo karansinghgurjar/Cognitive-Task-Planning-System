@@ -9,6 +9,9 @@ import 'package:study_flow/features/goals/models/goal_milestone.dart';
 import 'package:study_flow/features/goals/models/learning_goal.dart';
 import 'package:study_flow/features/goals/models/task_dependency.dart';
 import 'package:study_flow/features/goals/providers/goal_providers.dart';
+import 'package:study_flow/features/notes/domain/entity_attachments_cleanup_service.dart';
+import 'package:study_flow/features/notes/models/entity_note.dart';
+import 'package:study_flow/features/notes/providers/notes_providers.dart';
 import 'package:study_flow/features/schedule/data/planned_session_repository.dart';
 import 'package:study_flow/features/schedule/models/planned_session.dart';
 import 'package:study_flow/features/schedule/providers/schedule_providers.dart';
@@ -17,6 +20,7 @@ import 'package:study_flow/features/tasks/models/task.dart';
 import 'package:study_flow/features/tasks/providers/task_providers.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   test(
     'task action controller deletes sessions and dependencies before task',
     () async {
@@ -30,6 +34,9 @@ void main() {
             (ref) async => sessionRepository,
           ),
           goalRepositoryProvider.overrideWith((ref) async => goalRepository),
+          entityAttachmentsCleanupServiceProvider.overrideWith(
+            (ref) async => _FakeEntityAttachmentsCleanupService(),
+          ),
         ],
       );
       addTearDown(() async {
@@ -72,6 +79,9 @@ void main() {
             (ref) async => sessionRepository,
           ),
           goalRepositoryProvider.overrideWith((ref) async => goalRepository),
+          entityAttachmentsCleanupServiceProvider.overrideWith(
+            (ref) async => _FakeEntityAttachmentsCleanupService(),
+          ),
         ],
       );
       addTearDown(() async {
@@ -134,6 +144,9 @@ void main() {
             (ref) async => sessionRepository,
           ),
           goalRepositoryProvider.overrideWith((ref) async => goalRepository),
+          entityAttachmentsCleanupServiceProvider.overrideWith(
+            (ref) async => _FakeEntityAttachmentsCleanupService(),
+          ),
           focusSessionControllerProvider.overrideWith(
             () => _StubFocusController(activeFocus),
           ),
@@ -157,6 +170,22 @@ void main() {
   );
 }
 
+
+class _FakeEntityAttachmentsCleanupService
+    implements EntityAttachmentsCleanupService {
+  final deleted = <String>[];
+
+  @override
+  Future<void> deleteForEntity(
+    EntityAttachmentType entityType,
+    String entityId,
+  ) async {
+    deleted.add('${entityType.name}:$entityId');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 class _FakeTaskRepository implements TaskRepository {
   final List<String> deletedTaskIds = [];
   final List<String> archivedTaskIds = [];

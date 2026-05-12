@@ -4,6 +4,7 @@ import '../../../core/database/database_version.dart';
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
 import '../../goals/models/task_dependency.dart';
+import '../../knowledge/models/knowledge_item.dart';
 import '../../notes/models/entity_note.dart';
 import '../../notes/models/entity_resource.dart';
 import '../../review/models/weekly_review.dart';
@@ -48,7 +49,12 @@ class BackupSerialization {
         'milestones': bundle.milestones.map(_milestoneToJson).toList(),
         'dependencies': bundle.dependencies.map(_dependencyToJson).toList(),
         'entityNotes': bundle.entityNotes.map(_entityNoteToJson).toList(),
-        'entityResources': bundle.entityResources.map(_entityResourceToJson).toList(),
+        'entityResources': bundle.entityResources
+            .map(_entityResourceToJson)
+            .toList(),
+        'knowledgeItems': bundle.knowledgeItems
+            .map(_knowledgeItemToJson)
+            .toList(),
         'routines': bundle.routines.map(_routineToJson).toList(),
         'routineOccurrences': bundle.routineOccurrences
             .map(_routineOccurrenceToJson)
@@ -184,6 +190,14 @@ class BackupSerialization {
       parser: (json, itemWarnings) =>
           _entityResourceFromJson(json, itemWarnings),
     );
+    final knowledgeItems = _parseOptionalCollection<KnowledgeItem>(
+      name: 'knowledgeItems',
+      source: validCollections,
+      warnings: warnings,
+      idOf: (item) => item.id,
+      parser: (json, itemWarnings) =>
+          _knowledgeItemFromJson(json, itemWarnings),
+    );
     final routines = _parseOptionalCollection<Routine>(
       name: 'routines',
       source: validCollections,
@@ -244,6 +258,7 @@ class BackupSerialization {
         dependencies: dependencies,
         entityNotes: entityNotes,
         entityResources: entityResources,
+        knowledgeItems: knowledgeItems,
         routines: routines,
         routineOccurrences: routineOccurrences,
         routineTemplates: routineTemplates,
@@ -454,7 +469,9 @@ class BackupSerialization {
     for (final note in bundle.entityNotes) {
       final entityExists = switch (note.entityType) {
         EntityAttachmentType.task => taskIds.contains(note.entityId),
-        EntityAttachmentType.goal => goalIdsForAttachments.contains(note.entityId),
+        EntityAttachmentType.goal => goalIdsForAttachments.contains(
+          note.entityId,
+        ),
       };
       if (!entityExists) {
         warnings.add(
@@ -469,8 +486,9 @@ class BackupSerialization {
     for (final resource in bundle.entityResources) {
       final entityExists = switch (resource.entityType) {
         EntityAttachmentType.task => taskIds.contains(resource.entityId),
-        EntityAttachmentType.goal =>
-          goalIdsForAttachments.contains(resource.entityId),
+        EntityAttachmentType.goal => goalIdsForAttachments.contains(
+          resource.entityId,
+        ),
       };
       if (!entityExists) {
         warnings.add(
@@ -481,10 +499,39 @@ class BackupSerialization {
       normalizedResources.add(resource);
     }
 
+    final normalizedKnowledgeItems = <KnowledgeItem>[];
+    for (final item in bundle.knowledgeItems) {
+      final nextLinks = item.links.map((link) {
+        final exists = switch (link.entityType) {
+          LinkedEntityType.task => taskIds.contains(link.entityId),
+          LinkedEntityType.goal => goalIdsForAttachments.contains(
+            link.entityId,
+          ),
+          LinkedEntityType.routine => routineIds.contains(link.entityId),
+          LinkedEntityType.routineOccurrence => bundle.routineOccurrences.any(
+            (occurrence) => occurrence.id == link.entityId,
+          ),
+          LinkedEntityType.focusSession => bundle.plannedSessions.any(
+            (session) => session.id == link.entityId,
+          ),
+          LinkedEntityType.milestone => milestoneIds.contains(link.entityId),
+          LinkedEntityType.project => true,
+        };
+        if (!exists) {
+          warnings.add(
+            'Knowledge item ${item.id} has stale ${link.entityType.name} link ${link.entityId}; the item was kept and the link marked stale.',
+          );
+        }
+        return link.copyWith(isStale: !exists);
+      }).toList();
+      normalizedKnowledgeItems.add(item.copyWith(links: nextLinks));
+    }
+
     final normalizedRoutines = <Routine>[];
     for (final routine in bundle.routines) {
       var normalized = routine;
-      if (routine.linkedGoalId != null && !goalIds.contains(routine.linkedGoalId)) {
+      if (routine.linkedGoalId != null &&
+          !goalIds.contains(routine.linkedGoalId)) {
         warnings.add(
           'Routine ${routine.id} references missing goal ${routine.linkedGoalId}; goal link will be cleared.',
         );
@@ -545,6 +592,7 @@ class BackupSerialization {
       dependencies: normalizedDependencies,
       entityNotes: normalizedNotes,
       entityResources: normalizedResources,
+      knowledgeItems: normalizedKnowledgeItems,
       routines: normalizedRoutines,
       routineOccurrences: normalizedOccurrences,
       routineTemplates: bundle.routineTemplates,
@@ -903,7 +951,9 @@ class BackupSerialization {
     final content = json['content']?.toString();
     final createdAt = _asDateTime(json['createdAt']);
     if ([id, entityType, entityId, content, createdAt].any((v) => v == null)) {
-      warnings.add('Entity note is missing required fields and will be skipped.');
+      warnings.add(
+        'Entity note is missing required fields and will be skipped.',
+      );
       return null;
     }
     return EntityNote(
@@ -950,9 +1000,14 @@ class BackupSerialization {
       warnings,
     );
     final createdAt = _asDateTime(json['createdAt']);
-    if ([id, entityType, entityId, title, resourceType, createdAt].any(
-      (v) => v == null,
-    )) {
+    if ([
+      id,
+      entityType,
+      entityId,
+      title,
+      resourceType,
+      createdAt,
+    ].any((v) => v == null)) {
       warnings.add(
         'Entity resource is missing required fields and will be skipped.',
       );
@@ -969,6 +1024,115 @@ class BackupSerialization {
       createdAt: createdAt!,
       updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
       isPinned: _asBool(json['isPinned']) ?? false,
+    );
+  }
+
+  Map<String, dynamic> _knowledgeItemToJson(KnowledgeItem item) {
+    return {
+      'id': item.id,
+      'title': item.title,
+      'content': item.content,
+      'type': item.type.name,
+      'status': item.status.name,
+      'priority': item.priority.name,
+      'createdAt': item.createdAt.toIso8601String(),
+      'updatedAt': item.updatedAt?.toIso8601String(),
+      'dueReviewAt': item.dueReviewAt?.toIso8601String(),
+      'lastReviewedAt': item.lastReviewedAt?.toIso8601String(),
+      'reviewCount': item.reviewCount,
+      'reviewIntervalDays': item.reviewIntervalDays,
+      'tags': item.tags,
+      'sourceUrl': item.sourceUrl,
+      'localFilePath': item.localFilePath,
+      'externalReference': item.externalReference,
+      'links': item.links.map((link) {
+        return {
+          'entityId': link.entityId,
+          'entityType': link.entityType.name,
+          'relationLabel': link.relationLabel,
+          'isStale': link.isStale,
+        };
+      }).toList(),
+    };
+  }
+
+  KnowledgeItem? _knowledgeItemFromJson(
+    Map<String, dynamic> json,
+    List<String> warnings,
+  ) {
+    final id = json['id']?.toString();
+    final title = json['title']?.toString();
+    final createdAt = _asDateTime(json['createdAt']);
+    if ([id, title, createdAt].any((value) => value == null)) {
+      warnings.add(
+        'Knowledge item is missing required fields and will be skipped.',
+      );
+      return null;
+    }
+    final rawLinks = (json['links'] as List? ?? const [])
+        .whereType<Map>()
+        .toList();
+    final links = rawLinks.map((raw) {
+      final entityTypeName = raw['entityType']?.toString();
+      return EntityLink(
+        entityId: raw['entityId']?.toString() ?? '',
+        entityType:
+            _enumByName<LinkedEntityType>(
+              LinkedEntityType.values,
+              entityTypeName,
+              warnings,
+              label: 'knowledge link type',
+              fallback: LinkedEntityType.task,
+            ) ??
+            LinkedEntityType.task,
+        relationLabel: raw['relationLabel']?.toString(),
+        isStale: _asBool(raw['isStale']) ?? false,
+      );
+    }).toList();
+    return KnowledgeItem(
+      id: id!,
+      title: title!,
+      content: json['content']?.toString(),
+      type:
+          _enumByName<KnowledgeItemType>(
+            KnowledgeItemType.values,
+            json['type']?.toString(),
+            warnings,
+            label: 'knowledge type',
+            fallback: KnowledgeItemType.note,
+          ) ??
+          KnowledgeItemType.note,
+      status:
+          _enumByName<KnowledgeStatus>(
+            KnowledgeStatus.values,
+            json['status']?.toString(),
+            warnings,
+            label: 'knowledge status',
+            fallback: KnowledgeStatus.inbox,
+          ) ??
+          KnowledgeStatus.inbox,
+      priority:
+          _enumByName<KnowledgePriority>(
+            KnowledgePriority.values,
+            json['priority']?.toString(),
+            warnings,
+            label: 'knowledge priority',
+            fallback: KnowledgePriority.normal,
+          ) ??
+          KnowledgePriority.normal,
+      createdAt: createdAt!,
+      updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
+      dueReviewAt: _asDateTime(json['dueReviewAt']),
+      lastReviewedAt: _asDateTime(json['lastReviewedAt']),
+      reviewCount: _asInt(json['reviewCount']) ?? 0,
+      reviewIntervalDays: _asInt(json['reviewIntervalDays']),
+      tags:
+          (json['tags'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+      sourceUrl: json['sourceUrl']?.toString(),
+      localFilePath: json['localFilePath']?.toString(),
+      externalReference: json['externalReference']?.toString(),
+      links: links,
     );
   }
 
@@ -996,7 +1160,9 @@ class BackupSerialization {
     final weekEnd = _asDateTime(json['weekEnd']);
     final createdAt = _asDateTime(json['createdAt']);
     if ([id, weekStart, weekEnd, createdAt].any((v) => v == null)) {
-      warnings.add('Weekly review is missing required fields and will be skipped.');
+      warnings.add(
+        'Weekly review is missing required fields and will be skipped.',
+      );
       return null;
     }
     return WeeklyReview(
@@ -1077,9 +1243,11 @@ class BackupSerialization {
       linkedProjectId: json['linkedProjectId']?.toString(),
       sourceTemplateId: json['sourceTemplateId']?.toString(),
       categoryId: json['categoryId']?.toString(),
-      tagIds: (json['tagIds'] as List?)?.map((item) => item.toString()).toList() ??
+      tagIds:
+          (json['tagIds'] as List?)?.map((item) => item.toString()).toList() ??
           const [],
-      routineType: _enumByName<RoutineType>(
+      routineType:
+          _enumByName<RoutineType>(
             RoutineType.values,
             json['routineType'],
             warnings,
@@ -1132,7 +1300,9 @@ class BackupSerialization {
     final occurrenceDate = _asDateTime(json['occurrenceDate']);
     final createdAt = _asDateTime(json['createdAt']);
     if ([id, routineId, occurrenceDate, createdAt].any((v) => v == null)) {
-      warnings.add('Routine occurrence is missing required fields and will be skipped.');
+      warnings.add(
+        'Routine occurrence is missing required fields and will be skipped.',
+      );
       return null;
     }
     return RoutineOccurrence(
@@ -1141,7 +1311,8 @@ class BackupSerialization {
       occurrenceDate: occurrenceDate!,
       scheduledStart: _asDateTime(json['scheduledStart']),
       scheduledEnd: _asDateTime(json['scheduledEnd']),
-      status: _enumByName<RoutineOccurrenceStatus>(
+      status:
+          _enumByName<RoutineOccurrenceStatus>(
             RoutineOccurrenceStatus.values,
             json['status'],
             warnings,
@@ -1192,7 +1363,9 @@ class BackupSerialization {
     final name = json['name']?.toString();
     final createdAt = _asDateTime(json['createdAt']);
     if ([id, name, createdAt].any((v) => v == null)) {
-      warnings.add('Routine template is missing required fields and will be skipped.');
+      warnings.add(
+        'Routine template is missing required fields and will be skipped.',
+      );
       return null;
     }
     final rawItems = json['items'] as List? ?? const [];
@@ -1219,7 +1392,8 @@ class BackupSerialization {
       starterPackName: json['starterPackName']?.toString(),
       setupNotes: json['setupNotes']?.toString(),
       estimatedWeeklyMinutes: _asInt(json['estimatedWeeklyMinutes']),
-      tags: (json['tags'] as List?)?.map((item) => item.toString()).toList() ??
+      tags:
+          (json['tags'] as List?)?.map((item) => item.toString()).toList() ??
           const [],
     );
   }
@@ -1257,7 +1431,9 @@ class BackupSerialization {
     final title = json['title']?.toString();
     final repeatRule = _repeatRuleFromJson(json['repeatRule'], warnings);
     if ([title, repeatRule].any((v) => v == null)) {
-      warnings.add('Routine template item is missing required fields and will be skipped.');
+      warnings.add(
+        'Routine template item is missing required fields and will be skipped.',
+      );
       return null;
     }
     return RoutineTemplateItem(
@@ -1274,9 +1450,11 @@ class BackupSerialization {
       suggestedGoalTag: json['suggestedGoalTag']?.toString(),
       suggestedProjectTag: json['suggestedProjectTag']?.toString(),
       categoryId: json['categoryId']?.toString(),
-      tagIds: (json['tagIds'] as List?)?.map((item) => item.toString()).toList() ??
+      tagIds:
+          (json['tagIds'] as List?)?.map((item) => item.toString()).toList() ??
           const [],
-      routineType: _enumByName<RoutineType>(
+      routineType:
+          _enumByName<RoutineType>(
             RoutineType.values,
             json['routineType'],
             warnings,
@@ -1317,14 +1495,19 @@ class BackupSerialization {
     final name = json['name']?.toString();
     final createdAt = _asDateTime(json['createdAt']);
     if ([id, name, createdAt].any((v) => v == null)) {
-      warnings.add('Routine group is missing required fields and will be skipped.');
+      warnings.add(
+        'Routine group is missing required fields and will be skipped.',
+      );
       return null;
     }
     return RoutineGroup(
       id: id!,
       name: name!,
       description: json['description']?.toString(),
-      routineIds: (json['routineIds'] as List?)?.map((item) => item.toString()).toList() ??
+      routineIds:
+          (json['routineIds'] as List?)
+              ?.map((item) => item.toString())
+              .toList() ??
           const [],
       createdAt: createdAt!,
       updatedAt: _asDateTime(json['updatedAt']) ?? createdAt,
@@ -1351,7 +1534,8 @@ class BackupSerialization {
       return null;
     }
     return RoutineRepeatRule(
-      type: _enumByName<RoutineRepeatType>(
+      type:
+          _enumByName<RoutineRepeatType>(
             RoutineRepeatType.values,
             raw['type'],
             warnings,
@@ -1360,7 +1544,11 @@ class BackupSerialization {
           ) ??
           RoutineRepeatType.daily,
       interval: _asInt(raw['interval']) ?? 1,
-      weekdays: (raw['weekdays'] as List?)?.map((item) => _asInt(item) ?? 0).where((item) => item > 0).toList() ??
+      weekdays:
+          (raw['weekdays'] as List?)
+              ?.map((item) => _asInt(item) ?? 0)
+              .where((item) => item > 0)
+              .toList() ??
           const [],
       dayOfMonth: _asInt(raw['dayOfMonth']),
     );
@@ -1379,6 +1567,9 @@ class BackupSerialization {
       'syncEnabled': preferences.syncEnabled,
       'autoSyncEnabled': preferences.autoSyncEnabled,
       'syncOnWifiOnly': preferences.syncOnWifiOnly,
+      'themePreference': preferences.themePreference.name,
+      'defaultPlanningHorizonDays': preferences.defaultPlanningHorizonDays,
+      'routineGenerationHorizonDays': preferences.routineGenerationHorizonDays,
     };
   }
 
@@ -1407,6 +1598,17 @@ class BackupSerialization {
       syncEnabled: _asBool(raw['syncEnabled']) ?? false,
       autoSyncEnabled: _asBool(raw['autoSyncEnabled']) ?? true,
       syncOnWifiOnly: _asBool(raw['syncOnWifiOnly']) ?? false,
+      themePreference: _enumByName<AppThemePreference>(
+            AppThemePreference.values,
+            raw['themePreference'],
+            warnings,
+            fallback: AppThemePreference.system,
+            label: 'theme preference',
+          ) ??
+          AppThemePreference.system,
+      defaultPlanningHorizonDays: _asInt(raw['defaultPlanningHorizonDays']) ?? 7,
+      routineGenerationHorizonDays:
+          _asInt(raw['routineGenerationHorizonDays']) ?? 30,
     );
   }
 
@@ -1555,6 +1757,4 @@ class BackupSerialization {
     return null;
   }
 }
-
-
 

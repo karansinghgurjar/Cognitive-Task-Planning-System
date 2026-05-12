@@ -1,7 +1,8 @@
-﻿import '../../analytics/domain/analytics_models.dart';
+import '../../analytics/domain/analytics_models.dart';
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
 import '../../goals/models/task_dependency.dart';
+import '../../knowledge/models/knowledge_item.dart';
 import '../../notes/models/entity_note.dart';
 import '../../notes/models/entity_resource.dart';
 import '../../recommendations/domain/recommendation_models.dart';
@@ -44,6 +45,7 @@ class AppBackupBundle {
     required this.dependencies,
     required this.entityNotes,
     required this.entityResources,
+    this.knowledgeItems = const [],
     this.routines = const [],
     this.routineOccurrences = const [],
     this.routineTemplates = const [],
@@ -62,6 +64,7 @@ class AppBackupBundle {
   final List<TaskDependency> dependencies;
   final List<EntityNote> entityNotes;
   final List<EntityResource> entityResources;
+  final List<KnowledgeItem> knowledgeItems;
   final List<Routine> routines;
   final List<RoutineOccurrence> routineOccurrences;
   final List<RoutineTemplate> routineTemplates;
@@ -81,6 +84,7 @@ class ExistingAppStateSnapshot {
     required this.dependencies,
     required this.entityNotes,
     required this.entityResources,
+    this.knowledgeItems = const [],
     this.routines = const [],
     this.routineOccurrences = const [],
     this.routineTemplates = const [],
@@ -97,6 +101,7 @@ class ExistingAppStateSnapshot {
   final List<TaskDependency> dependencies;
   final List<EntityNote> entityNotes;
   final List<EntityResource> entityResources;
+  final List<KnowledgeItem> knowledgeItems;
   final List<Routine> routines;
   final List<RoutineOccurrence> routineOccurrences;
   final List<RoutineTemplate> routineTemplates;
@@ -113,6 +118,7 @@ class ExistingAppStateSnapshot {
     'dependencies': dependencies.length,
     'entityNotes': entityNotes.length,
     'entityResources': entityResources.length,
+    'knowledgeItems': knowledgeItems.length,
     'routines': routines.length,
     'routineOccurrences': routineOccurrences.length,
     'routineTemplates': routineTemplates.length,
@@ -231,10 +237,7 @@ class DataIntegrityIssue {
 }
 
 class DataIntegrityReport {
-  const DataIntegrityReport({
-    required this.scannedAt,
-    required this.issues,
-  });
+  const DataIntegrityReport({required this.scannedAt, required this.issues});
 
   final DateTime scannedAt;
   final List<DataIntegrityIssue> issues;

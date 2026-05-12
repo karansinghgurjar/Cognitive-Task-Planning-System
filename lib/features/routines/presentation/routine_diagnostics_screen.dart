@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/routine_intelligence_providers.dart';
 import '../providers/routine_providers.dart';
 
 class RoutineDiagnosticsScreen extends ConsumerWidget {
@@ -55,6 +56,51 @@ class RoutineDiagnosticsScreen extends ConsumerWidget {
                   Text('Routines: ${routinesAsync.valueOrNull?.length ?? 0}'),
                   Text(
                     'Planning-horizon occurrences: ${occurrencesAsync.valueOrNull?.length ?? 0}',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Repair Actions',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => ref
+                            .read(routineIntelligenceControllerProvider.notifier)
+                            .rebuildPostSyncDerivedState(),
+                        icon: const Icon(Icons.construction_rounded),
+                        label: const Text('Rebuild Routine State'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => ref
+                            .read(routineIntelligenceControllerProvider.notifier)
+                            .rebuildRoutineReminders(),
+                        icon: const Icon(Icons.notifications_active_rounded),
+                        label: const Text('Rebuild Reminders'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => ref
+                            .read(routineIntelligenceControllerProvider.notifier)
+                            .dedupeRoutineOccurrences(),
+                        icon: const Icon(Icons.merge_rounded),
+                        label: const Text('Dedupe Occurrences'),
+                      ),
+                    ],
                   ),
                 ],
               ),

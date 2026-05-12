@@ -56,6 +56,7 @@ void main() {
       final result = await engine.pullRemoteChanges();
 
       expect(result.pulledCount, 2);
+      expect(result.tombstoneAppliedCount, 1);
       expect(localStore.appliedChanges, hasLength(2));
       expect(localStore.appliedChanges.last.isDeleted, isTrue);
     },
@@ -207,8 +208,12 @@ class _InMemoryLocalSyncStore implements LocalSyncStoreContract {
   final List<SyncEntityEnvelope> appliedChanges = [];
 
   @override
-  Future<void> applyRemoteChanges(List<SyncEntityEnvelope> envelopes) async {
+  Future<SyncApplyReport> applyRemoteChanges(List<SyncEntityEnvelope> envelopes) async {
     appliedChanges.addAll(envelopes);
+    return SyncApplyReport(
+      appliedCount: envelopes.length,
+      tombstoneAppliedCount: envelopes.where((item) => item.isDeleted).length,
+    );
   }
 
   @override
@@ -229,10 +234,14 @@ class _InMemoryLocalSyncStore implements LocalSyncStoreContract {
   }) async => const [];
 
   @override
-  Future<void> replaceAllWithRemote(List<SyncEntityEnvelope> envelopes) async {
+  Future<SyncApplyReport> replaceAllWithRemote(List<SyncEntityEnvelope> envelopes) async {
     appliedChanges
       ..clear()
       ..addAll(envelopes);
+    return SyncApplyReport(
+      appliedCount: envelopes.length,
+      tombstoneAppliedCount: envelopes.where((item) => item.isDeleted).length,
+    );
   }
 }
 

@@ -1,4 +1,4 @@
-﻿import 'package:isar/isar.dart';
+import 'package:isar/isar.dart';
 
 part 'sync_run_record.g.dart';
 
@@ -31,4 +31,3 @@ class SyncRunRecord {
   late int conflictCount;
   String? errorSummary;
 }
-

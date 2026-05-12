@@ -1,4 +1,6 @@
 import '../../goals/data/goal_repository.dart';
+import '../../knowledge/data/knowledge_repository.dart';
+import '../../knowledge/models/knowledge_item.dart';
 import '../../notes/data/notes_repository.dart';
 import '../../notes/data/resources_repository.dart';
 import '../../notes/models/entity_note.dart';
@@ -21,6 +23,7 @@ class AppStateSnapshotService {
     required this.goalRepository,
     required this.notesRepository,
     required this.resourcesRepository,
+    required this.knowledgeRepository,
     required this.weeklyReviewRepository,
     required this.settingsRepository,
     required this.routineRepository,
@@ -35,6 +38,7 @@ class AppStateSnapshotService {
   final GoalRepository goalRepository;
   final NotesRepository notesRepository;
   final ResourcesRepository resourcesRepository;
+  final KnowledgeRepository knowledgeRepository;
   final WeeklyReviewRepository weeklyReviewRepository;
   final SettingsRepository settingsRepository;
   final RoutineRepository routineRepository;
@@ -51,8 +55,10 @@ class AppStateSnapshotService {
     final dependencies = await goalRepository.getAllDependencies();
     final entityNotes = await notesRepository.getAllNotes();
     final entityResources = await resourcesRepository.getAllResources();
+    final knowledgeItems = await knowledgeRepository.getAllItems();
     final routines = await routineRepository.getAllRoutines();
-    final routineOccurrences = await routineOccurrenceRepository.getAllOccurrences();
+    final routineOccurrences = await routineOccurrenceRepository
+        .getAllOccurrences();
     final routineTemplates = await routineTemplateRepository.getAllTemplates();
     final routineGroups = await routineGroupRepository.getAllGroups();
     final weeklyReviews = await weeklyReviewRepository.getAllReviews();
@@ -67,6 +73,7 @@ class AppStateSnapshotService {
       dependencies: dependencies,
       entityNotes: entityNotes,
       entityResources: entityResources,
+      knowledgeItems: knowledgeItems,
       routines: routines,
       routineOccurrences: routineOccurrences,
       routineTemplates: routineTemplates,
@@ -100,7 +107,8 @@ class AppStateSnapshotService {
       if (task.goalId != null && !goalIds.contains(task.goalId)) {
         warnings.add('Task ${task.id} references missing goal ${task.goalId}.');
       }
-      if (task.milestoneId != null && !milestoneIds.contains(task.milestoneId)) {
+      if (task.milestoneId != null &&
+          !milestoneIds.contains(task.milestoneId)) {
         warnings.add(
           'Task ${task.id} references missing milestone ${task.milestoneId}.',
         );
@@ -132,11 +140,15 @@ class AppStateSnapshotService {
     for (final note in snapshot.entityNotes) {
       if (note.entityType == EntityAttachmentType.task &&
           !taskIds.contains(note.entityId)) {
-        warnings.add('Note ${note.id} references missing task ${note.entityId}.');
+        warnings.add(
+          'Note ${note.id} references missing task ${note.entityId}.',
+        );
       }
       if (note.entityType == EntityAttachmentType.goal &&
           !goalIds.contains(note.entityId)) {
-        warnings.add('Note ${note.id} references missing goal ${note.entityId}.');
+        warnings.add(
+          'Note ${note.id} references missing goal ${note.entityId}.',
+        );
       }
     }
     for (final resource in snapshot.entityResources) {
@@ -151,6 +163,29 @@ class AppStateSnapshotService {
         warnings.add(
           'Resource ${resource.id} references missing goal ${resource.entityId}.',
         );
+      }
+    }
+
+    for (final item in snapshot.knowledgeItems) {
+      for (final link in item.links) {
+        final exists = switch (link.entityType) {
+          LinkedEntityType.task => taskIds.contains(link.entityId),
+          LinkedEntityType.goal => goalIds.contains(link.entityId),
+          LinkedEntityType.routine => routineIds.contains(link.entityId),
+          LinkedEntityType.routineOccurrence => snapshot.routineOccurrences.any(
+            (occurrence) => occurrence.id == link.entityId,
+          ),
+          LinkedEntityType.focusSession => snapshot.plannedSessions.any(
+            (session) => session.id == link.entityId,
+          ),
+          LinkedEntityType.milestone => milestoneIds.contains(link.entityId),
+          LinkedEntityType.project => true,
+        };
+        if (!exists) {
+          warnings.add(
+            'Knowledge item ${item.id} has stale ${link.entityType.name} link ${link.entityId}.',
+          );
+        }
       }
     }
     return warnings;

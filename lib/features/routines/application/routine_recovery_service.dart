@@ -1,5 +1,3 @@
-import 'package:uuid/uuid.dart';
-
 import '../domain/routine_date_utils.dart';
 import '../domain/routine_enums.dart';
 import '../models/routine.dart';
@@ -24,11 +22,11 @@ class RoutineRecoveryService {
     this.gracePeriod = const Duration(minutes: 30),
     this.recoveryHorizon = const Duration(days: 2),
     String Function()? idGenerator,
-  }) : _idGenerator = idGenerator ?? const Uuid().v4;
+  }) : _idGenerator = idGenerator;
 
   final Duration gracePeriod;
   final Duration recoveryHorizon;
-  final String Function() _idGenerator;
+  final String Function()? _idGenerator;
 
   List<RoutineOccurrence> detectMissedOccurrences({
     required List<RoutineOccurrence> occurrences,
@@ -94,7 +92,7 @@ class RoutineRecoveryService {
         suggestion.routine.preferredDurationMinutes;
     final start = suggestion.suggestedStart;
     return RoutineOccurrence(
-      id: _idGenerator(),
+      id: _idGenerator?.call() ?? _buildRecoveryId(suggestion.sourceOccurrence.id, start),
       routineId: suggestion.routine.id,
       occurrenceDate: normalizeDate(start),
       scheduledStart: start,
@@ -121,6 +119,11 @@ class RoutineRecoveryService {
     );
   }
 
+  String _buildRecoveryId(String sourceOccurrenceId, DateTime suggestedStart) {
+    final normalizedStart = suggestedStart.toUtc();
+    final timestamp = normalizedStart.toIso8601String().replaceAll(RegExp(r'[^0-9]'), '');
+    return 'recovery|$sourceOccurrenceId|$timestamp';
+  }
   bool _shouldMarkMissed(RoutineOccurrence occurrence, DateTime now) {
     if (occurrence.status != RoutineOccurrenceStatus.pending) {
       return false;

@@ -3,6 +3,7 @@
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
 import '../../goals/models/task_dependency.dart';
+import '../../knowledge/models/knowledge_item.dart';
 import '../../notes/models/entity_note.dart';
 import '../../notes/models/entity_resource.dart';
 import '../../review/models/weekly_review.dart';
@@ -28,6 +29,7 @@ abstract class BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<KnowledgeItem> knowledgeItems,
     required List<Routine> routines,
     required List<RoutineOccurrence> routineOccurrences,
     required List<RoutineTemplate> routineTemplates,
@@ -53,6 +55,7 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
       await _isar.taskDependencys.clear();
       await _isar.entityNotes.clear();
       await _isar.entityResources.clear();
+      await _isar.knowledgeItems.clear();
       await _isar.routines.clear();
       await _isar.routineOccurrences.clear();
       await _isar.routineTemplates.clear();
@@ -68,6 +71,7 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
         dependencies: bundle.dependencies,
         entityNotes: bundle.entityNotes,
         entityResources: bundle.entityResources,
+        knowledgeItems: bundle.knowledgeItems,
         routines: bundle.routines,
         routineOccurrences: bundle.routineOccurrences,
         routineTemplates: bundle.routineTemplates,
@@ -88,6 +92,7 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<KnowledgeItem> knowledgeItems,
     required List<Routine> routines,
     required List<RoutineOccurrence> routineOccurrences,
     required List<RoutineTemplate> routineTemplates,
@@ -105,6 +110,7 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
         dependencies: dependencies,
         entityNotes: entityNotes,
         entityResources: entityResources,
+        knowledgeItems: knowledgeItems,
         routines: routines,
         routineOccurrences: routineOccurrences,
         routineTemplates: routineTemplates,
@@ -124,6 +130,7 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<KnowledgeItem> knowledgeItems,
     required List<Routine> routines,
     required List<RoutineOccurrence> routineOccurrences,
     required List<RoutineTemplate> routineTemplates,
@@ -154,6 +161,9 @@ class IsarBackupRestoreStore implements BackupRestoreStore {
     }
     if (entityResources.isNotEmpty) {
       await _isar.entityResources.putAll(entityResources);
+    }
+    if (knowledgeItems.isNotEmpty) {
+      await _isar.knowledgeItems.putAll(knowledgeItems);
     }
     if (routines.isNotEmpty) {
       await _isar.routines.putAll(routines);

@@ -99,6 +99,9 @@ class SyncEngineService {
       conflicts: [...pushResult.conflicts, ...pullResult.conflicts],
       errors: [...pushResult.errors, ...pullResult.errors],
       wasOffline: pushResult.wasOffline || pullResult.wasOffline,
+      tombstoneAppliedCount: pullResult.tombstoneAppliedCount,
+      dedupedOccurrenceCount: pullResult.dedupedOccurrenceCount,
+      reminderRebuildCount: pullResult.reminderRebuildCount,
     );
     await _stateRepository.updateLocalState(
       lastSyncAt: combined.finishedAt,
@@ -184,7 +187,7 @@ class SyncEngineService {
         final remote = await _remoteSyncRepository.pullChanges(
           userId: account.userId!,
         );
-        await _localSyncStore.replaceAllWithRemote(remote);
+        final applyReport = await _localSyncStore.replaceAllWithRemote(remote);
         await _queueRepository.clearAll();
         await _stateRepository.updateLocalState(
           lastSyncAt: DateTime.now(),
@@ -199,6 +202,8 @@ class SyncEngineService {
             startedAt: startedAt,
             finishedAt: DateTime.now(),
             pulledCount: remote.length,
+            tombstoneAppliedCount: applyReport.tombstoneAppliedCount,
+            dedupedOccurrenceCount: applyReport.dedupedOccurrenceCount,
           ),
         );
       case BootstrapChoice.merge:
@@ -222,6 +227,8 @@ class SyncEngineService {
             conflicts: result.conflicts,
             failedCount: result.failedCount,
             errors: result.errors,
+            tombstoneAppliedCount: result.tombstoneAppliedCount,
+            dedupedOccurrenceCount: result.dedupedOccurrenceCount,
           ),
         );
     }
@@ -352,7 +359,7 @@ class SyncEngineService {
       }
     }
 
-    await applyRemoteChanges(applyRemote);
+    final applyReport = await applyRemoteChanges(applyRemote);
     final maxPulledAt = remoteChanges.isEmpty
         ? localState.lastPullAt
         : remoteChanges
@@ -369,11 +376,15 @@ class SyncEngineService {
       finishedAt: DateTime.now(),
       pulledCount: applyRemote.length,
       conflicts: conflicts,
+      tombstoneAppliedCount: applyReport.tombstoneAppliedCount,
+      dedupedOccurrenceCount: applyReport.dedupedOccurrenceCount,
     );
   }
 
-  Future<void> applyRemoteChanges(List<SyncEntityEnvelope> changes) async {
-    await _localSyncStore.applyRemoteChanges(changes);
+  Future<SyncApplyReport> applyRemoteChanges(
+    List<SyncEntityEnvelope> changes,
+  ) async {
+    return _localSyncStore.applyRemoteChanges(changes);
   }
 
   Future<SyncResult> retryFailedChanges() async {

@@ -48,6 +48,10 @@ class SyncStatusScreen extends ConsumerWidget {
                   ] else
                     const SizedBox(height: 16),
                   _SummaryCard(summary: summary),
+                  if (actionState.valueOrNull != null) ...[
+                    const SizedBox(height: 16),
+                    _SyncDiagnosticsCard(result: actionState.valueOrNull!),
+                  ],
                   const SizedBox(height: 16),
                   if (!summary.isSignedIn)
                     FilledButton.icon(
@@ -95,6 +99,13 @@ class SyncStatusScreen extends ConsumerWidget {
                     ),
                   if (actionState.hasError) ...[
                     const SizedBox(height: 12),
+                    Text(
+                      'Sync failed. Your local changes remain safely stored on this device and will be retried when sync is healthy.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     ErrorBoundaryWidget(error: actionState.error!),
                   ],
                   const SizedBox(height: 16),
@@ -125,6 +136,38 @@ class SyncStatusScreen extends ConsumerWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _SyncDiagnosticsCard extends StatelessWidget {
+  const _SyncDiagnosticsCard({required this.result});
+
+  final SyncResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Last Sync Diagnostics',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Text('Pulled: ${result.pulledCount}'),
+            Text('Pushed: ${result.pushedCount}'),
+            Text('Conflicts: ${result.conflicts.length}'),
+            Text('Tombstones applied: ${result.tombstoneAppliedCount}'),
+            Text('Occurrences deduped: ${result.dedupedOccurrenceCount}'),
+          ],
+        ),
       ),
     );
   }

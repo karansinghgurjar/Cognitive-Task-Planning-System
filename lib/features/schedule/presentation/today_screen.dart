@@ -16,6 +16,7 @@ import '../../focus_session/presentation/focus_session_screen.dart';
 import '../../focus_session/providers/focus_session_providers.dart';
 import '../../goals/presentation/goal_detail_screen.dart';
 import '../../integrations/presentation/calendar_export_screen.dart';
+import '../../insights/presentation/planning_insights_panel.dart';
 import '../../recommendations/domain/recommendation_models.dart';
 import '../../recommendations/providers/recommendation_providers.dart';
 import '../../tasks/models/task.dart';
@@ -84,12 +85,18 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final recommendationSummaryAsync = ref.watch(recommendationSummaryProvider);
     final dailyStatsAsync = ref.watch(dailyStatsProvider);
     final streakSummaryAsync = ref.watch(streakSummaryProvider);
-    final todayRoutineOccurrencesAsync = ref.watch(todayRoutineOccurrencesProvider);
-    final recoverySuggestionsAsync = ref.watch(routineRecoverySuggestionsProvider);
+    final todayRoutineOccurrencesAsync = ref.watch(
+      todayRoutineOccurrencesProvider,
+    );
+    final recoverySuggestionsAsync = ref.watch(
+      routineRecoverySuggestionsProvider,
+    );
     final unscheduledRoutineItemsAsync = ref.watch(
       unscheduledFlexibleRoutineOccurrencesProvider,
     );
-    final routinePlanningSummaryAsync = ref.watch(todayRoutinePlanningSummaryProvider);
+    final routinePlanningSummaryAsync = ref.watch(
+      todayRoutinePlanningSummaryProvider,
+    );
 
     return Column(
       children: [
@@ -130,9 +137,12 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     required AsyncValue<RecommendationSummary> recommendationSummaryAsync,
     required AsyncValue<DailyProductivityStats> dailyStatsAsync,
     required AsyncValue<StreakSummary> streakSummaryAsync,
-    required AsyncValue<List<RoutineOccurrenceItem>> todayRoutineOccurrencesAsync,
-    required AsyncValue<List<RoutineRecoverySuggestion>> recoverySuggestionsAsync,
-    required AsyncValue<List<RoutineOccurrenceItem>> unscheduledRoutineItemsAsync,
+    required AsyncValue<List<RoutineOccurrenceItem>>
+    todayRoutineOccurrencesAsync,
+    required AsyncValue<List<RoutineRecoverySuggestion>>
+    recoverySuggestionsAsync,
+    required AsyncValue<List<RoutineOccurrenceItem>>
+    unscheduledRoutineItemsAsync,
     required AsyncValue<RoutinePlanningSummary> routinePlanningSummaryAsync,
   }) {
     final header = _TodayHeader(
@@ -190,10 +200,15 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final sessions = sessionsAsync.value ?? const <PlannedSession>[];
     final tasks = tasksAsync.value ?? const <Task>[];
     final taskById = {for (final task in tasks) task.id: task};
-    final todayRoutineItems = todayRoutineOccurrencesAsync.valueOrNull ?? const <RoutineOccurrenceItem>[];
-    final recoverySuggestions = recoverySuggestionsAsync.valueOrNull ?? const <RoutineRecoverySuggestion>[];
+    final todayRoutineItems =
+        todayRoutineOccurrencesAsync.valueOrNull ??
+        const <RoutineOccurrenceItem>[];
+    final recoverySuggestions =
+        recoverySuggestionsAsync.valueOrNull ??
+        const <RoutineRecoverySuggestion>[];
     final unscheduledRoutineItems =
-        unscheduledRoutineItemsAsync.valueOrNull ?? const <RoutineOccurrenceItem>[];
+        unscheduledRoutineItemsAsync.valueOrNull ??
+        const <RoutineOccurrenceItem>[];
 
     final missedSessions =
         sessions.where((session) => session.isMissed).toList()
@@ -212,10 +227,12 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           ..sort((left, right) => left.start.compareTo(right.start));
 
     final groupedUpcomingSessions = _groupSessionsByDate(upcomingSessions);
-    final pendingTodayRoutineItems =
-        todayRoutineItems.where((item) => item.isPending).toList();
-    final completedTodayRoutineItems =
-        todayRoutineItems.where((item) => !item.isPending).toList();
+    final pendingTodayRoutineItems = todayRoutineItems
+        .where((item) => item.isPending)
+        .toList();
+    final completedTodayRoutineItems = todayRoutineItems
+        .where((item) => !item.isPending)
+        .toList();
 
     if (sessions.isEmpty && todayRoutineItems.isEmpty) {
       return ListView(
@@ -229,7 +246,14 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           ],
           const _QuickCaptureTodayCard(),
           const SizedBox(height: 16),
-          _RoutineDailyOrchestrationCard(summaryAsync: routinePlanningSummaryAsync),
+          _RoutineDailyOrchestrationCard(
+            summaryAsync: routinePlanningSummaryAsync,
+          ),
+          const SizedBox(height: 16),
+          const PlanningInsightsPanel(
+            title: 'Today\'s Planning Signals',
+            maxItems: 2,
+          ),
           const SizedBox(height: 16),
           _TodayRecommendationCard(
             summaryAsync: recommendationSummaryAsync,
@@ -272,7 +296,14 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
         ],
         const _QuickCaptureTodayCard(),
         const SizedBox(height: 16),
-        _RoutineDailyOrchestrationCard(summaryAsync: routinePlanningSummaryAsync),
+        _RoutineDailyOrchestrationCard(
+          summaryAsync: routinePlanningSummaryAsync,
+        ),
+        const SizedBox(height: 16),
+        const PlanningInsightsPanel(
+          title: 'Today\'s Planning Signals',
+          maxItems: 2,
+        ),
         const SizedBox(height: 16),
         _TodayRecommendationCard(
           summaryAsync: recommendationSummaryAsync,
@@ -329,7 +360,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
-          for (var index = 0; index < pendingTodayRoutineItems.length; index++) ...[
+          for (
+            var index = 0;
+            index < pendingTodayRoutineItems.length;
+            index++
+          ) ...[
             RoutineOccurrenceCard(
               item: pendingTodayRoutineItems[index],
               showInlineActions: true,
@@ -350,12 +385,16 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             const SizedBox(height: 12),
             Text(
               'Completed / Skipped',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            for (var index = 0; index < completedTodayRoutineItems.length; index++) ...[
+            for (
+              var index = 0;
+              index < completedTodayRoutineItems.length;
+              index++
+            ) ...[
               RoutineOccurrenceCard(
                 item: completedTodayRoutineItems[index],
                 onOpenRoutine: () {
@@ -539,7 +578,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
 
   void _refreshMissedDetection() {
     ref.invalidate(detectedMissedSessionsProvider);
-    ref.read(routineIntelligenceControllerProvider.notifier).refreshTodayIntelligence();
+    ref
+        .read(routineIntelligenceControllerProvider.notifier)
+        .refreshTodayIntelligence();
   }
 
   Future<void> _startRecommendedFocus(
@@ -1310,7 +1351,9 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
                       ? (_) async {
                           try {
                             await ref
-                                .read(routineOccurrenceControllerProvider.notifier)
+                                .read(
+                                  routineOccurrenceControllerProvider.notifier,
+                                )
                                 .completeOccurrence(occurrence.id);
                           } catch (error) {
                             if (context.mounted) {
@@ -1344,9 +1387,7 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
                             ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        timingLabel,
-                      ),
+                      Text(timingLabel),
                       const SizedBox(height: 6),
                       Text(durationLabel),
                       if ((routine?.categoryId ?? '').trim().isNotEmpty) ...[
@@ -1444,7 +1485,8 @@ class _RoutineOccurrenceTile extends ConsumerWidget {
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => TaskDetailScreen(taskId: linkedTaskId),
+                          builder: (_) =>
+                              TaskDetailScreen(taskId: linkedTaskId),
                         ),
                       );
                     },

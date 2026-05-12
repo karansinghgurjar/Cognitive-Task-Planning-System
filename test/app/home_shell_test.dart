@@ -33,4 +33,31 @@ void main() {
     expect(find.byTooltip('Open Command Palette'), findsNothing);
     expect(find.byTooltip('Open Quick Capture inbox'), findsNothing);
   });
+
+  testWidgets('shows settings shortcut on wide layouts', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          navigatorKey: appNavigatorKey,
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1280, 900)),
+            child: const HomeShell(
+              pages: [
+                SizedBox.expand(),
+                SizedBox.expand(),
+                SizedBox.expand(),
+                SizedBox.expand(),
+                SizedBox.expand(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Open Settings'), findsOneWidget);
+    expect(find.text('Planner'), findsOneWidget);
+  });
 }

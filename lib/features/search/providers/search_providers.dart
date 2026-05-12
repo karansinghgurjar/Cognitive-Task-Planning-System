@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../goals/providers/goal_providers.dart';
+import '../../knowledge/providers/knowledge_providers.dart';
 import '../../notes/providers/notes_providers.dart';
 import '../../quick_capture/providers/quick_capture_providers.dart';
 import '../../review/providers/weekly_review_providers.dart';
@@ -35,43 +36,59 @@ final searchDataProvider = Provider<AsyncValue<GlobalSearchData>>((ref) {
   final tasksAsync = ref.watch(watchTasksProvider);
   final goalsAsync = ref.watch(watchGoalsProvider);
   final notesAsync = ref.watch(allNotesProvider);
+  final knowledgeAsync = ref.watch(watchKnowledgeItemsProvider);
   final capturesAsync = ref.watch(watchAllCapturesProvider);
   final reviewsAsync = ref.watch(allWeeklyReviewsProvider);
 
-  return switch ((tasksAsync, goalsAsync, notesAsync, capturesAsync, reviewsAsync)) {
+  return switch ((
+    tasksAsync,
+    goalsAsync,
+    notesAsync,
+    knowledgeAsync,
+    capturesAsync,
+    reviewsAsync,
+  )) {
     (
       AsyncData(value: final tasks),
       AsyncData(value: final goals),
       AsyncData(value: final notes),
+      AsyncData(value: final knowledgeItems),
       AsyncData(value: final captures),
       AsyncData(value: final reviews),
     ) =>
       AsyncData(
-        ref.read(searchDataRepositoryProvider).buildSearchData(
+        ref
+            .read(searchDataRepositoryProvider)
+            .buildSearchData(
               tasks: tasks,
               goals: goals,
               notes: notes,
+              knowledgeItems: knowledgeItems,
               captures: captures,
               weeklyReviews: reviews,
             ),
       ),
-    (AsyncError(:final error, :final stackTrace), _, _, _, _) => AsyncError(
+    (AsyncError(:final error, :final stackTrace), _, _, _, _, _) => AsyncError(
       error,
       stackTrace,
     ),
-    (_, AsyncError(:final error, :final stackTrace), _, _, _) => AsyncError(
+    (_, AsyncError(:final error, :final stackTrace), _, _, _, _) => AsyncError(
       error,
       stackTrace,
     ),
-    (_, _, AsyncError(:final error, :final stackTrace), _, _) => AsyncError(
+    (_, _, AsyncError(:final error, :final stackTrace), _, _, _) => AsyncError(
       error,
       stackTrace,
     ),
-    (_, _, _, AsyncError(:final error, :final stackTrace), _) => AsyncError(
+    (_, _, _, AsyncError(:final error, :final stackTrace), _, _) => AsyncError(
       error,
       stackTrace,
     ),
-    (_, _, _, _, AsyncError(:final error, :final stackTrace)) => AsyncError(
+    (_, _, _, _, AsyncError(:final error, :final stackTrace), _) => AsyncError(
+      error,
+      stackTrace,
+    ),
+    (_, _, _, _, _, AsyncError(:final error, :final stackTrace)) => AsyncError(
       error,
       stackTrace,
     ),
@@ -79,16 +96,17 @@ final searchDataProvider = Provider<AsyncValue<GlobalSearchData>>((ref) {
   };
 });
 
-final globalSearchResultsProvider = Provider<AsyncValue<List<GlobalSearchResult>>>(
-  (ref) {
-    final query = ref.watch(searchQueryProvider);
-    return ref.watch(searchDataProvider).whenData((data) {
-      return ref.read(globalSearchServiceProvider).search(data, query);
+final globalSearchResultsProvider =
+    Provider<AsyncValue<List<GlobalSearchResult>>>((ref) {
+      final query = ref.watch(searchQueryProvider);
+      return ref.watch(searchDataProvider).whenData((data) {
+        return ref.read(globalSearchServiceProvider).search(data, query);
+      });
     });
-  },
-);
 
-final groupedSearchResultsProvider = Provider<AsyncValue<List<SearchSection>>>((ref) {
+final groupedSearchResultsProvider = Provider<AsyncValue<List<SearchSection>>>((
+  ref,
+) {
   return ref.watch(globalSearchResultsProvider).whenData((results) {
     return ref.read(globalSearchServiceProvider).groupResults(results);
   });

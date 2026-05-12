@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
+import '../../knowledge/models/knowledge_item.dart';
 import '../../goals/models/task_dependency.dart';
 import '../../routines/domain/routine_enums.dart';
 import '../../routines/domain/routine_repeat_rule.dart';
@@ -40,6 +41,8 @@ class SyncEntityCodec {
         return _routineTemplateToJson(entity as RoutineTemplate);
       case SyncEntityType.routineGroup:
         return _routineGroupToJson(entity as RoutineGroup);
+      case SyncEntityType.knowledgeItem:
+        return _knowledgeItemToJson(entity as KnowledgeItem);
       case SyncEntityType.notificationPreferences:
         return _preferencesToJson(entity as NotificationPreferences);
     }
@@ -67,6 +70,8 @@ class SyncEntityCodec {
         return (entity as RoutineTemplate).id;
       case SyncEntityType.routineGroup:
         return (entity as RoutineGroup).id;
+      case SyncEntityType.knowledgeItem:
+        return (entity as KnowledgeItem).id;
       case SyncEntityType.notificationPreferences:
         return 'preferences';
     }
@@ -94,6 +99,8 @@ class SyncEntityCodec {
         return _routineTemplateFromJson(json);
       case SyncEntityType.routineGroup:
         return _routineGroupFromJson(json);
+      case SyncEntityType.knowledgeItem:
+        return _knowledgeItemFromJson(json);
       case SyncEntityType.notificationPreferences:
         return _preferencesFromJson(json);
     }
@@ -147,7 +154,8 @@ class SyncEntityCodec {
       isCompleted: json['isCompleted'] as bool? ?? false,
       isArchived: json['isArchived'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: _dateTimeOrNull(json['updatedAt']) ??
+      updatedAt:
+          _dateTimeOrNull(json['updatedAt']) ??
           DateTime.parse(json['createdAt'] as String),
       completedAt: _dateTimeOrNull(json['completedAt']),
       archivedAt: _dateTimeOrNull(json['archivedAt']),
@@ -310,10 +318,13 @@ class SyncEntityCodec {
       description: json['description'] as String?,
       isArchived: json['isArchived'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: _dateTimeOrNull(json['updatedAt']) ??
+      updatedAt:
+          _dateTimeOrNull(json['updatedAt']) ??
           DateTime.parse(json['createdAt'] as String),
       anchorDate: DateTime.parse(json['anchorDate'] as String),
-      repeatRule: _repeatRuleFromJson(json['repeatRule'] as Map<String, dynamic>),
+      repeatRule: _repeatRuleFromJson(
+        json['repeatRule'] as Map<String, dynamic>,
+      ),
       preferredStartMinuteOfDay: json['preferredStartMinuteOfDay'] as int?,
       preferredDurationMinutes: json['preferredDurationMinutes'] as int?,
       timeWindowStartMinuteOfDay: json['timeWindowStartMinuteOfDay'] as int?,
@@ -342,7 +353,9 @@ class SyncEntityCodec {
     );
   }
 
-  Map<String, dynamic> _routineOccurrenceToJson(RoutineOccurrence occurrence) => {
+  Map<String, dynamic> _routineOccurrenceToJson(
+    RoutineOccurrence occurrence,
+  ) => {
     'id': occurrence.id,
     'routineId': occurrence.routineId,
     'occurrenceDate': occurrence.occurrenceDate.toIso8601String(),
@@ -376,7 +389,8 @@ class SyncEntityCodec {
         json['status'] as String? ?? RoutineOccurrenceStatus.pending.name,
       ),
       createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: _dateTimeOrNull(json['updatedAt']) ??
+      updatedAt:
+          _dateTimeOrNull(json['updatedAt']) ??
           DateTime.parse(json['createdAt'] as String),
       completedAt: _dateTimeOrNull(json['completedAt']),
       skippedAt: _dateTimeOrNull(json['skippedAt']),
@@ -420,14 +434,16 @@ class SyncEntityCodec {
           .map(_routineTemplateItemFromJson)
           .toList(),
       createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: _dateTimeOrNull(json['updatedAt']) ??
+      updatedAt:
+          _dateTimeOrNull(json['updatedAt']) ??
           DateTime.parse(json['createdAt'] as String),
       isBuiltIn: json['isBuiltIn'] as bool? ?? false,
       starterPackId: json['starterPackId'] as String?,
       starterPackName: json['starterPackName'] as String?,
       setupNotes: json['setupNotes'] as String?,
       estimatedWeeklyMinutes: json['estimatedWeeklyMinutes'] as int?,
-      tags: (json['tags'] as List?)?.map((item) => item.toString()).toList() ??
+      tags:
+          (json['tags'] as List?)?.map((item) => item.toString()).toList() ??
           const [],
     );
   }
@@ -508,10 +524,13 @@ class SyncEntityCodec {
       name: json['name'] as String,
       description: json['description'] as String?,
       routineIds:
-          (json['routineIds'] as List?)?.map((item) => item.toString()).toList() ??
+          (json['routineIds'] as List?)
+              ?.map((item) => item.toString())
+              .toList() ??
           const [],
       createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: _dateTimeOrNull(json['updatedAt']) ??
+      updatedAt:
+          _dateTimeOrNull(json['updatedAt']) ??
           DateTime.parse(json['createdAt'] as String),
       colorHex: json['colorHex'] as String?,
       iconName: json['iconName'] as String?,
@@ -555,6 +574,9 @@ class SyncEntityCodec {
     'syncEnabled': preferences.syncEnabled,
     'autoSyncEnabled': preferences.autoSyncEnabled,
     'syncOnWifiOnly': preferences.syncOnWifiOnly,
+    'themePreference': preferences.themePreference.name,
+    'defaultPlanningHorizonDays': preferences.defaultPlanningHorizonDays,
+    'routineGenerationHorizonDays': preferences.routineGenerationHorizonDays,
   };
 
   NotificationPreferences _preferencesFromJson(Map<String, dynamic> json) {
@@ -583,7 +605,79 @@ class SyncEntityCodec {
     }
     return null;
   }
+
+  Map<String, dynamic> _knowledgeItemToJson(KnowledgeItem item) => {
+    'id': item.id,
+    'title': item.title,
+    'content': item.content,
+    'type': item.type.name,
+    'status': item.status.name,
+    'priority': item.priority.name,
+    'createdAt': item.createdAt.toIso8601String(),
+    'updatedAt': item.updatedAt?.toIso8601String(),
+    'dueReviewAt': item.dueReviewAt?.toIso8601String(),
+    'lastReviewedAt': item.lastReviewedAt?.toIso8601String(),
+    'reviewCount': item.reviewCount,
+    'reviewIntervalDays': item.reviewIntervalDays,
+    'tags': item.tags,
+    'sourceUrl': item.sourceUrl,
+    'localFilePath': item.localFilePath,
+    'externalReference': item.externalReference,
+    'links': item.links
+        .map(
+          (link) => {
+            'entityId': link.entityId,
+            'entityType': link.entityType.name,
+            'relationLabel': link.relationLabel,
+            'isStale': link.isStale,
+          },
+        )
+        .toList(),
+  };
+
+  KnowledgeItem _knowledgeItemFromJson(Map<String, dynamic> json) {
+    final links = (json['links'] as List? ?? const [])
+        .whereType<Map>()
+        .map(
+          (raw) => EntityLink(
+            entityId: raw['entityId'] as String? ?? '',
+            entityType: LinkedEntityType.values.byName(
+              raw['entityType'] as String? ?? LinkedEntityType.task.name,
+            ),
+            relationLabel: raw['relationLabel'] as String?,
+            isStale: raw['isStale'] as bool? ?? false,
+          ),
+        )
+        .toList();
+    return KnowledgeItem(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? 'Untitled',
+      content: json['content'] as String?,
+      type: KnowledgeItemType.values.byName(
+        json['type'] as String? ?? KnowledgeItemType.note.name,
+      ),
+      status: KnowledgeStatus.values.byName(
+        json['status'] as String? ?? KnowledgeStatus.inbox.name,
+      ),
+      priority: KnowledgePriority.values.byName(
+        json['priority'] as String? ?? KnowledgePriority.normal.name,
+      ),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt:
+          _dateTimeOrNull(json['updatedAt']) ??
+          DateTime.parse(json['createdAt'] as String),
+      dueReviewAt: _dateTimeOrNull(json['dueReviewAt']),
+      lastReviewedAt: _dateTimeOrNull(json['lastReviewedAt']),
+      reviewCount: json['reviewCount'] as int? ?? 0,
+      reviewIntervalDays: json['reviewIntervalDays'] as int?,
+      tags:
+          (json['tags'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+      sourceUrl: json['sourceUrl'] as String?,
+      localFilePath: json['localFilePath'] as String?,
+      externalReference: json['externalReference'] as String?,
+      links: links,
+    );
+  }
 }
-
-
 

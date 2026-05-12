@@ -4,7 +4,9 @@ import 'package:isar/isar.dart';
 
 import '../../goals/models/goal_milestone.dart';
 import '../../goals/models/learning_goal.dart';
+import '../../knowledge/models/knowledge_item.dart';
 import '../../goals/models/task_dependency.dart';
+import '../../routines/domain/routine_enums.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/models/routine_group.dart';
 import '../../routines/models/routine_occurrence.dart';
@@ -35,6 +37,7 @@ class LocalSyncStore implements LocalSyncStoreContract {
     final routineOccurrences = await _isar.routineOccurrences.count();
     final routineTemplates = await _isar.routineTemplates.count();
     final routineGroups = await _isar.routineGroups.count();
+    final knowledgeItems = await _isar.knowledgeItems.count();
     final settings = await _isar.notificationPreferences.count();
     return tasks +
         timetableSlots +
@@ -46,6 +49,7 @@ class LocalSyncStore implements LocalSyncStoreContract {
         routineOccurrences +
         routineTemplates +
         routineGroups +
+        knowledgeItems +
         settings;
   }
 
@@ -64,6 +68,7 @@ class LocalSyncStore implements LocalSyncStoreContract {
     final routineOccurrences = await _isar.routineOccurrences.where().findAll();
     final routineTemplates = await _isar.routineTemplates.where().findAll();
     final routineGroups = await _isar.routineGroups.where().findAll();
+    final knowledgeItems = await _isar.knowledgeItems.where().findAll();
     final preferences = await _isar.notificationPreferences.get(1);
 
     for (final task in tasks) {
@@ -192,6 +197,18 @@ class LocalSyncStore implements LocalSyncStoreContract {
         ),
       );
     }
+    for (final item in knowledgeItems) {
+      envelopes.add(
+        await _buildEnvelope(
+          entityType: SyncEntityType.knowledgeItem,
+          entityId: item.id,
+          userId: userId,
+          deviceId: deviceId,
+          payload: codec.encodeEntity(SyncEntityType.knowledgeItem, item),
+          fallbackModifiedAt: item.updatedAt ?? item.createdAt,
+        ),
+      );
+    }
     if (preferences != null) {
       envelopes.add(
         await _buildEnvelope(
@@ -270,18 +287,30 @@ class LocalSyncStore implements LocalSyncStoreContract {
     );
   }
 
-  Future<void> applyRemoteChanges(List<SyncEntityEnvelope> envelopes) async {
+  Future<SyncApplyReport> applyRemoteChanges(
+    List<SyncEntityEnvelope> envelopes,
+  ) async {
     if (envelopes.isEmpty) {
-      return;
+      return const SyncApplyReport();
     }
+    var dedupedOccurrenceCount = 0;
     await _isar.writeTxn(() async {
       for (final envelope in envelopes) {
         await _applyEnvelopeInsideTxn(envelope);
       }
+      dedupedOccurrenceCount = await _dedupeRoutineOccurrencesInsideTxn();
     });
+    return SyncApplyReport(
+      appliedCount: envelopes.length,
+      tombstoneAppliedCount: envelopes.where((item) => item.isDeleted).length,
+      dedupedOccurrenceCount: dedupedOccurrenceCount,
+    );
   }
 
-  Future<void> replaceAllWithRemote(List<SyncEntityEnvelope> envelopes) async {
+  Future<SyncApplyReport> replaceAllWithRemote(
+    List<SyncEntityEnvelope> envelopes,
+  ) async {
+    var dedupedOccurrenceCount = 0;
     await _isar.writeTxn(() async {
       await _isar.tasks.clear();
       await _isar.timetableSlots.clear();
@@ -293,13 +322,46 @@ class LocalSyncStore implements LocalSyncStoreContract {
       await _isar.routineOccurrences.clear();
       await _isar.routineTemplates.clear();
       await _isar.routineGroups.clear();
+      await _isar.knowledgeItems.clear();
       await _isar.notificationPreferences.clear();
       await _isar.syncEntityMetadatas.clear();
 
       for (final envelope in envelopes) {
         await _applyEnvelopeInsideTxn(envelope);
       }
+      dedupedOccurrenceCount = await _dedupeRoutineOccurrencesInsideTxn();
     });
+    return SyncApplyReport(
+      appliedCount: envelopes.length,
+      tombstoneAppliedCount: envelopes.where((item) => item.isDeleted).length,
+      dedupedOccurrenceCount: dedupedOccurrenceCount,
+    );
+  }
+
+  Future<int> _dedupeRoutineOccurrencesInsideTxn() async {
+    final all = await _isar.routineOccurrences.where().findAll();
+    final keepByLogicalKey = <String, RoutineOccurrence>{};
+    final removeIds = <int>[];
+
+    for (final occurrence in all) {
+      final key = occurrence.isRecoveryInstance
+          ? 'recovery:${occurrence.recoveredFromOccurrenceId ?? occurrence.id}'
+          : 'standard:${occurrence.occurrenceKey}';
+      final existing = keepByLogicalKey[key];
+      if (existing == null) {
+        keepByLogicalKey[key] = occurrence;
+        continue;
+      }
+      final winner = _chooseOccurrenceMergeWinner(existing, occurrence);
+      final loser = identical(winner, existing) ? occurrence : existing;
+      keepByLogicalKey[key] = winner;
+      removeIds.add(loser.isarId);
+    }
+
+    if (removeIds.isNotEmpty) {
+      await _isar.routineOccurrences.deleteAll(removeIds);
+    }
+    return removeIds.length;
   }
 
   Future<void> _applyEnvelopeInsideTxn(SyncEntityEnvelope envelope) async {
@@ -325,16 +387,23 @@ class LocalSyncStore implements LocalSyncStoreContract {
           await _isar.taskDependencys.put(decoded as TaskDependency);
           break;
         case SyncEntityType.routine:
-          await _isar.routines.put(decoded as Routine);
+          await _isar.routines.put(await _mergeRoutine(decoded as Routine));
           break;
         case SyncEntityType.routineOccurrence:
-          await _isar.routineOccurrences.put(decoded as RoutineOccurrence);
+          await _isar.routineOccurrences.put(
+            await _mergeRoutineOccurrence(decoded as RoutineOccurrence),
+          );
           break;
         case SyncEntityType.routineTemplate:
           await _isar.routineTemplates.put(decoded as RoutineTemplate);
           break;
         case SyncEntityType.routineGroup:
-          await _isar.routineGroups.put(decoded as RoutineGroup);
+          await _isar.routineGroups.put(
+            await _mergeRoutineGroup(decoded as RoutineGroup),
+          );
+          break;
+        case SyncEntityType.knowledgeItem:
+          await _isar.knowledgeItems.put(decoded as KnowledgeItem);
           break;
         case SyncEntityType.notificationPreferences:
           await _isar.notificationPreferences.put(
@@ -369,6 +438,141 @@ class LocalSyncStore implements LocalSyncStoreContract {
     metadata.lastConflictSummary = null;
     metadata.lastError = null;
     await _isar.syncEntityMetadatas.put(metadata);
+  }
+
+  Future<Routine> _mergeRoutine(Routine remote) async {
+    final existing = await _isar.routines
+        .filter()
+        .idEqualTo(remote.id)
+        .findFirst();
+    if (existing == null) {
+      return remote;
+    }
+    if (existing.isArchived && !remote.isArchived) {
+      final existingArchivedAt =
+          existing.archivedAt ?? existing.updatedAt ?? existing.createdAt;
+      final remoteUpdatedAt = remote.updatedAt ?? remote.createdAt;
+      if (!remoteUpdatedAt.isAfter(existingArchivedAt)) {
+        return remote.copyWith(
+          isArchived: true,
+          archivedAt: existing.archivedAt,
+          updatedAt: existing.updatedAt,
+        )..isarId = existing.isarId;
+      }
+    }
+    return remote..isarId = existing.isarId;
+  }
+
+  Future<RoutineOccurrence> _mergeRoutineOccurrence(
+    RoutineOccurrence remote,
+  ) async {
+    final existing = await _findEquivalentOccurrence(remote);
+    if (existing == null) {
+      return remote;
+    }
+
+    final merged = _chooseOccurrenceMergeWinner(existing, remote);
+    return merged..isarId = existing.isarId;
+  }
+
+  Future<RoutineOccurrence?> _findEquivalentOccurrence(
+    RoutineOccurrence remote,
+  ) async {
+    final byId = await _isar.routineOccurrences
+        .filter()
+        .idEqualTo(remote.id)
+        .findFirst();
+    if (byId != null) {
+      return byId;
+    }
+    if (remote.isRecoveryInstance && remote.recoveredFromOccurrenceId != null) {
+      return _isar.routineOccurrences
+          .filter()
+          .recoveredFromOccurrenceIdEqualTo(remote.recoveredFromOccurrenceId!)
+          .findFirst();
+    }
+    return _isar.routineOccurrences
+        .filter()
+        .occurrenceKeyEqualTo(remote.occurrenceKey)
+        .findFirst();
+  }
+
+  RoutineOccurrence _chooseOccurrenceMergeWinner(
+    RoutineOccurrence local,
+    RoutineOccurrence remote,
+  ) {
+    if (_isTerminal(local.status) && !_isTerminal(remote.status)) {
+      return _mergeSchedulingFields(remote, local);
+    }
+    if (!_isTerminal(local.status) && _isTerminal(remote.status)) {
+      return _mergeSchedulingFields(local, remote);
+    }
+    if (local.isManualOverride && !remote.isManualOverride) {
+      return _mergeSchedulingFields(remote, local);
+    }
+    if (!local.isManualOverride && remote.isManualOverride) {
+      return _mergeSchedulingFields(local, remote);
+    }
+
+    final localUpdated = local.updatedAt ?? local.createdAt;
+    final remoteUpdated = remote.updatedAt ?? remote.createdAt;
+    if (remoteUpdated.isAfter(localUpdated)) {
+      return remote;
+    }
+    return local;
+  }
+
+  RoutineOccurrence _mergeSchedulingFields(
+    RoutineOccurrence source,
+    RoutineOccurrence protected,
+  ) {
+    return source.copyWith(
+      id: protected.id,
+      scheduledStart: protected.scheduledStart,
+      clearScheduledStart: protected.scheduledStart == null,
+      scheduledEnd: protected.scheduledEnd,
+      clearScheduledEnd: protected.scheduledEnd == null,
+      status: protected.status,
+      completedAt: protected.completedAt,
+      clearCompletedAt: protected.completedAt == null,
+      skippedAt: protected.skippedAt,
+      clearSkippedAt: protected.skippedAt == null,
+      missedAt: protected.missedAt,
+      clearMissedAt: protected.missedAt == null,
+      notes: protected.notes,
+      clearNotes: protected.notes == null,
+      isManualOverride: protected.isManualOverride,
+      updatedAt: _maxDate(
+        source.updatedAt ?? source.createdAt,
+        protected.updatedAt ?? protected.createdAt,
+      ),
+    );
+  }
+
+  bool _isTerminal(RoutineOccurrenceStatus status) {
+    return status == RoutineOccurrenceStatus.completed ||
+        status == RoutineOccurrenceStatus.skipped ||
+        status == RoutineOccurrenceStatus.missed;
+  }
+
+  Future<RoutineGroup> _mergeRoutineGroup(RoutineGroup remote) async {
+    final existing = await _isar.routineGroups
+        .filter()
+        .idEqualTo(remote.id)
+        .findFirst();
+    if (existing == null) {
+      return remote;
+    }
+    final mergedRoutineIds = <String>{
+      ...existing.routineIds,
+      ...remote.routineIds,
+    }.toList()..sort();
+    return remote.copyWith(routineIds: mergedRoutineIds)
+      ..isarId = existing.isarId;
+  }
+
+  DateTime _maxDate(DateTime left, DateTime right) {
+    return left.isAfter(right) ? left : right;
   }
 
   Future<Map<String, dynamic>?> _readEntityPayload(
@@ -414,7 +618,10 @@ class LocalSyncStore implements LocalSyncStoreContract {
             ? null
             : codec.encodeEntity(entityType, dependency);
       case SyncEntityType.routine:
-        final routine = await _isar.routines.filter().idEqualTo(entityId).findFirst();
+        final routine = await _isar.routines
+            .filter()
+            .idEqualTo(entityId)
+            .findFirst();
         return routine == null ? null : codec.encodeEntity(entityType, routine);
       case SyncEntityType.routineOccurrence:
         final occurrence = await _isar.routineOccurrences
@@ -438,6 +645,12 @@ class LocalSyncStore implements LocalSyncStoreContract {
             .idEqualTo(entityId)
             .findFirst();
         return group == null ? null : codec.encodeEntity(entityType, group);
+      case SyncEntityType.knowledgeItem:
+        final item = await _isar.knowledgeItems
+            .filter()
+            .idEqualTo(entityId)
+            .findFirst();
+        return item == null ? null : codec.encodeEntity(entityType, item);
       case SyncEntityType.notificationPreferences:
         final preferences = await _isar.notificationPreferences.get(1);
         return preferences == null
@@ -503,7 +716,10 @@ class LocalSyncStore implements LocalSyncStoreContract {
         }
         break;
       case SyncEntityType.routine:
-        final routine = await _isar.routines.filter().idEqualTo(entityId).findFirst();
+        final routine = await _isar.routines
+            .filter()
+            .idEqualTo(entityId)
+            .findFirst();
         if (routine != null) {
           await _isar.routines.delete(routine.isarId);
         }
@@ -533,6 +749,15 @@ class LocalSyncStore implements LocalSyncStoreContract {
             .findFirst();
         if (group != null) {
           await _isar.routineGroups.delete(group.isarId);
+        }
+        break;
+      case SyncEntityType.knowledgeItem:
+        final item = await _isar.knowledgeItems
+            .filter()
+            .idEqualTo(entityId)
+            .findFirst();
+        if (item != null) {
+          await _isar.knowledgeItems.delete(item.isarId);
         }
         break;
       case SyncEntityType.notificationPreferences:

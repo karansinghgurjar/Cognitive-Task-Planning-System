@@ -44,6 +44,7 @@ void main() {
             createdAt: DateTime(2026, 4, 2),
           ),
         ],
+        knowledgeItems: const [],
         captures: [
           QuickCaptureItem(
             id: 'capture-1',
@@ -64,16 +65,13 @@ void main() {
       );
 
       expect(data.records, hasLength(5));
-      expect(
-        data.records.map((record) => record.resultType).toSet(),
-        {
-          SearchResultType.task,
-          SearchResultType.goal,
-          SearchResultType.note,
-          SearchResultType.capture,
-          SearchResultType.weeklyReview,
-        },
-      );
+      expect(data.records.map((record) => record.resultType).toSet(), {
+        SearchResultType.task,
+        SearchResultType.goal,
+        SearchResultType.note,
+        SearchResultType.capture,
+        SearchResultType.weeklyReview,
+      });
     });
 
     test('uses a readable snippet and fallback title for tasks', () {
@@ -91,6 +89,7 @@ void main() {
         ],
         goals: const [],
         notes: const [],
+        knowledgeItems: const [],
         captures: const [],
         weeklyReviews: const [],
       );
@@ -116,6 +115,7 @@ void main() {
             isArchived: true,
           ),
         ],
+        knowledgeItems: const [],
         captures: const [],
         weeklyReviews: const [],
       );
@@ -147,6 +147,7 @@ void main() {
           ),
         ],
         notes: const [],
+        knowledgeItems: const [],
         captures: const [],
         weeklyReviews: const [],
       );
@@ -167,6 +168,7 @@ void main() {
             createdAt: DateTime(2026, 4, 2),
           ),
         ],
+        knowledgeItems: const [],
         captures: const [],
         weeklyReviews: const [],
       );
@@ -182,6 +184,7 @@ void main() {
         tasks: const [],
         goals: const [],
         notes: const [],
+        knowledgeItems: const [],
         captures: const [],
         weeklyReviews: [
           WeeklyReview(

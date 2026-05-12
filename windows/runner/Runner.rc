@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "Cognitive Task Planning System" "\0"
-            VALUE "FileDescription", "Cognitive Task Planning System" "\0"
+            VALUE "CompanyName", "CogniPlan" "\0"
+            VALUE "FileDescription", "CogniPlan" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "study_flow" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 Cognitive Task Planning System. All rights reserved." "\0"
-            VALUE "OriginalFilename", "study_flow.exe" "\0"
-            VALUE "ProductName", "Cognitive Task Planning System" "\0"
+            VALUE "InternalName", "cogniplan" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 CogniPlan. All rights reserved." "\0"
+            VALUE "OriginalFilename", "cogniplan.exe" "\0"
+            VALUE "ProductName", "CogniPlan" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

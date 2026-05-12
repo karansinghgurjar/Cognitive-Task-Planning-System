@@ -1,4 +1,4 @@
-﻿class MigrationNote {
+class MigrationNote {
   const MigrationNote({required this.version, required this.description});
 
   final int version;

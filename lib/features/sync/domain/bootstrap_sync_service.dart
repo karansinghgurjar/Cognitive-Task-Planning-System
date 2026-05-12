@@ -1,4 +1,4 @@
-﻿import 'sync_models.dart';
+import 'sync_models.dart';
 
 class BootstrapSyncService {
   const BootstrapSyncService();
@@ -48,4 +48,3 @@ class BootstrapSyncService {
     );
   }
 }
-

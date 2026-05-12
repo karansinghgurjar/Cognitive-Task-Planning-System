@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../../core/errors/error_handler.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_status_chip.dart';
+import '../../insights/domain/planning_insight_models.dart';
+import '../../insights/providers/planning_insight_providers.dart';
 import '../../recommendations/domain/recommendation_models.dart';
 import '../domain/weekly_review_models.dart';
 import '../models/weekly_review.dart';
@@ -72,7 +74,9 @@ class _WeeklyReviewScreenState extends ConsumerState<WeeklyReviewScreen> {
             tooltip: 'Previous week',
           ),
           IconButton(
-            onPressed: _canMoveToNextWeek(weekStart) ? () => _moveWeek(1) : null,
+            onPressed: _canMoveToNextWeek(weekStart)
+                ? () => _moveWeek(1)
+                : null,
             icon: const Icon(Icons.chevron_right_rounded),
             tooltip: 'Next week',
           ),
@@ -82,7 +86,10 @@ class _WeeklyReviewScreenState extends ConsumerState<WeeklyReviewScreen> {
         data: (snapshot) => ListView(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
           children: [
-            _WeekHeader(weekStart: snapshot.weekStart, weekEnd: snapshot.weekEnd),
+            _WeekHeader(
+              weekStart: snapshot.weekStart,
+              weekEnd: snapshot.weekEnd,
+            ),
             const SizedBox(height: 16),
             if (!snapshot.hasMeaningfulData)
               const AppEmptyState(
@@ -94,6 +101,8 @@ class _WeeklyReviewScreenState extends ConsumerState<WeeklyReviewScreen> {
             else ...[
               _WeeklySummaryCard(snapshot: snapshot),
               const SizedBox(height: 16),
+              _RoutineIntelligenceReviewCard(weekStart: snapshot.weekStart),
+              const SizedBox(height: 16),
               if (snapshot.trendComparison != null)
                 _TrendComparisonCard(comparison: snapshot.trendComparison!),
               if (snapshot.trendComparison != null) const SizedBox(height: 16),
@@ -104,7 +113,9 @@ class _WeeklyReviewScreenState extends ConsumerState<WeeklyReviewScreen> {
                     children: snapshot.recommendations.map((recommendation) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _RecommendationTile(recommendation: recommendation),
+                        child: _RecommendationTile(
+                          recommendation: recommendation,
+                        ),
                       );
                     }).toList(),
                   ),
@@ -217,11 +228,17 @@ class _WeeklyReviewScreenState extends ConsumerState<WeeklyReviewScreen> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _HistoryTile(
                               review: review,
-                              isSelected: _sameWeek(review.weekStart, weekStart),
+                              isSelected: _sameWeek(
+                                review.weekStart,
+                                weekStart,
+                              ),
                               onTap: () {
                                 ref
-                                    .read(selectedWeeklyReviewWeekProvider.notifier)
-                                    .state = review.weekStart;
+                                    .read(
+                                      selectedWeeklyReviewWeekProvider.notifier,
+                                    )
+                                    .state = review
+                                    .weekStart;
                               },
                             ),
                           );
@@ -234,9 +251,8 @@ class _WeeklyReviewScreenState extends ConsumerState<WeeklyReviewScreen> {
           ],
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Text(ErrorHandler.mapError(error).message),
-        ),
+        error: (error, _) =>
+            Center(child: Text(ErrorHandler.mapError(error).message)),
       ),
     );
   }
@@ -263,7 +279,9 @@ class _WeeklyReviewScreenState extends ConsumerState<WeeklyReviewScreen> {
   }
 
   bool _canMoveToNextWeek(DateTime currentWeekStart) {
-    final currentWeek = ref.read(weeklyReviewServiceProvider).weekStartFor(DateTime.now());
+    final currentWeek = ref
+        .read(weeklyReviewServiceProvider)
+        .weekStartFor(DateTime.now());
     return currentWeekStart.isBefore(currentWeek);
   }
 
@@ -276,7 +294,9 @@ class _WeeklyReviewScreenState extends ConsumerState<WeeklyReviewScreen> {
 
   Future<void> _saveReflection(WeeklyReviewSnapshot snapshot) async {
     try {
-      await ref.read(weeklyReviewActionControllerProvider.notifier).saveReflection(
+      await ref
+          .read(weeklyReviewActionControllerProvider.notifier)
+          .saveReflection(
             snapshot: snapshot,
             winsText: _winsController.text,
             challengesText: _challengesController.text,
@@ -285,9 +305,9 @@ class _WeeklyReviewScreenState extends ConsumerState<WeeklyReviewScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Weekly reflection saved.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Weekly reflection saved.')));
     } catch (error) {
       if (!mounted) {
         return;
@@ -316,9 +336,9 @@ class _WeekHeader extends StatelessWidget {
       children: [
         Text(
           'Weekly Review',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 4),
         Text('${formatter.format(weekStart)} - ${formatter.format(weekEnd)}'),
@@ -328,11 +348,7 @@ class _WeekHeader extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.child,
-    this.subtitle,
-  });
+  const _SectionCard({required this.title, required this.child, this.subtitle});
 
   final String title;
   final String? subtitle;
@@ -348,9 +364,9 @@ class _SectionCard extends StatelessWidget {
           children: [
             Text(
               title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 6),
@@ -361,6 +377,67 @@ class _SectionCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _RoutineIntelligenceReviewCard extends ConsumerWidget {
+  const _RoutineIntelligenceReviewCard({required this.weekStart});
+
+  final DateTime weekStart;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summaryAsync = ref.watch(
+      weeklyRoutineInsightSummaryProvider(weekStart),
+    );
+    return summaryAsync.when(
+      data: (summary) => _SectionCard(
+        title: 'Routine Intelligence',
+        child: _RoutineInsightSummary(summary: summary),
+      ),
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _RoutineInsightSummary extends StatelessWidget {
+  const _RoutineInsightSummary({required this.summary});
+
+  final WeeklyRoutineInsightSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final adjustments = summary.suggestedAdjustments;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${summary.completedRoutineCount} completed routine blocks, ${summary.missedRoutineCount} missed, ${summary.recoveryLoad} recovery block(s).',
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Most consistent: ${summary.mostConsistentRoutineTitle ?? 'Not enough data yet'}',
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Most fragile: ${summary.mostFragileRoutineTitle ?? 'Not enough data yet'}',
+        ),
+        if (summary.overloadedDayCount > 0) ...[
+          const SizedBox(height: 4),
+          Text('${summary.overloadedDayCount} overloaded day(s) detected.'),
+        ],
+        const SizedBox(height: 12),
+        if (adjustments.isEmpty)
+          const Text('No routine adjustment is suggested for next week.')
+        else
+          for (final adjustment in adjustments)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text('- $adjustment'),
+            ),
+      ],
     );
   }
 }
@@ -381,9 +458,9 @@ class _WeeklySummaryCard extends StatelessWidget {
           children: [
             Text(
               'Summary',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
             _MetricRow(
@@ -484,8 +561,8 @@ class _GoalReviewTile extends StatelessWidget {
                 child: Text(
                   review.goalTitle,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               _RiskChip(level: review.targetRisk),
@@ -524,8 +601,8 @@ class _TaskReviewTile extends StatelessWidget {
                 child: Text(
                   review.taskTitle,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               if (review.isOverdue) const AppStatusChip(label: 'Overdue'),
@@ -567,8 +644,8 @@ class _RecommendationTile extends StatelessWidget {
                 child: Text(
                   recommendation.title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               _RiskChip(level: recommendation.riskLevel),
@@ -598,9 +675,7 @@ class _HistoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: isSelected
-          ? Theme.of(context).colorScheme.primaryContainer
-          : null,
+      color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
       child: ListTile(
         onTap: onTap,
         title: Text(
@@ -633,9 +708,9 @@ class _MetricRow extends StatelessWidget {
           Expanded(child: Text(label)),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
         ],
       ),

@@ -5,6 +5,8 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/errors/error_handler.dart';
 import '../../ai_planning/presentation/ai_plan_generator_screen.dart';
+import '../../knowledge/models/knowledge_item.dart';
+import '../../knowledge/presentation/widgets/linked_knowledge_section.dart';
 import '../../notes/models/entity_note.dart';
 import '../../notes/presentation/entity_support_sections.dart';
 import '../../recommendations/domain/recommendation_models.dart';
@@ -262,6 +264,12 @@ class _GoalDetailScreenState extends ConsumerState<GoalDetailScreen> {
               child: _LinkedTaskCard(task: task),
             ),
           ),
+        const SizedBox(height: 20),
+        LinkedKnowledgeSection(
+          entityType: LinkedEntityType.goal,
+          entityId: goal.id,
+          title: 'Knowledge',
+        ),
         const SizedBox(height: 20),
         EntityNotesSection(
           entityType: EntityAttachmentType.goal,

@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 
 import '../../../core/errors/error_handler.dart';
 import '../../../core/widgets/app_status_chip.dart';
+import '../../knowledge/models/knowledge_item.dart';
+import '../../knowledge/presentation/widgets/linked_knowledge_section.dart';
 import '../../notes/models/entity_note.dart';
 import '../../notes/presentation/entity_support_sections.dart';
 import '../models/task.dart';
@@ -19,9 +21,7 @@ class TaskDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(watchTasksProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Task Detail'),
-      ),
+      appBar: AppBar(title: const Text('Task Detail')),
       body: tasksAsync.when(
         data: (tasks) {
           Task? task;
@@ -93,7 +93,9 @@ class _TaskDetailBody extends ConsumerWidget {
                   runSpacing: 8,
                   children: [
                     AppStatusChip(label: task.type.label),
-                    AppStatusChip(label: '${task.estimatedDurationMinutes} min'),
+                    AppStatusChip(
+                      label: '${task.estimatedDurationMinutes} min',
+                    ),
                     AppStatusChip(label: 'Priority ${task.priority}'),
                     AppStatusChip(
                       label: task.isArchived
@@ -121,6 +123,12 @@ class _TaskDetailBody extends ConsumerWidget {
               ],
             ),
           ),
+        ),
+        const SizedBox(height: 20),
+        LinkedKnowledgeSection(
+          entityType: LinkedEntityType.task,
+          entityId: task.id,
+          title: 'Knowledge',
         ),
         const SizedBox(height: 20),
         EntityNotesSection(

@@ -1,11 +1,18 @@
 import 'package:isar/isar.dart';
 
+import '../../sync/data/sync_mutation_recorder.dart';
+import '../../sync/domain/sync_models.dart';
 import '../models/routine_group.dart';
 
 class RoutineGroupRepository {
-  RoutineGroupRepository(this._isar);
+  RoutineGroupRepository(
+    this._isar, {
+    SyncMutationRecorder syncMutationRecorder =
+        const NoopSyncMutationRecorder(),
+  }) : _syncMutationRecorder = syncMutationRecorder;
 
   final Isar _isar;
+  final SyncMutationRecorder _syncMutationRecorder;
 
   Future<List<RoutineGroup>> getAllGroups() async {
     final groups = await _isar.routineGroups.where().findAll();
@@ -18,9 +25,18 @@ class RoutineGroupRepository {
   }
 
   Future<void> saveGroup(RoutineGroup group) async {
+    final groupToStore = group.copyWith(
+      updatedAt: group.updatedAt ?? group.createdAt,
+    );
     await _isar.writeTxn(() async {
-      await _isar.routineGroups.put(group);
+      await _isar.routineGroups.put(groupToStore);
     });
+    await _syncMutationRecorder.recordUpsert(
+      entityType: SyncEntityType.routineGroup,
+      entityId: groupToStore.id,
+      entity: groupToStore,
+      operationType: SyncOperationType.update,
+    );
   }
 
   Future<void> deleteGroup(String id) async {
@@ -31,6 +47,10 @@ class RoutineGroupRepository {
     await _isar.writeTxn(() async {
       await _isar.routineGroups.delete(group.isarId);
     });
+    await _syncMutationRecorder.recordDelete(
+      entityType: SyncEntityType.routineGroup,
+      entityId: id,
+    );
   }
 
   Stream<List<RoutineGroup>> watchGroups() {

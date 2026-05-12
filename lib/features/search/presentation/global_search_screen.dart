@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/error_handler.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../goals/presentation/goal_detail_screen.dart';
+import '../../knowledge/presentation/screens/knowledge_detail_screen.dart';
 import '../../notes/models/entity_note.dart';
 import '../../quick_capture/presentation/quick_capture_inbox_screen.dart';
 import '../../review/presentation/weekly_review_screen.dart';
@@ -98,7 +99,8 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
               focusNode: _focusNode,
               autofocus: true,
               decoration: const InputDecoration(
-                hintText: 'Search tasks, goals, notes, captures, and reviews',
+                hintText:
+                    'Search tasks, goals, notes, knowledge, captures, and reviews',
                 prefixIcon: Icon(Icons.search_rounded),
               ),
               onChanged: (value) {
@@ -114,7 +116,7 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
                       icon: Icons.search_rounded,
                       title: 'Search your workspace',
                       message:
-                          'Search across tasks, goals, notes, quick captures, and weekly reviews.',
+                          'Search across tasks, goals, notes, knowledge, quick captures, and weekly reviews.',
                     );
                   }
                   if (sections.isEmpty) {
@@ -190,6 +192,13 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
               ),
             );
           }
+          break;
+        case SearchResultType.knowledge:
+          await rootNavigator.push(
+            MaterialPageRoute<void>(
+              builder: (_) => KnowledgeDetailScreen(itemId: result.entityId),
+            ),
+          );
           break;
         case SearchResultType.capture:
           await rootNavigator.push(
@@ -331,6 +340,8 @@ class _SearchResultTile extends StatelessWidget {
         return Icons.track_changes_rounded;
       case SearchResultType.note:
         return Icons.sticky_note_2_outlined;
+      case SearchResultType.knowledge:
+        return Icons.auto_stories_rounded;
       case SearchResultType.capture:
         return Icons.inbox_rounded;
       case SearchResultType.weeklyReview:

@@ -40,6 +40,8 @@ abstract final class AppCommandId {
   static const openRoutines = 'open_routines';
   static const openAnalytics = 'open_analytics';
   static const openWeeklyReview = 'open_weekly_review';
+  static const openPlanningAssistant = 'open_planning_assistant';
+  static const openKnowledge = 'open_knowledge';
   static const openSettings = 'open_settings';
   static const openBackupRestore = 'open_backup_restore';
   static const openSyncStatus = 'open_sync_status';
@@ -76,20 +78,14 @@ class AppCommand {
 }
 
 class CommandMatchResult {
-  const CommandMatchResult({
-    required this.command,
-    required this.score,
-  });
+  const CommandMatchResult({required this.command, required this.score});
 
   final AppCommand command;
   final int score;
 }
 
 class CommandExecutionResult {
-  const CommandExecutionResult({
-    required this.success,
-    this.message,
-  });
+  const CommandExecutionResult({required this.success, this.message});
 
   final bool success;
   final String? message;

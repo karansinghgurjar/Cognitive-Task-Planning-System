@@ -74,7 +74,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Create account'),
-                subtitle: const Text('Turn this on to register instead of signing in.'),
+                subtitle: const Text(
+                  'Turn this on to register instead of signing in.',
+                ),
                 value: _createAccount,
                 onChanged: configured
                     ? (value) => setState(() => _createAccount = value)
@@ -82,8 +84,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: !configured || actionState.isLoading ? null : _submit,
-                icon: Icon(_createAccount ? Icons.person_add_alt_1 : Icons.login_rounded),
+                onPressed: !configured || actionState.isLoading
+                    ? null
+                    : _submit,
+                icon: Icon(
+                  _createAccount ? Icons.person_add_alt_1 : Icons.login_rounded,
+                ),
                 label: Text(_createAccount ? 'Create Account' : 'Sign In'),
               ),
               if (actionState.hasError) ...[
@@ -132,5 +138,3 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     }
   }
 }
-
-

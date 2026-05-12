@@ -1,7 +1,7 @@
 name: study_flow
 description: A study planning app for Android and Windows.
 publish_to: "none"
-version: 1.0.0+1
+version: 1.2.0+12
 
 environment:
   sdk: ^3.11.0
@@ -45,3 +45,4 @@ flutter_launcher_icons:
   adaptive_icon_background: "#081B3A"
   adaptive_icon_foreground: assets/branding/app_icon_android_foreground.png
   adaptive_icon_foreground_inset: 4
+

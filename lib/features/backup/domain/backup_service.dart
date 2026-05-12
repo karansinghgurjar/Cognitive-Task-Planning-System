@@ -56,6 +56,7 @@ class BackupService {
       dependencies: snapshot.dependencies,
       entityNotes: snapshot.entityNotes,
       entityResources: snapshot.entityResources,
+      knowledgeItems: snapshot.knowledgeItems,
       routines: snapshot.routines,
       routineOccurrences: snapshot.routineOccurrences,
       routineTemplates: snapshot.routineTemplates,
@@ -136,6 +137,12 @@ class BackupService {
       (item) => item.id,
     );
     collectConflicts(
+      'knowledgeItems',
+      bundle.knowledgeItems,
+      existing.knowledgeItems,
+      (item) => item.id,
+    );
+    collectConflicts(
       'routines',
       bundle.routines,
       existing.routines,
@@ -175,6 +182,7 @@ class BackupService {
       'dependencies': bundle.dependencies.length,
       'entityNotes': bundle.entityNotes.length,
       'entityResources': bundle.entityResources.length,
+      'knowledgeItems': bundle.knowledgeItems.length,
       'routines': bundle.routines.length,
       'routineOccurrences': bundle.routineOccurrences.length,
       'routineTemplates': bundle.routineTemplates.length,
@@ -297,6 +305,12 @@ class BackupService {
       'entityResources',
       (item) => item.id,
     );
+    final knowledgeItems = filterForMode(
+      bundle.knowledgeItems,
+      existing.knowledgeItems.map((item) => item.id).toSet(),
+      'knowledgeItems',
+      (item) => item.id,
+    );
     final routines = filterForMode(
       bundle.routines,
       existing.routines.map((item) => item.id).toSet(),
@@ -337,6 +351,7 @@ class BackupService {
       dependencies: dependencies,
       entityNotes: entityNotes,
       entityResources: entityResources,
+      knowledgeItems: knowledgeItems,
       routines: routines,
       routineOccurrences: routineOccurrences,
       routineTemplates: routineTemplates,
@@ -371,6 +386,7 @@ class BackupService {
       'dependencies': bundle.dependencies.length,
       'entityNotes': bundle.entityNotes.length,
       'entityResources': bundle.entityResources.length,
+      'knowledgeItems': bundle.knowledgeItems.length,
       'routines': bundle.routines.length,
       'routineOccurrences': bundle.routineOccurrences.length,
       'routineTemplates': bundle.routineTemplates.length,

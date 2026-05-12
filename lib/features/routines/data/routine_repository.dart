@@ -1,16 +1,23 @@
 import 'package:isar/isar.dart';
 
+import '../../sync/data/sync_mutation_recorder.dart';
+import '../../sync/domain/sync_models.dart';
+import '../domain/routine_date_utils.dart';
 import '../domain/routine_repository.dart';
 import '../domain/routine_sync_service.dart';
-import '../domain/routine_date_utils.dart';
 import '../models/routine.dart';
 import '../models/routine_occurrence.dart';
 
 class RoutineRepository
     implements RoutineRepositoryContract, RoutinePersistence {
-  RoutineRepository(this._isar);
+  RoutineRepository(
+    this._isar, {
+    SyncMutationRecorder syncMutationRecorder =
+        const NoopSyncMutationRecorder(),
+  }) : _syncMutationRecorder = syncMutationRecorder;
 
   final Isar _isar;
+  final SyncMutationRecorder _syncMutationRecorder;
 
   Future<void> addRoutine(Routine routine) async {
     await saveRoutine(routine);
@@ -23,13 +30,26 @@ class RoutineRepository
     await _isar.writeTxn(() async {
       await _isar.routines.put(routineToStore);
     });
+    await _syncMutationRecorder.recordUpsert(
+      entityType: SyncEntityType.routine,
+      entityId: routineToStore.id,
+      entity: routineToStore,
+      operationType: SyncOperationType.create,
+    );
   }
 
   @override
   Future<void> updateRoutine(Routine routine) async {
+    final routineToStore = routine.copyWith(updatedAt: DateTime.now());
     await _isar.writeTxn(() async {
-      await _isar.routines.put(routine.copyWith(updatedAt: DateTime.now()));
+      await _isar.routines.put(routineToStore);
     });
+    await _syncMutationRecorder.recordUpsert(
+      entityType: SyncEntityType.routine,
+      entityId: routineToStore.id,
+      entity: routineToStore,
+      operationType: SyncOperationType.update,
+    );
   }
 
   @override
@@ -41,6 +61,10 @@ class RoutineRepository
     await _isar.writeTxn(() async {
       await _isar.routines.delete(routine.isarId);
     });
+    await _syncMutationRecorder.recordDelete(
+      entityType: SyncEntityType.routine,
+      entityId: id,
+    );
   }
 
   @override
@@ -150,6 +174,14 @@ class RoutineRepository
     await _isar.writeTxn(() async {
       await _isar.routineOccurrences.putAll(occurrences);
     });
+    for (final occurrence in occurrences) {
+      await _syncMutationRecorder.recordUpsert(
+        entityType: SyncEntityType.routineOccurrence,
+        entityId: occurrence.id,
+        entity: occurrence,
+        operationType: SyncOperationType.update,
+      );
+    }
   }
 }
 

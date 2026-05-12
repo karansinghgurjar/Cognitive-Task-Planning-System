@@ -6,6 +6,7 @@ import '../../../core/config/app_brand.dart';
 import '../../../core/database/isar_providers.dart';
 import '../../analytics/providers/analytics_providers.dart';
 import '../../goals/providers/goal_providers.dart';
+import '../../knowledge/providers/knowledge_providers.dart';
 import '../../notes/providers/notes_providers.dart';
 import '../../review/providers/weekly_review_providers.dart';
 import '../../routines/providers/routine_providers.dart';
@@ -80,6 +81,9 @@ final appStateSnapshotServiceProvider = FutureProvider<AppStateSnapshotService>(
     final resourcesRepository = await ref.watch(
       resourcesRepositoryProvider.future,
     );
+    final knowledgeRepository = await ref.watch(
+      knowledgeRepositoryProvider.future,
+    );
     final weeklyReviewRepository = await ref.watch(
       weeklyReviewRepositoryProvider.future,
     );
@@ -104,6 +108,7 @@ final appStateSnapshotServiceProvider = FutureProvider<AppStateSnapshotService>(
       goalRepository: goalRepository,
       notesRepository: notesRepository,
       resourcesRepository: resourcesRepository,
+      knowledgeRepository: knowledgeRepository,
       weeklyReviewRepository: weeklyReviewRepository,
       settingsRepository: settingsRepository,
       routineRepository: routineRepository,
@@ -217,14 +222,21 @@ class BackupActionController extends AsyncNotifier<void> {
     try {
       final backupService = await ref.read(backupServiceProvider.future);
       final result = await backupService.restoreBackup(bundle, mode);
-      final syncQueueRepository = await ref.read(syncQueueRepositoryProvider.future);
-      final syncStateRepository = await ref.read(syncStateRepositoryProvider.future);
+      final syncQueueRepository = await ref.read(
+        syncQueueRepositoryProvider.future,
+      );
+      final syncStateRepository = await ref.read(
+        syncStateRepositoryProvider.future,
+      );
       await syncQueueRepository.clearAll();
       await syncStateRepository.clearForRestore();
-      final routineRepository = await ref.read(routineRepositoryProvider.future);
+      final routineRepository = await ref.read(
+        routineRepositoryProvider.future,
+      );
       final routines = await routineRepository.getAllRoutines();
-      await (await ref.read(routineBackupRestoreServiceProvider.future))
-          .rebuildDerivedStateAfterRestore(routines: routines);
+      await (await ref.read(
+        routineBackupRestoreServiceProvider.future,
+      )).rebuildDerivedStateAfterRestore(routines: routines);
       state = const AsyncData(null);
       ref.invalidate(watchTasksProvider);
       ref.invalidate(watchTimetableSlotsProvider);
@@ -233,6 +245,7 @@ class BackupActionController extends AsyncNotifier<void> {
       ref.invalidate(watchAllMilestonesProvider);
       ref.invalidate(watchDependenciesProvider);
       ref.invalidate(notificationPreferencesProvider);
+      ref.invalidate(watchKnowledgeItemsProvider);
       ref.invalidate(watchAllRoutinesProvider);
       ref.invalidate(watchAllRoutineOccurrencesProvider);
       ref.invalidate(watchRoutineTemplatesProvider);

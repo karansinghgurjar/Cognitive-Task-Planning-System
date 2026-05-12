@@ -1,4 +1,4 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:study_flow/features/backup/data/backup_restore_store.dart';
 import 'package:study_flow/features/backup/data/backup_serialization.dart';
 import 'package:study_flow/features/backup/domain/backup_models.dart';
@@ -6,6 +6,7 @@ import 'package:study_flow/features/backup/domain/backup_service.dart';
 import 'package:study_flow/features/goals/models/goal_milestone.dart';
 import 'package:study_flow/features/goals/models/learning_goal.dart';
 import 'package:study_flow/features/goals/models/task_dependency.dart';
+import 'package:study_flow/features/knowledge/models/knowledge_item.dart';
 import 'package:study_flow/features/notes/models/entity_note.dart';
 import 'package:study_flow/features/notes/models/entity_resource.dart';
 import 'package:study_flow/features/review/models/weekly_review.dart';
@@ -28,7 +29,10 @@ void main() {
         appVersionLoader: () async => '1.0.0',
         platformLoader: () => 'windows',
       );
-      final preview = service.previewImport(_importBundle(), _existingSnapshot());
+      final preview = service.previewImport(
+        _importBundle(),
+        _existingSnapshot(),
+      );
 
       expect(preview.importCounts['tasks'], 2);
       expect(preview.existingCounts['tasks'], 1);
@@ -46,7 +50,10 @@ void main() {
         platformLoader: () => 'windows',
       );
 
-      final result = await service.restoreBackup(_importBundle(), RestoreMode.replaceAll);
+      final result = await service.restoreBackup(
+        _importBundle(),
+        RestoreMode.replaceAll,
+      );
 
       expect(store.replacedBundle, isNotNull);
       expect(result.appliedCounts['tasks'], 2);
@@ -68,7 +75,10 @@ void main() {
         RestoreMode.mergePreferImported,
       );
 
-      expect(store.mergedTasks.map((task) => task.id), contains('task-existing'));
+      expect(
+        store.mergedTasks.map((task) => task.id),
+        contains('task-existing'),
+      );
       expect(store.mergedTasks.map((task) => task.id), contains('task-new'));
       expect(result.appliedCounts['tasks'], 2);
       expect(result.appliedCounts['settings'], 1);
@@ -89,7 +99,10 @@ void main() {
         RestoreMode.mergePreferExisting,
       );
 
-      expect(store.mergedTasks.map((task) => task.id), isNot(contains('task-existing')));
+      expect(
+        store.mergedTasks.map((task) => task.id),
+        isNot(contains('task-existing')),
+      );
       expect(store.mergedTasks.map((task) => task.id), contains('task-new'));
       expect(result.skippedCounts['tasks'], 1);
       expect(result.skippedCounts['settings'], 1);
@@ -117,6 +130,7 @@ class _FakeRestoreStore implements BackupRestoreStore {
     required List<TaskDependency> dependencies,
     required List<EntityNote> entityNotes,
     required List<EntityResource> entityResources,
+    required List<KnowledgeItem> knowledgeItems,
     required List<Routine> routines,
     required List<RoutineOccurrence> routineOccurrences,
     required List<RoutineTemplate> routineTemplates,
@@ -221,6 +235,8 @@ AppBackupBundle _importBundle() {
       backupReminderEnabled: true,
       backupReminderCadence: BackupReminderCadence.monthly,
     ),
-    warnings: const ['Duplicate tasks will overwrite in imported-preferred merge.'],
+    warnings: const [
+      'Duplicate tasks will overwrite in imported-preferred merge.',
+    ],
   );
 }

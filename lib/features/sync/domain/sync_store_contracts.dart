@@ -97,9 +97,13 @@ abstract class LocalSyncStoreContract {
     required String deviceId,
   });
 
-  Future<void> applyRemoteChanges(List<SyncEntityEnvelope> envelopes);
+  Future<SyncApplyReport> applyRemoteChanges(
+    List<SyncEntityEnvelope> envelopes,
+  );
 
-  Future<void> replaceAllWithRemote(List<SyncEntityEnvelope> envelopes);
+  Future<SyncApplyReport> replaceAllWithRemote(
+    List<SyncEntityEnvelope> envelopes,
+  );
 }
 
 abstract class SyncRunStore {

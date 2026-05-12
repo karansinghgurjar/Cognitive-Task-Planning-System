@@ -4,6 +4,8 @@ part 'notification_preferences.g.dart';
 
 enum BackupReminderCadence { weekly, everyTwoWeeks, monthly }
 
+enum AppThemePreference { system, light, dark }
+
 @collection
 class NotificationPreferences {
   NotificationPreferences({
@@ -19,6 +21,9 @@ class NotificationPreferences {
     this.syncEnabled = false,
     this.autoSyncEnabled = true,
     this.syncOnWifiOnly = false,
+    this.themePreference = AppThemePreference.system,
+    this.defaultPlanningHorizonDays = 7,
+    this.routineGenerationHorizonDays = 30,
   });
 
   Id id;
@@ -32,9 +37,14 @@ class NotificationPreferences {
   late bool syncEnabled;
   late bool autoSyncEnabled;
   late bool syncOnWifiOnly;
+  late int defaultPlanningHorizonDays;
+  late int routineGenerationHorizonDays;
 
   @Enumerated(EnumType.name)
   late BackupReminderCadence backupReminderCadence;
+
+  @Enumerated(EnumType.name)
+  late AppThemePreference themePreference;
 
   NotificationPreferences copyWith({
     int? id,
@@ -49,6 +59,9 @@ class NotificationPreferences {
     bool? syncEnabled,
     bool? autoSyncEnabled,
     bool? syncOnWifiOnly,
+    AppThemePreference? themePreference,
+    int? defaultPlanningHorizonDays,
+    int? routineGenerationHorizonDays,
   }) {
     return NotificationPreferences(
       id: id ?? this.id,
@@ -67,6 +80,11 @@ class NotificationPreferences {
       syncEnabled: syncEnabled ?? this.syncEnabled,
       autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
       syncOnWifiOnly: syncOnWifiOnly ?? this.syncOnWifiOnly,
+      themePreference: themePreference ?? this.themePreference,
+      defaultPlanningHorizonDays:
+          defaultPlanningHorizonDays ?? this.defaultPlanningHorizonDays,
+      routineGenerationHorizonDays:
+          routineGenerationHorizonDays ?? this.routineGenerationHorizonDays,
     );
   }
 }
@@ -80,6 +98,19 @@ extension BackupReminderCadenceX on BackupReminderCadence {
         return 'Every 2 Weeks';
       case BackupReminderCadence.monthly:
         return 'Monthly';
+    }
+  }
+}
+
+extension AppThemePreferenceX on AppThemePreference {
+  String get label {
+    switch (this) {
+      case AppThemePreference.system:
+        return 'System';
+      case AppThemePreference.light:
+        return 'Light';
+      case AppThemePreference.dark:
+        return 'Dark';
     }
   }
 }

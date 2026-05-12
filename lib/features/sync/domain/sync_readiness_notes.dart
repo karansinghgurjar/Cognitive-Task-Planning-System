@@ -1,4 +1,4 @@
-﻿import 'entity_sync_metadata_strategy.dart';
+import 'entity_sync_metadata_strategy.dart';
 
 class SyncReadinessNotes {
   const SyncReadinessNotes._();

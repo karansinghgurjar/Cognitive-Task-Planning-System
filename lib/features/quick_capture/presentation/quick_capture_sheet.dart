@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/app_router.dart';
 import '../../../core/errors/error_handler.dart';
 import '../models/quick_capture_item.dart';
 import '../providers/quick_capture_providers.dart';
@@ -83,6 +84,29 @@ class _QuickCaptureSheetState extends ConsumerState<QuickCaptureSheet> {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Planning assistant',
+                    onPressed: _isSaving
+                        ? null
+                        : () async {
+                            await AppRouter.openPlanningAssistant(
+                              context,
+                              initialPrompt: _controller.text.trim().isEmpty
+                                  ? null
+                                  : _controller.text.trim(),
+                            );
+                          },
+                    icon: const Icon(Icons.psychology_alt_rounded),
+                  ),
+                  IconButton(
+                    tooltip: 'Knowledge dashboard',
+                    onPressed: _isSaving
+                        ? null
+                        : () async {
+                            await AppRouter.openKnowledgeDashboard(context);
+                          },
+                    icon: const Icon(Icons.auto_stories_rounded),
+                  ),
+                  IconButton(
                     tooltip: 'Open inbox',
                     onPressed: _isSaving ? null : _openInbox,
                     icon: const Icon(Icons.inbox_rounded),
@@ -91,7 +115,7 @@ class _QuickCaptureSheetState extends ConsumerState<QuickCaptureSheet> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Capture a task, goal, or note without opening the full creation flow.',
+                'Capture a task, goal, or note, open the planning assistant, or jump into your knowledge dashboard.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),

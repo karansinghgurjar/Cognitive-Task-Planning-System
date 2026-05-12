@@ -3,16 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/navigation/app_navigation.dart';
-import '../features/command_palette/presentation/command_palette_dialog.dart';
-import '../features/search/presentation/global_search_screen.dart';
 import '../features/analytics/presentation/analytics_dashboard_screen.dart';
+import '../features/command_palette/presentation/command_palette_dialog.dart';
 import '../features/goals/presentation/add_goal_screen.dart';
+import '../features/goals/presentation/goals_screen.dart';
+import '../features/planner/presentation/planner_hub_screen.dart';
 import '../features/quick_capture/presentation/quick_capture_inbox_screen.dart';
 import '../features/quick_capture/presentation/quick_capture_sheet.dart';
-import '../features/goals/presentation/goals_screen.dart';
 import '../features/schedule/presentation/today_screen.dart';
+import '../features/search/presentation/global_search_screen.dart';
 import '../features/tasks/presentation/add_task_screen.dart';
-import '../features/tasks/presentation/tasks_screen.dart';
 import '../features/timetable/presentation/add_edit_timetable_slot_screen.dart';
 import '../features/timetable/presentation/timetable_screen.dart';
 import 'app_router.dart';
@@ -31,7 +31,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       widget.pages ??
       const [
         TodayScreen(),
-        TasksScreen(),
+        PlannerHubScreen(),
         GoalsScreen(),
         AnalyticsDashboardScreen(),
         TimetableScreen(),
@@ -43,30 +43,18 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
     return Shortcuts(
       shortcuts: const <ShortcutActivator, Intent>{
-        SingleActivator(LogicalKeyboardKey.digit1, control: true):
-            _ChangeTabIntent(0),
-        SingleActivator(LogicalKeyboardKey.digit2, control: true):
-            _ChangeTabIntent(1),
-        SingleActivator(LogicalKeyboardKey.digit3, control: true):
-            _ChangeTabIntent(2),
-        SingleActivator(LogicalKeyboardKey.digit4, control: true):
-            _ChangeTabIntent(3),
-        SingleActivator(LogicalKeyboardKey.digit5, control: true):
-            _ChangeTabIntent(4),
-        SingleActivator(LogicalKeyboardKey.comma, control: true):
-            _OpenSettingsIntent(),
-        SingleActivator(LogicalKeyboardKey.keyP, control: true):
-            _OpenGlobalSearchIntent(),
-        SingleActivator(LogicalKeyboardKey.keyP, meta: true):
-            _OpenGlobalSearchIntent(),
-        SingleActivator(LogicalKeyboardKey.keyK, control: true):
-            _OpenCommandPaletteIntent(),
-        SingleActivator(LogicalKeyboardKey.keyK, meta: true):
-            _OpenCommandPaletteIntent(),
-        SingleActivator(LogicalKeyboardKey.keyK, shift: true, control: true):
-            _OpenQuickCaptureIntent(),
-        SingleActivator(LogicalKeyboardKey.keyK, shift: true, meta: true):
-            _OpenQuickCaptureIntent(),
+        SingleActivator(LogicalKeyboardKey.digit1, control: true): _ChangeTabIntent(0),
+        SingleActivator(LogicalKeyboardKey.digit2, control: true): _ChangeTabIntent(1),
+        SingleActivator(LogicalKeyboardKey.digit3, control: true): _ChangeTabIntent(2),
+        SingleActivator(LogicalKeyboardKey.digit4, control: true): _ChangeTabIntent(3),
+        SingleActivator(LogicalKeyboardKey.digit5, control: true): _ChangeTabIntent(4),
+        SingleActivator(LogicalKeyboardKey.comma, control: true): _OpenSettingsIntent(),
+        SingleActivator(LogicalKeyboardKey.keyP, control: true): _OpenGlobalSearchIntent(),
+        SingleActivator(LogicalKeyboardKey.keyP, meta: true): _OpenGlobalSearchIntent(),
+        SingleActivator(LogicalKeyboardKey.keyK, control: true): _OpenCommandPaletteIntent(),
+        SingleActivator(LogicalKeyboardKey.keyK, meta: true): _OpenCommandPaletteIntent(),
+        SingleActivator(LogicalKeyboardKey.keyK, shift: true, control: true): _OpenQuickCaptureIntent(),
+        SingleActivator(LogicalKeyboardKey.keyK, shift: true, meta: true): _OpenQuickCaptureIntent(),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
@@ -107,26 +95,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           bottomNavigationBar: NavigationBar(
             selectedIndex: currentIndex,
             destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.today_rounded),
-                label: 'Today',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.checklist_rounded),
-                label: 'Tasks',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.track_changes_rounded),
-                label: 'Goals',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.insights_rounded),
-                label: 'Insights',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.calendar_view_week_rounded),
-                label: 'Timetable',
-              ),
+              NavigationDestination(icon: Icon(Icons.today_rounded), label: 'Today'),
+              NavigationDestination(icon: Icon(Icons.dashboard_customize_rounded), label: 'Planner'),
+              NavigationDestination(icon: Icon(Icons.track_changes_rounded), label: 'Goals'),
+              NavigationDestination(icon: Icon(Icons.insights_rounded), label: 'Review'),
+              NavigationDestination(icon: Icon(Icons.calendar_view_week_rounded), label: 'Timetable'),
             ],
             onDestinationSelected: (index) {
               ref.read(homeTabIndexProvider.notifier).setIndex(index);
@@ -162,6 +135,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         FloatingActionButton.small(
+          heroTag: 'settings-fab',
+          tooltip: 'Open Settings',
+          onPressed: () => AppRouter.openSettings(context),
+          child: const Icon(Icons.settings_outlined),
+        ),
+        const SizedBox(height: 12),
+        FloatingActionButton.small(
           heroTag: 'command-palette-fab',
           tooltip: 'Open Command Palette',
           onPressed: () => CommandPaletteDialog.show(context),
@@ -173,9 +153,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           tooltip: 'Open Quick Capture inbox',
           onPressed: () {
             Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const QuickCaptureInboxScreen(),
-              ),
+              MaterialPageRoute<void>(builder: (_) => const QuickCaptureInboxScreen()),
             );
           },
           child: const Icon(Icons.inbox_rounded),

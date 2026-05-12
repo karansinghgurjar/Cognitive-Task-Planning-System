@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/error_handler.dart';
+import '../../knowledge/providers/knowledge_providers.dart';
 import '../providers/focus_session_providers.dart';
 
 class FocusSessionScreen extends ConsumerWidget {
@@ -17,7 +19,16 @@ class FocusSessionScreen extends ConsumerWidget {
     final session = ref.watch(focusSessionControllerProvider);
     if (session == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Focus Session')),
+        appBar: AppBar(
+          title: const Text('Focus Session'),
+          actions: [
+            IconButton(
+              tooltip: 'Capture knowledge note',
+              onPressed: () => _showKnowledgeCapture(context, ref),
+              icon: const Icon(Icons.note_add_rounded),
+            ),
+          ],
+        ),
         body: const Center(child: Text('No active focus session.')),
       );
     }
@@ -28,7 +39,16 @@ class FocusSessionScreen extends ConsumerWidget {
     final status = session.isPaused ? 'Paused' : 'Running';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Focus Session')),
+      appBar: AppBar(
+        title: const Text('Focus Session'),
+        actions: [
+          IconButton(
+            tooltip: 'Capture knowledge note',
+            onPressed: () => _showKnowledgeCapture(context, ref),
+            icon: const Icon(Icons.note_add_rounded),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -108,6 +128,85 @@ class FocusSessionScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showKnowledgeCapture(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Capture focus note'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: contentController,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'What did you study?',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Save Note'),
+            ),
+          ],
+        );
+      },
+    );
+    if (created != true) {
+      titleController.dispose();
+      contentController.dispose();
+      return;
+    }
+    try {
+      await ref
+          .read(knowledgeActionControllerProvider.notifier)
+          .createFocusSessionQuickNote(
+            title: titleController.text.trim().isEmpty
+                ? 'Focus session note'
+                : titleController.text.trim(),
+            content: contentController.text.trim(),
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Focus note saved to knowledge.')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ErrorHandler.showSnackBar(
+          context,
+          error,
+          fallbackTitle: 'Knowledge capture failed',
+          fallbackMessage: 'The focus note could not be saved.',
+        );
+      }
+    } finally {
+      titleController.dispose();
+      contentController.dispose();
+    }
   }
 
   Future<void> _confirmCancel(

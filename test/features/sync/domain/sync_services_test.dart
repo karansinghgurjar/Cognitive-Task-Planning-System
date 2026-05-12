@@ -52,6 +52,56 @@ void main() {
 
       expect(conflict?.resolution, SyncConflictResolution.useLocal);
     });
+    test('local tombstone beats stale remote edit', () {
+      final conflict = service.detectConflict(
+        remoteEnvelope: SyncEntityEnvelope(
+          entityType: SyncEntityType.routine,
+          entityId: 'routine-1',
+          userId: 'user-1',
+          data: const {'id': 'routine-1', 'title': 'Remote edit'},
+          lastModifiedAt: DateTime(2026, 3, 16, 12),
+          lastModifiedByDeviceId: 'remote-device',
+        ),
+        localMetadata: SyncEntityMetadata(
+          syncKey: 'routine::routine-1',
+          entityType: SyncEntityType.routine,
+          entityId: 'routine-1',
+          lastModifiedAt: DateTime(2026, 3, 16, 12, 30),
+          lastSyncedAt: DateTime(2026, 3, 16, 11),
+          isDeleted: true,
+          syncState: SyncState.deleted,
+        ),
+      );
+
+      expect(conflict, isNotNull);
+      expect(conflict?.resolution, SyncConflictResolution.useLocal);
+    });
+
+    test('remote terminal occurrence state beats stale local pending edit', () {
+      final conflict = service.detectConflict(
+        remoteEnvelope: SyncEntityEnvelope(
+          entityType: SyncEntityType.routineOccurrence,
+          entityId: 'routine-1|20260408',
+          userId: 'user-1',
+          data: const {
+            'id': 'routine-1|20260408',
+            'status': 'completed',
+          },
+          lastModifiedAt: DateTime(2026, 3, 16, 12),
+          lastModifiedByDeviceId: 'remote-device',
+        ),
+        localMetadata: SyncEntityMetadata(
+          syncKey: 'routineOccurrence::routine-1|20260408',
+          entityType: SyncEntityType.routineOccurrence,
+          entityId: 'routine-1|20260408',
+          lastModifiedAt: DateTime(2026, 3, 16, 12, 30),
+          lastSyncedAt: DateTime(2026, 3, 16, 11),
+        ),
+      );
+
+      expect(conflict, isNotNull);
+      expect(conflict?.resolution, SyncConflictResolution.useRemote);
+    });
   });
 
   group('BootstrapSyncService', () {
